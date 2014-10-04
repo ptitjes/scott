@@ -22,7 +22,7 @@ object test extends App {
   }
 
   val hmm = timed("Train HMM") {
-    trainHMM(15, trainCorpus, devCorpus)
+    trainHMM(15, 2, trainCorpus, devCorpus)
   }
 
   val testCorpus = timed("Open test corpus file") {
@@ -43,7 +43,7 @@ object test extends App {
         words += 1
 
       case SentenceSeparator =>
-        val hypCategories = mostProbableStateSequence(sentence.iterator, hmm).toSeq
+        val hypCategories = mostProbableStateSequence(sentence.iterator, hmm)
         sentence.zip(categories.zip(hypCategories)).foreach {
           case (word, (ref, hyp)) =>
             if (ref != hyp) {

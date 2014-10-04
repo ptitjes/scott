@@ -3,12 +3,13 @@ package io.github.ptitjes.hmm
 import java.io.{PrintWriter, FileWriter, File}
 
 import scala.io.Source
+import scala.reflect.ClassTag
 
-case class HiddenMarkovModel(nbe: Int,
-                             pi: Array[Double], t: Array[Array[Double]],
+case class HiddenMarkovModel(breadth: Int, depth: Int,
+                             pi: MatrixTree[Double], t: Array[Array[Double]],
                              e: Map[Int, Array[Double]], ue: Array[Double]) {
 
-  def PI: Array[Double] = pi
+  def PI: MatrixTree[Double] = pi
 
   def T: Array[Array[Double]] = t
 
@@ -64,11 +65,25 @@ object HiddenMarkovModel {
     }
 }
 
-trait ArrayTree {
-  def PI: Double
-  def subTrees: Array[ArrayTree]
-}
+case class MatrixTree[T: ClassTag](breadth: Int, depth: Int) {
 
-case class ArrayTree0(nbe: Int, depth: Int) {
+  private val tree = {
+    val array: Array[Element] = Array.ofDim(depth)
+    for (i <- 0 until depth) {
+      array(i) = Element(i)
+    }
+    array
+  }
+
+  def apply(d: Int): Element = tree(d)
+
+  case class Element(depth: Int) {
+
+    private val rows = math.pow(breadth, depth).asInstanceOf[Int]
+    private val cols = math.pow(breadth, depth + 1).asInstanceOf[Int]
+    private val probabilities: Array[Array[T]] = Array.ofDim[T](rows, cols)
+
+    def apply(i: Int): Array[T] = probabilities(i)
+  }
 
 }
