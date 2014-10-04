@@ -81,9 +81,9 @@ case class MatrixTree[T: ClassTag](breadth: Int, depth: Int) {
 
     private val rows = math.pow(breadth, depth).asInstanceOf[Int]
     private val cols = math.pow(breadth, depth + 1).asInstanceOf[Int]
-    private val probabilities: Array[Array[T]] = Array.ofDim[T](rows, cols)
+    private val probabilities: Array[Array[T]] = Array.ofDim[T](cols, rows)
 
-    def apply(i: Int): Array[T] = probabilities(i)
+    def apply(j: Int): Array[T] = probabilities(j)
   }
 
 }

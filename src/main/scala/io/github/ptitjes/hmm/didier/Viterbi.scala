@@ -3,18 +3,20 @@ package io.github.ptitjes.hmm.didier
 import io.github.ptitjes.hmm.Corpora.{CorpusItem, SentenceSeparator, WordCategoryPair}
 import io.github.ptitjes.hmm.{MatrixTree, HiddenMarkovModel}
 
+import scala.annotation.tailrec
 import scala.reflect.ClassTag
 
 object Viterbi {
 
   def mostProbableStateSequence(observables: Iterator[Int], hmm: HiddenMarkovModel): List[Int] = {
-    var deltas = SwappableArray[Double](pow(hmm.breadth, hmm.depth))
-    var psis = PsiArray(pow(hmm.breadth, hmm.depth), 150)
+    val size = pow(hmm.breadth, hmm.depth)
+    val deltas = new SwappableArray[Double](size)
+    val psis = new PsiArray(size, 150)
 
     deltas(0) = 0
     psis(0) = -1
-    deltas = deltas.swap()
-    psis = psis.forward()
+    deltas.swap()
+    psis.forward()
 
     var d = 0
     observables.foreach { o =>
@@ -23,85 +25,101 @@ object Viterbi {
       if (d < hmm.depth) {
         val PI = hmm.PI(d)
 
-        for (j <- 0 until pow(hmm.breadth, d + 1)) {
-          val (max, argMax) = maxArgMax(0 until pow(hmm.breadth, d),
-            i => deltas(i) + PI(i)(j) + E(j % hmm.breadth)
+        var j = 0
+        while (j < pow(hmm.breadth, d + 1)) {
+          val PIj = PI(j)
+          val s = j % hmm.breadth
+
+          val (max, argMax) = maxArgMax(0, pow(hmm.breadth, d),
+            i => deltas(i) + PIj(i) + E(s)
           )
           deltas(j) = max
           psis(j) = argMax
+          j += 1
         }
         d += 1
       } else {
-        val T = hmm.T
 
-        for (j <- 0 until pow(hmm.breadth, hmm.depth)) {
-          val (max, argMax) = maxArgMax(0 until pow(hmm.breadth, hmm.depth),
-            i => deltas(i) + T(i)(j) + E(j % hmm.breadth)
+        var j = 0
+        while (j < size) {
+          val Tj = hmm.T(j)
+          val s = j % hmm.breadth
+
+          val (max, argMax) = maxArgMax(0, size,
+            i => deltas(i) + Tj(i) + E(s)
           )
           deltas(j) = max
           psis(j) = argMax
+          j += 1
         }
       }
-      deltas = deltas.swap()
-      psis = psis.forward()
+      deltas.swap()
+      psis.forward()
     }
 
-    def reachBack(psis: PsiArray, row: Int, tail: List[Int]): List[Int] = {
+    @tailrec def reachBack(row: Int, tail: List[Int]): List[Int] = {
       val previous = psis(row)
       if (previous == -1) tail
-      else reachBack(psis.backward(), previous, (row % hmm.breadth) :: tail)
+      else {
+        psis.backward()
+        reachBack(previous, (row % hmm.breadth) :: tail)
+      }
     }
 
     if (d < hmm.depth) {
-      val (_, argMax) = maxArgMax(0 until pow(hmm.breadth, d), i => deltas(i))
-      reachBack(psis, argMax, Nil)
+      val (_, argMax) = maxArgMax(0, pow(hmm.breadth, d), i => deltas(i))
+      reachBack(argMax, Nil)
     } else {
-      val (_, argMax) = maxArgMax(0 until pow(hmm.breadth, hmm.depth), i => deltas(i))
-      reachBack(psis, argMax, Nil)
+      val (_, argMax) = maxArgMax(0, size, i => deltas(i))
+      reachBack(argMax, Nil)
     }
   }
 
   def pow(a: Int, b: Int) = math.pow(a, b).asInstanceOf[Int]
 
-  def maxArgMax(range: Range, f: Int => Double): (Double, Int) = {
+  def maxArgMax(start: Int, end: Int, f: Int => Double): (Double, Int) = {
     var max = Double.NegativeInfinity
     var argMax: Int = -1
-    for (i <- range) {
+
+    var i = start
+    while (i < end) {
       val delta = f(i)
       if (delta >= max) {
         max = delta
         argMax = i
       }
+      i += 1
     }
+
     (max, argMax)
   }
 
-  case class SwappableArray[T](current: Array[T], last: Array[T]) {
+  class SwappableArray[T: ClassTag](size: Int) {
+    private var current: Array[T] = new Array[T](size)
+    private var last: Array[T] = new Array[T](size)
+
     def apply(i: Int): T = last(i)
 
     def update(i: Int, v: T) = current(i) = v
 
-    def swap(): SwappableArray[T] = SwappableArray(last, current)
+    def swap(): Unit = {
+      val temp = current
+      current = last
+      last = temp
+    }
   }
 
-  object SwappableArray {
-    def apply[T: ClassTag](size: Int): SwappableArray[T] =
-      SwappableArray[T](new Array[T](size), new Array[T](size))
-  }
+  class PsiArray(size: Int, length: Int) {
+    private val data = Array.ofDim[Int](length, size)
+    private var index = 0
 
-  case class PsiArray(data: Array[Array[Int]], index: Int) {
     def apply(i: Int): Int = data(index - 1)(i)
 
     def update(i: Int, v: Int) = data(index)(i) = v
 
-    def forward(): PsiArray = PsiArray(data, index + 1)
+    def forward(): Unit = index = index + 1
 
-    def backward(): PsiArray = PsiArray(data, index - 1)
-  }
-
-  object PsiArray {
-    def apply(size: Int, length: Int): PsiArray =
-      PsiArray(Array.ofDim[Int](length, size), 0)
+    def backward(): Unit = index = index - 1
   }
 
   class StateTrail(breadth: Int, depth: Int) {
@@ -159,11 +177,11 @@ object Viterbi {
         val trailLength = trail.length
         if (trailLength < depth) {
           val (i, j) = trail.push(cat)
-          perInitialCategoryCounts(trailLength)(i)(j) += 1
-          allInitialCategoryCounts(trailLength)(i)(0) += 1
+          perInitialCategoryCounts(trailLength)(j)(i) += 1
+          allInitialCategoryCounts(trailLength)(0)(i) += 1
         } else {
           val (i, j) = trail.push(cat)
-          perCategoryCounts(i)(j) += 1
+          perCategoryCounts(j)(i) += 1
           allCategoryCounts(i) += 1
         }
 
@@ -196,14 +214,14 @@ object Viterbi {
 
       for (i <- 0 until pow(breadth, d)) {
         for (j <- 0 until pow(breadth, d + 1)) {
-          pis(i)(j) = Math.log(perInitialCategoryCounts(d)(i)(j).toDouble) - Math.log(allInitialCategoryCounts(d)(i)(0).toDouble)
+          pis(j)(i) = Math.log(perInitialCategoryCounts(d)(j)(i).toDouble) - Math.log(allInitialCategoryCounts(d)(0)(i).toDouble)
         }
       }
     }
 
     for (i <- 0 until pow(breadth, depth)) {
       for (j <- 0 until pow(breadth, depth)) {
-        T(i)(j) = Math.log(perCategoryCounts(i)(j).toDouble) - Math.log(allCategoryCounts(i).toDouble)
+        T(j)(i) = Math.log(perCategoryCounts(j)(i).toDouble) - Math.log(allCategoryCounts(i).toDouble)
       }
 
       UE(i) = Math.log(perUnknownWordCategoryCounts(i).toDouble) - Math.log(allUnknownWordCategoryCounts.toDouble)

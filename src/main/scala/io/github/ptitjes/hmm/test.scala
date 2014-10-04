@@ -22,7 +22,7 @@ object test extends App {
   }
 
   val hmm = timed("Train HMM") {
-    trainHMM(15, 2, trainCorpus, devCorpus)
+    trainHMM(15, 1, trainCorpus, devCorpus)
   }
 
   val testCorpus = timed("Open test corpus file") {

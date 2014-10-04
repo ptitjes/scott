@@ -4,7 +4,6 @@
     <list default="true" id="fcbbd783-bb38-4452-99ad-3fe5c13f29f1" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/scala/io/github/ptitjes/hmm/HiddenMarkovModel.scala" afterPath="$PROJECT_DIR$/src/main/scala/io/github/ptitjes/hmm/HiddenMarkovModel.scala" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/scala/io/github/ptitjes/hmm/didier/Viterbi.scala" afterPath="$PROJECT_DIR$/src/main/scala/io/github/ptitjes/hmm/didier/Viterbi.scala" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/scala/io/github/ptitjes/hmm/test.sc" afterPath="$PROJECT_DIR$/src/main/scala/io/github/ptitjes/hmm/test.sc" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/main/scala/io/github/ptitjes/hmm/test.scala" afterPath="$PROJECT_DIR$/src/main/scala/io/github/ptitjes/hmm/test.scala" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
@@ -37,8 +36,8 @@
       <file leaf-file-name="HiddenMarkovModel.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/io/github/ptitjes/hmm/HiddenMarkovModel.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="607" max-vertical-offset="1638">
-              <caret line="80" column="0" selection-start-line="80" selection-start-column="0" selection-end-line="80" selection-end-column="0" />
+            <state vertical-scroll-proportion="0.0" vertical-offset="625" max-vertical-offset="1638">
+              <caret line="84" column="0" selection-start-line="84" selection-start-column="0" selection-end-line="84" selection-end-column="0" />
               <folding />
             </state>
           </provider>
@@ -54,24 +53,27 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="test.scala" pinned="false" current="false" current-in-tab="false">
+      <file leaf-file-name="test.scala" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/main/scala/io/github/ptitjes/hmm/test.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="1350">
-              <caret line="31" column="21" selection-start-line="31" selection-start-column="21" selection-end-line="31" selection-end-column="21" />
+            <state vertical-scroll-proportion="0.61077845" vertical-offset="0" max-vertical-offset="1350">
+              <caret line="21" column="3" selection-start-line="21" selection-start-column="3" selection-end-line="21" selection-end-column="3" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="Viterbi.scala" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="Viterbi.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/main/scala/io/github/ptitjes/hmm/didier/Viterbi.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.4797631" vertical-offset="144" max-vertical-offset="4140">
-              <caret line="35" column="0" selection-start-line="35" selection-start-column="0" selection-end-line="35" selection-end-column="0" />
+            <state vertical-scroll-proportion="0.0" vertical-offset="157" max-vertical-offset="4464">
+              <caret line="41" column="0" selection-start-line="41" selection-start-column="0" selection-end-line="41" selection-end-column="0" />
               <folding>
                 <element signature="e#38#124#0" expanded="true" />
-                <element signature="e#3614#3618#0" expanded="true" />
+                <element signature="e#2515#2519#0" expanded="true" />
+                <element signature="e#2844#2848#0" expanded="true" />
+                <element signature="e#2890#2894#0" expanded="true" />
+                <element signature="e#3596#3600#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -555,7 +557,7 @@
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="SLIDING" type="SLIDING" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Application Servers" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.2497332" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.49089167" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.49089167" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
@@ -597,7 +599,7 @@
       <breakpoints-dialog>
         <breakpoints-dialog />
       </breakpoints-dialog>
-      <option name="time" value="26" />
+      <option name="time" value="27" />
     </breakpoint-manager>
   </component>
   <component name="antWorkspaceConfiguration">
@@ -635,7 +637,10 @@
           <caret line="6" column="0" selection-start-line="6" selection-start-column="0" selection-end-line="6" selection-end-column="0" />
           <folding>
             <element signature="e#38#124#0" expanded="true" />
-            <element signature="e#3614#3618#0" expanded="true" />
+            <element signature="e#2515#2519#0" expanded="true" />
+            <element signature="e#2844#2848#0" expanded="true" />
+            <element signature="e#2890#2894#0" expanded="true" />
+            <element signature="e#3596#3600#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -694,7 +699,10 @@
           <caret line="107" column="18" selection-start-line="107" selection-start-column="18" selection-end-line="107" selection-end-column="18" />
           <folding>
             <element signature="e#38#124#0" expanded="true" />
-            <element signature="e#3614#3618#0" expanded="true" />
+            <element signature="e#2515#2519#0" expanded="true" />
+            <element signature="e#2844#2848#0" expanded="true" />
+            <element signature="e#2890#2894#0" expanded="true" />
+            <element signature="e#3596#3600#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -745,7 +753,10 @@
           <caret line="70" column="3" selection-start-line="70" selection-start-column="3" selection-end-line="70" selection-end-column="3" />
           <folding>
             <element signature="e#38#124#0" expanded="true" />
-            <element signature="e#3614#3618#0" expanded="true" />
+            <element signature="e#2515#2519#0" expanded="true" />
+            <element signature="e#2844#2848#0" expanded="true" />
+            <element signature="e#2890#2894#0" expanded="true" />
+            <element signature="e#3596#3600#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -882,14 +893,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/io/github/ptitjes/hmm/HiddenMarkovModel.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="607" max-vertical-offset="1638">
-          <caret line="80" column="0" selection-start-line="80" selection-start-column="0" selection-end-line="80" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-library/jars/scala-library-2.11.0.jar!/scala/collection/Iterator.class">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.41900647" vertical-offset="490" max-vertical-offset="1602">
@@ -914,6 +917,14 @@
         </state>
       </provider>
     </entry>
+    <entry file="jar://$USER_HOME$/.ivy2/cache/org.scala-lang/scala-library/jars/scala-library-2.11.0.jar!/scala/collection/immutable/Range.class">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.055384614" vertical-offset="0" max-vertical-offset="1602">
+          <caret line="3" column="39" selection-start-line="3" selection-start-column="39" selection-end-line="3" selection-end-column="39" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/io/github/ptitjes/hmm/Corpora.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="504">
@@ -922,22 +933,33 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/main/scala/io/github/ptitjes/hmm/test.scala">
+    <entry file="file://$PROJECT_DIR$/src/main/scala/io/github/ptitjes/hmm/HiddenMarkovModel.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="1350">
-          <caret line="31" column="21" selection-start-line="31" selection-start-column="21" selection-end-line="31" selection-end-column="21" />
+        <state vertical-scroll-proportion="0.0" vertical-offset="0" max-vertical-offset="1638">
+          <caret line="84" column="0" selection-start-line="84" selection-start-column="0" selection-end-line="84" selection-end-column="0" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/src/main/scala/io/github/ptitjes/hmm/didier/Viterbi.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.4797631" vertical-offset="144" max-vertical-offset="4140">
-          <caret line="35" column="0" selection-start-line="35" selection-start-column="0" selection-end-line="35" selection-end-column="0" />
+        <state vertical-scroll-proportion="0.0" vertical-offset="157" max-vertical-offset="4464">
+          <caret line="41" column="0" selection-start-line="41" selection-start-column="0" selection-end-line="41" selection-end-column="0" />
           <folding>
             <element signature="e#38#124#0" expanded="true" />
-            <element signature="e#3614#3618#0" expanded="true" />
+            <element signature="e#2515#2519#0" expanded="true" />
+            <element signature="e#2844#2848#0" expanded="true" />
+            <element signature="e#2890#2894#0" expanded="true" />
+            <element signature="e#3596#3600#0" expanded="true" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/scala/io/github/ptitjes/hmm/test.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.61077845" vertical-offset="0" max-vertical-offset="1350">
+          <caret line="21" column="3" selection-start-line="21" selection-start-column="3" selection-end-line="21" selection-end-column="3" />
+          <folding />
         </state>
       </provider>
     </entry>
