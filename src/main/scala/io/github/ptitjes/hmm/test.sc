@@ -1,4 +1,4 @@
-import io.github.ptitjes.hmm.didier.Viterbi.StateTrail
+import io.github.ptitjes.hmm.didier.STImplementations.StateTrail
 
 val trail = new StateTrail(3, 2)
 trail.push(0)
