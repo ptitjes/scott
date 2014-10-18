@@ -15,28 +15,32 @@ object STImplementations extends Algorithms {
     val allInitialCategoryCounts = MatrixTree[Int](breadth, depth)
     val perInitialCategoryCounts = MatrixTree[Int](breadth, depth)
 
-    val allCategoryCounts = Array.ofDim[Int](pow(breadth, depth))
-    val perCategoryCounts = Array.ofDim[Int](pow(breadth, depth), pow(breadth, depth))
+    val size = pow(breadth, depth)
+    val allCategoryCounts = Array.ofDim[Int](size)
+    val perCategoryCounts = Array.ofDim[Int](breadth, size)
 
     val allWordCategoryCounts = Array.ofDim[Int](breadth)
     var perWordCategoryCounts: Map[Int, Array[Int]] = Map()
     var allUnknownWordCategoryCounts: Int = 0
-    val perUnknownWordCategoryCounts: Array[Int] = Array.ofDim(pow(breadth, depth))
+    val perUnknownWordCategoryCounts: Array[Int] = Array.ofDim(size)
 
-    val trail = new StateTrail(breadth, depth)
     train.sequences.foreach { s: Sequence with Annotation =>
+      var d = 0
+      var previousState = 0
+
       s.observablesAndStates.foreach { case (word, cat) =>
 
-        val trailLength = trail.length
-        if (trailLength < depth) {
-          val (i, j) = trail.push(cat)
-          perInitialCategoryCounts(trailLength)(j)(i) += 1
-          allInitialCategoryCounts(trailLength)(0)(i) += 1
+        if (d < depth) {
+          perInitialCategoryCounts(d)(cat)(previousState) += 1
+          allInitialCategoryCounts(d)(0)(previousState) += 1
+          d += 1
         } else {
-          val (i, j) = trail.push(cat)
-          perCategoryCounts(j)(i) += 1
-          allCategoryCounts(i) += 1
+          perCategoryCounts(cat)(previousState) += 1
+          allCategoryCounts(previousState) += 1
         }
+
+        previousState = previousState % pow(breadth, depth - 1)
+        previousState = previousState * breadth + cat
 
         // Emission counts
         if (!perWordCategoryCounts.contains(word)) {
@@ -45,7 +49,6 @@ object STImplementations extends Algorithms {
         perWordCategoryCounts(word)(cat) += 1
         allWordCategoryCounts(cat) += 1
       }
-      trail.clear()
     }
 
     dev.sequences.foreach { s: Sequence with Annotation =>
@@ -58,26 +61,28 @@ object STImplementations extends Algorithms {
     }
 
     val PI = MatrixTree[Double](breadth, depth)
-    val T: Array[Array[Double]] = Array.ofDim(pow(breadth, depth), pow(breadth, depth))
+    val T: Array[Array[Double]] = Array.ofDim(breadth, size)
     var E: Map[Int, Array[Double]] = Map()
-    val UE: Array[Double] = Array.ofDim(pow(breadth, depth))
+    val UE: Array[Double] = Array.ofDim(breadth)
 
     for (d <- 0 until depth) {
       val pis = PI(d)
 
       for (i <- 0 until pow(breadth, d)) {
-        for (j <- 0 until pow(breadth, d + 1)) {
+        for (j <- 0 until breadth) {
           pis(j)(i) = Math.log(perInitialCategoryCounts(d)(j)(i).toDouble) - Math.log(allInitialCategoryCounts(d)(0)(i).toDouble)
         }
       }
     }
 
-    for (i <- 0 until pow(breadth, depth)) {
-      for (j <- 0 until pow(breadth, depth)) {
+    for (i <- 0 until size) {
+      for (j <- 0 until breadth) {
         T(j)(i) = Math.log(perCategoryCounts(j)(i).toDouble) - Math.log(allCategoryCounts(i).toDouble)
       }
+    }
 
-      UE(i) = Math.log(perUnknownWordCategoryCounts(i).toDouble) - Math.log(allUnknownWordCategoryCounts.toDouble)
+    for (j <- 0 until breadth) {
+      UE(j) = Math.log(perUnknownWordCategoryCounts(j).toDouble) - Math.log(allUnknownWordCategoryCounts.toDouble)
     }
 
     perWordCategoryCounts.foreach {
@@ -117,8 +122,8 @@ object STImplementations extends Algorithms {
 
         var j = 0
         while (j < pow(hmm.breadth, d + 1)) {
-          val PIj = PI(j)
           val s = j % hmm.breadth
+          val PIj = PI(s)
 
           val (max, argMax) = maxArgMax(0, pow(hmm.breadth, d),
             i => deltas(i) + PIj(i) + E(s)
@@ -132,8 +137,8 @@ object STImplementations extends Algorithms {
 
         var j = 0
         while (j < size) {
-          val Tj = hmm.T(j)
           val s = j % hmm.breadth
+          val Tj = hmm.T(s)
 
           val (max, argMax) = maxArgMax(0, size,
             i => deltas(i) + Tj(i) + E(s)
@@ -209,41 +214,6 @@ object STImplementations extends Algorithms {
     def forward(): Unit = index = index + 1
 
     def backward(): Unit = index = index - 1
-  }
-
-  class StateTrail(breadth: Int, depth: Int) {
-    private val trail: Array[Int] = Array.ofDim(depth)
-    private var nextOffset: Int = 0
-    private var _length: Int = 0
-
-    def stateIndex = {
-      var value: Int = 0
-      for (i <- nextOffset - _length to nextOffset - 1) {
-        value = value * breadth + trail(i % depth)
-      }
-      value
-    }
-
-    def push(state: Int): (Int, Int) = {
-      val oldIndex = stateIndex
-
-      trail(nextOffset % depth) = state
-      nextOffset += 1
-      if (_length < depth) {
-        _length += 1
-      }
-
-      (oldIndex, stateIndex)
-    }
-
-    def peek(): Int = trail(nextOffset)
-
-    def length: Int = _length
-
-    def clear(): Unit = {
-      nextOffset = 0
-      _length = 0
-    }
   }
 
 }
