@@ -105,9 +105,8 @@ object STImplementations extends Algorithms {
   def mostProbableStateSequence(hmm: HiddenMarkovModel,
                                 sequence: Sequence): Sequence with Annotation = {
 
-    val size = pow(hmm.breadth, hmm.depth)
-    val deltas = new SwappableArray[Double](size)
-    val psis = new PsiArray(size, 150)
+    val deltas = new SwappableArray[Double](pow(hmm.breadth, hmm.depth))
+    val psis = new PsiArray(pow(hmm.breadth, hmm.depth), 150)
 
     deltas(0) = 0
     psis(0) = -1
@@ -115,40 +114,30 @@ object STImplementations extends Algorithms {
     psis.forward()
 
     var d = 0
+    var previousSize = 1
+    var size = hmm.breadth
     sequence.observables.foreach { o =>
       val E = hmm.E(o)
 
-      if (d < hmm.depth) {
-        val PI = hmm.T(d)
+      var j = 0
+      while (j < size) {
+        val s = j % hmm.breadth
+        val Tj = hmm.T(d)(s)
 
-        var j = 0
-        while (j < pow(hmm.breadth, d + 1)) {
-          val s = j % hmm.breadth
-          val PIj = PI(s)
-
-          val (max, argMax) = maxArgMax(0, pow(hmm.breadth, d),
-            i => deltas(i) + PIj(i) + E(s)
-          )
-          deltas(j) = max
-          psis(j) = argMax
-          j += 1
-        }
-        d += 1
-      } else {
-
-        var j = 0
-        while (j < size) {
-          val s = j % hmm.breadth
-          val Tj = hmm.T(hmm.depth)(s)
-
-          val (max, argMax) = maxArgMax(0, size,
-            i => deltas(i) + Tj(i) + E(s)
-          )
-          deltas(j) = max
-          psis(j) = argMax
-          j += 1
-        }
+        val (max, argMax) = maxArgMax(0, previousSize,
+          i => deltas(i) + Tj(i) + E(s)
+        )
+        deltas(j) = max
+        psis(j) = argMax
+        j += 1
       }
+
+      previousSize = size
+      if (d < hmm.depth) {
+        d += 1
+        size = pow(hmm.breadth, d)
+      }
+
       deltas.swap()
       psis.forward()
     }
@@ -162,9 +151,7 @@ object STImplementations extends Algorithms {
       }
     }
 
-    val (_, argMax) =
-      if (d < hmm.depth) maxArgMax(0, pow(hmm.breadth, d), i => deltas(i))
-      else maxArgMax(0, size, i => deltas(i))
+    val (_, argMax) = maxArgMax(0, size, i => deltas(i))
     val states = reachBack(argMax, Nil)
 
     AnnotatedSequence(sequence.observables, states.toArray)
