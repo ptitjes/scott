@@ -1,12 +1,14 @@
 package io.github.ptitjes.hmm.didier
 
-import io.github.ptitjes.hmm.Corpora._
-import io.github.ptitjes.hmm.{Algorithms, MatrixTree, HiddenMarkovModel}
+import io.github.ptitjes.hmm._
 
 import scala.annotation.tailrec
 import scala.reflect.ClassTag
 
 object STImplementations extends Algorithms {
+
+  import Corpora._
+  import Utils._
 
   def trainWithRelativeFrequence(breadth: Int, depth: Int,
                                  train: Corpus[Sequence with Annotation],
@@ -60,13 +62,12 @@ object STImplementations extends Algorithms {
       }
     }
 
-    val PI = MatrixTree[Double](breadth, depth)
-    val T: Array[Array[Double]] = Array.ofDim(breadth, size)
+    val T = MatrixTree[Double](breadth, depth)
     var E: Map[Int, Array[Double]] = Map()
     val UE: Array[Double] = Array.ofDim(breadth)
 
     for (d <- 0 until depth) {
-      val pis = PI(d)
+      val pis = T(d)
 
       for (i <- 0 until pow(breadth, d)) {
         for (j <- 0 until breadth) {
@@ -77,7 +78,7 @@ object STImplementations extends Algorithms {
 
     for (i <- 0 until size) {
       for (j <- 0 until breadth) {
-        T(j)(i) = Math.log(perCategoryCounts(j)(i).toDouble) - Math.log(allCategoryCounts(i).toDouble)
+        T(depth)(j)(i) = Math.log(perCategoryCounts(j)(i).toDouble) - Math.log(allCategoryCounts(i).toDouble)
       }
     }
 
@@ -94,7 +95,7 @@ object STImplementations extends Algorithms {
         E += o -> emitProbabilities
     }
 
-    HiddenMarkovModel(breadth, depth, PI, T, E, UE)
+    HiddenMarkovModel(breadth, depth, T, E, UE)
   }
 
   def trainWithPerceptron(breadth: Int, depth: Int,
@@ -118,7 +119,7 @@ object STImplementations extends Algorithms {
       val E = hmm.E(o)
 
       if (d < hmm.depth) {
-        val PI = hmm.PI(d)
+        val PI = hmm.T(d)
 
         var j = 0
         while (j < pow(hmm.breadth, d + 1)) {
@@ -138,7 +139,7 @@ object STImplementations extends Algorithms {
         var j = 0
         while (j < size) {
           val s = j % hmm.breadth
-          val Tj = hmm.T(s)
+          val Tj = hmm.T(hmm.depth)(s)
 
           val (max, argMax) = maxArgMax(0, size,
             i => deltas(i) + Tj(i) + E(s)
@@ -168,8 +169,6 @@ object STImplementations extends Algorithms {
 
     AnnotatedSequence(sequence.observables, states.toArray)
   }
-
-  def pow(a: Int, b: Int) = math.pow(a, b).asInstanceOf[Int]
 
   def maxArgMax(start: Int, end: Int, f: Int => Double): (Double, Int) = {
     var max = Double.NegativeInfinity

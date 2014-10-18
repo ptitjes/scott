@@ -6,12 +6,10 @@ import scala.io.Source
 import scala.reflect.ClassTag
 
 case class HiddenMarkovModel(breadth: Int, depth: Int,
-                             pi: MatrixTree[Double], t: Array[Array[Double]],
+                             t: MatrixTree[Double],
                              e: Map[Int, Array[Double]], ue: Array[Double]) {
 
-  def PI: MatrixTree[Double] = pi
-
-  def T: Array[Array[Double]] = t
+  def T(d: Int): Array[Array[Double]] = t(d)
 
   def E(o: Int): Array[Double] =
     if (e.contains(o)) e(o) else ue
@@ -67,23 +65,16 @@ object HiddenMarkovModel {
 
 case class MatrixTree[T: ClassTag](breadth: Int, depth: Int) {
 
+  import Utils._
+
   private val tree = {
-    val array: Array[Element] = Array.ofDim(depth)
-    for (i <- 0 until depth) {
-      array(i) = Element(i)
+    val array: Array[Array[Array[T]]] = Array.ofDim(depth + 1)
+    for (i <- 0 to depth) {
+      val targetStateCount = pow(breadth, depth)
+      array(i) = Array.ofDim[T](breadth, targetStateCount)
     }
     array
   }
 
-  def apply(d: Int): Element = tree(d)
-
-  case class Element(depth: Int) {
-
-    private val rows = math.pow(breadth, depth).asInstanceOf[Int]
-    private val cols = breadth
-    private val probabilities: Array[Array[T]] = Array.ofDim[T](cols, rows)
-
-    def apply(j: Int): Array[T] = probabilities(j)
-  }
-
+  def apply(d: Int): Array[Array[T]] = tree(d)
 }

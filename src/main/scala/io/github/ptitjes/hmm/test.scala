@@ -22,7 +22,7 @@ object test extends App {
   val algo: Algorithms = didier.STImplementations
 
   val hmm = timed("Train HMM") {
-    algo.trainWithRelativeFrequence(15, 2, trainCorpus, devCorpus)
+    algo.trainWithRelativeFrequence(15, 1, trainCorpus, devCorpus)
   }
 
   timed("Test HMM") {
