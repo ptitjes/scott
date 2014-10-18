@@ -42,9 +42,9 @@ object Algorithms {
             }
             if (sRef != sHyp) {
               errors += 1
-              if (DEBUG) println(s"$oRef\t$ref\t$hyp\t<<<")
+              if (DEBUG) println(f"$oRef%6d\t$sRef%2d\t$sHyp%2d\t<<<")
             } else {
-              if (DEBUG) println(s"$oRef\t$ref\t$hyp")
+              if (DEBUG) println(f"$oRef%6d\t$sRef%2d\t$sHyp%2d")
             }
         }
         if (DEBUG) println()
