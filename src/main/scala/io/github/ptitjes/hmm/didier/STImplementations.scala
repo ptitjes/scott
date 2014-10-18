@@ -18,8 +18,6 @@ object STImplementations extends Algorithms {
     val perInitialCategoryCounts = MatrixTree[Int](breadth, depth)
 
     val size = pow(breadth, depth)
-    val allCategoryCounts = Array.ofDim[Int](size)
-    val perCategoryCounts = Array.ofDim[Int](breadth, size)
 
     val allWordCategoryCounts = Array.ofDim[Int](breadth)
     var perWordCategoryCounts: Map[Int, Array[Int]] = Map()
@@ -32,13 +30,10 @@ object STImplementations extends Algorithms {
 
       s.observablesAndStates.foreach { case (word, cat) =>
 
+        perInitialCategoryCounts(d)(cat)(previousState) += 1
+        allInitialCategoryCounts(d)(0)(previousState) += 1
         if (d < depth) {
-          perInitialCategoryCounts(d)(cat)(previousState) += 1
-          allInitialCategoryCounts(d)(0)(previousState) += 1
           d += 1
-        } else {
-          perCategoryCounts(cat)(previousState) += 1
-          allCategoryCounts(previousState) += 1
         }
 
         previousState = previousState % pow(breadth, depth - 1)
@@ -66,19 +61,12 @@ object STImplementations extends Algorithms {
     var E: Map[Int, Array[Double]] = Map()
     val UE: Array[Double] = Array.ofDim(breadth)
 
-    for (d <- 0 until depth) {
-      val pis = T(d)
+    for (d <- 0 to depth) {
 
       for (i <- 0 until pow(breadth, d)) {
         for (j <- 0 until breadth) {
-          pis(j)(i) = Math.log(perInitialCategoryCounts(d)(j)(i).toDouble) - Math.log(allInitialCategoryCounts(d)(0)(i).toDouble)
+          T(d)(j)(i) = Math.log(perInitialCategoryCounts(d)(j)(i).toDouble) - Math.log(allInitialCategoryCounts(d)(0)(i).toDouble)
         }
-      }
-    }
-
-    for (i <- 0 until size) {
-      for (j <- 0 until breadth) {
-        T(depth)(j)(i) = Math.log(perCategoryCounts(j)(i).toDouble) - Math.log(allCategoryCounts(i).toDouble)
       }
     }
 
