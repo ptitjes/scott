@@ -13,16 +13,14 @@ object STImplementations extends Algorithms {
   def trainWithRelativeFrequence(breadth: Int, depth: Int,
                                  train: Corpus[Sequence with Annotation],
                                  dev: Corpus[Sequence with Annotation]): HiddenMarkovModel = {
+    val size = pow(breadth, depth)
 
     val allInitialCategoryCounts = MatrixTree[Int](breadth, depth)
     val perInitialCategoryCounts = MatrixTree[Int](breadth, depth)
 
-    val size = pow(breadth, depth)
-
     val allWordCategoryCounts = Array.ofDim[Int](breadth)
     var perWordCategoryCounts: Map[Int, Array[Int]] = Map()
-    var allUnknownWordCategoryCounts: Int = 0
-    val perUnknownWordCategoryCounts: Array[Int] = Array.ofDim(size)
+    val unknownWordCategoryCounts: Array[Int] = Array.ofDim(breadth)
 
     train.sequences.foreach { s: Sequence with Annotation =>
       var d = 0
@@ -32,12 +30,12 @@ object STImplementations extends Algorithms {
 
         perInitialCategoryCounts(d)(cat)(previousState) += 1
         allInitialCategoryCounts(d)(0)(previousState) += 1
+
         if (d < depth) {
           d += 1
         }
-
-        previousState = previousState % pow(breadth, depth - 1)
         previousState = previousState * breadth + cat
+        previousState = previousState % size
 
         // Emission counts
         if (!perWordCategoryCounts.contains(word)) {
@@ -50,9 +48,10 @@ object STImplementations extends Algorithms {
 
     dev.sequences.foreach { s: Sequence with Annotation =>
       s.observablesAndStates.foreach { case (word, cat) =>
+
         if (!perWordCategoryCounts.contains(word)) {
-          perUnknownWordCategoryCounts(cat) += 1
-          allUnknownWordCategoryCounts += 1
+          unknownWordCategoryCounts(cat) += 1
+          allWordCategoryCounts(cat) += 1
         }
       }
     }
@@ -62,25 +61,24 @@ object STImplementations extends Algorithms {
     val UE: Array[Double] = Array.ofDim(breadth)
 
     for (d <- 0 to depth) {
-
       for (i <- 0 until pow(breadth, d)) {
         for (j <- 0 until breadth) {
-          T(d)(j)(i) = Math.log(perInitialCategoryCounts(d)(j)(i).toDouble) - Math.log(allInitialCategoryCounts(d)(0)(i).toDouble)
+          T(d)(j)(i) = log(perInitialCategoryCounts(d)(j)(i)) - log(allInitialCategoryCounts(d)(0)(i))
         }
       }
-    }
-
-    for (j <- 0 until breadth) {
-      UE(j) = Math.log(perUnknownWordCategoryCounts(j).toDouble) - Math.log(allUnknownWordCategoryCounts.toDouble)
     }
 
     perWordCategoryCounts.foreach {
       case (o, wordCategoryCounts) =>
         val emitProbabilities: Array[Double] = Array.ofDim(breadth)
-        for (i <- 0 until breadth) {
-          emitProbabilities(i) = Math.log(wordCategoryCounts(i).toDouble) - Math.log(allWordCategoryCounts(i).toDouble)
+        for (j <- 0 until breadth) {
+          emitProbabilities(j) = log(wordCategoryCounts(j)) - log(allWordCategoryCounts(j))
         }
         E += o -> emitProbabilities
+    }
+
+    for (j <- 0 until breadth) {
+      UE(j) = log(unknownWordCategoryCounts(j)) - log(allWordCategoryCounts(j))
     }
 
     HiddenMarkovModel(breadth, depth, T, E, UE)
@@ -90,59 +88,67 @@ object STImplementations extends Algorithms {
                           train: Corpus[Sequence with Annotation],
                           dev: Corpus[Sequence with Annotation]): HiddenMarkovModel = ???
 
-  def mostProbableStateSequence(hmm: HiddenMarkovModel,
-                                sequence: Sequence): Sequence with Annotation = {
+  def mostProbableSequences(hmm: HiddenMarkovModel,
+                            test: Corpus[Sequence]): Corpus[Sequence with Annotation] = {
 
     val deltas = new SwappableArray[Double](pow(hmm.breadth, hmm.depth))
     val psis = new PsiArray(pow(hmm.breadth, hmm.depth), 150)
 
-    deltas(0) = 0
-    psis(0) = -1
-    deltas.swap()
-    psis.forward()
-
-    var d = 0
-    var previousSize = 1
-    var size = hmm.breadth
-    sequence.observables.foreach { o =>
-      val E = hmm.E(o)
-
-      var j = 0
-      while (j < size) {
-        val s = j % hmm.breadth
-        val Tj = hmm.T(d)(s)
-
-        val (max, argMax) = maxArgMax(0, previousSize,
-          i => deltas(i) + Tj(i) + E(s)
-        )
-        deltas(j) = max
-        psis(j) = argMax
-        j += 1
-      }
-
-      previousSize = size
-      if (d < hmm.depth) {
-        d += 1
-        size = pow(hmm.breadth, d)
-      }
-
+    test.map { sequence =>
+      deltas(0) = 0
+      psis(0) = -1
       deltas.swap()
       psis.forward()
-    }
 
-    @tailrec def reachBack(i: Int, tail: List[Int]): List[Int] = {
-      val previous = psis(i)
-      if (previous == -1) tail
-      else {
-        psis.backward()
-        reachBack(previous, (i % hmm.breadth) :: tail)
+      var d = 0
+      var T = hmm.T(d)
+      var sourceCount = 1
+      var targetCount = hmm.breadth
+      var targets = (0 until targetCount).par
+
+      sequence.observables.foreach { o =>
+        val E = hmm.E(o)
+
+        targets.foreach { s =>
+          val j = s % hmm.breadth
+          val Tj = T(j)
+          val Ej = E(j)
+
+          val (max, argMax) = maxArgMax(0, sourceCount,
+            i => deltas(i) + Tj(i) + Ej
+          )
+          deltas(s) = max
+          psis(s) = argMax
+        }
+
+        sourceCount = targetCount
+        if (d < hmm.depth) {
+          d += 1
+          T = hmm.T(d)
+          targetCount = pow(hmm.breadth, d)
+          targets = (0 until targetCount).par
+        }
+
+        deltas.swap()
+        psis.forward()
       }
+
+      @tailrec def reachBack(i: Int, tail: List[Int]): List[Int] = {
+        val previous = psis(i)
+        if (previous == -1) tail
+        else {
+          psis.backward()
+          reachBack(previous, (i % hmm.breadth) :: tail)
+        }
+      }
+
+      val (_, argMax) = maxArgMax(0, sourceCount, i => deltas(i))
+      val states = reachBack(argMax, Nil)
+
+      psis.rewind()
+
+      AnnotatedSequence(sequence.observables, states.toArray)
     }
-
-    val (_, argMax) = maxArgMax(0, size, i => deltas(i))
-    val states = reachBack(argMax, Nil)
-
-    AnnotatedSequence(sequence.observables, states.toArray)
   }
 
   def maxArgMax(start: Int, end: Int, f: Int => Double): (Double, Int) = {
@@ -188,6 +194,8 @@ object STImplementations extends Algorithms {
     def forward(): Unit = index = index + 1
 
     def backward(): Unit = index = index - 1
+
+    def rewind(): Unit = index = 0
   }
 
 }

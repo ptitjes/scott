@@ -4,7 +4,6 @@ import java.io.File
 
 object test extends App {
 
-  val DEBUG = false
   val PATH = "/home/didier/Documents/Work/Master/Docs/Inférence Statistique/Alexis Nasr/Code HMM/"
 
   val trainCorpus = timed("Open train corpus file") {
@@ -22,12 +21,12 @@ object test extends App {
   val algo: Algorithms = didier.STImplementations
 
   val hmm = timed("Train HMM") {
-    algo.trainWithRelativeFrequence(15, 1, trainCorpus, devCorpus)
+    algo.trainWithRelativeFrequence(15, 3, trainCorpus, devCorpus)
   }
 
   timed("Test HMM") {
     val results = Algorithms.mostProbableStateSequences(algo, hmm, testCorpus)
-    println(s"Errors: ${results.errors}; Words = ${results.words}; Accuracy = ${results.accuracy}.")
+    println(results)
   }
 
   def timed[T](step: String)(execution: => T): T = {

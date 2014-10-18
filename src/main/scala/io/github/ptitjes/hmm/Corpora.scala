@@ -7,20 +7,25 @@ import scala.io.Source
 
 object Corpora {
 
-  case class Corpus[T <: Sequence](sequences: Seq[T]) {
+  case class Corpus[+T <: Sequence](sequences: Seq[T]) {
 
     def size: Int = sequences.size
 
     def slice(from: Int, until: Int): Corpus[T] =
       Corpus(sequences.slice(from, until))
+
+    def map[U <: Sequence](f: T => U): Corpus[U] =
+      Corpus(sequences.map(f))
   }
 
   trait Sequence {
     def observables: Array[Int]
   }
 
-  trait Annotation { self: Sequence =>
+  trait Annotation {
+    self: Sequence =>
     def states: Array[Int]
+
     def observablesAndStates: Array[(Int, Int)] = observables.zip(states)
   }
 

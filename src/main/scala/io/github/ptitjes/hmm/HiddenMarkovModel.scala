@@ -13,6 +13,8 @@ case class HiddenMarkovModel(breadth: Int, depth: Int,
 
   def E(o: Int): Array[Double] =
     if (e.contains(o)) e(o) else ue
+
+  def isUnknown(o: Int): Boolean = !e.contains(o)
 }
 
 object HiddenMarkovModel {
