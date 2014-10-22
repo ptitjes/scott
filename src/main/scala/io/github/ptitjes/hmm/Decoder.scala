@@ -1,42 +1,13 @@
 package io.github.ptitjes.hmm
 
-import io.github.ptitjes.hmm.Corpora._
+import io.github.ptitjes.hmm.Corpora.{Annotation, Sequence, Corpus}
 
-trait Algorithms {
+trait Decoder {
 
-  def trainWithRelativeFrequence(breadth: Int, depth: Int,
-                                 train: Corpus[Sequence with Annotation],
-                                 dev: Corpus[Sequence with Annotation]): HiddenMarkovModel
+  def decode(hmm: HiddenMarkovModel,
+             corpus: Corpus[Sequence]): Corpus[Sequence with Annotation]
 
-  def trainWithPerceptron(breadth: Int, depth: Int,
-                          train: Corpus[Sequence with Annotation],
-                          dev: Corpus[Sequence with Annotation]): HiddenMarkovModel
-
-  def mostProbableSequences(hmm: HiddenMarkovModel,
-                            test: Corpus[Sequence]): Corpus[Sequence with Annotation]
-}
-
-object Algorithms {
-
-  val DEBUG = false
-
-  case class Results(errors: Int, words: Int, unknownErrorRate: Double, accuracy: Double, unknownAccuracy: Double, ellapsedTime: Long) {
-    override def toString: String = f"Errors: ${
-      errors
-    }%d; Words = ${
-      words
-    }%d; UnknownErrorRate: ${
-      unknownErrorRate * 100
-    }%2.2f%%; Accuracy = ${
-      accuracy * 100
-    }%2.2f%%; UnknownAccuracy: ${
-      unknownAccuracy * 100
-    }%2.2f%%; EllapsedTime = ${
-      ellapsedTime
-    } ms."
-  }
-
-  def mostProbableStateSequences(algo: Algorithms, hmm: HiddenMarkovModel, refCorpus: Corpus[Sequence with Annotation]): Results = {
+  def decodeAndCheck(hmm: HiddenMarkovModel, refCorpus: Corpus[Sequence with Annotation], debug: Boolean = false): Results = {
     var errors = 0
     var errorsOnUnknowns = 0
     var accurateUnknowns = 0
@@ -44,7 +15,7 @@ object Algorithms {
     var words = 0
 
     val (hypCorpus, ellapsedTime) = timed {
-      algo.mostProbableSequences(hmm, refCorpus)
+      decode(hmm, refCorpus)
     }
 
     refCorpus.sequences.zip(hypCorpus.sequences).foreach {
@@ -70,19 +41,39 @@ object Algorithms {
               else accurateUnknowns += 1
             }
 
-            if (DEBUG) {
+            if (debug) {
               print(if (error) ">" else " ")
               print(if (hmm.isUnknown(oRef)) "     U" else f"$oRef%6d")
               println(f"\t$sRef%2d\t$sHyp%2d")
             }
         }
-        if (DEBUG) println()
+        if (debug) println()
     }
 
     val errorRate = errors.toDouble / words.toDouble
     val accuracy = 1 - errorRate
 
     Results(errors, words, errorsOnUnknowns.toDouble / errors, accuracy, accurateUnknowns.toDouble / unknownCount, ellapsedTime)
+  }
+
+  case class Results(errors: Int, words: Int,
+                     unknownErrorRate: Double,
+                     accuracy: Double, unknownAccuracy: Double,
+                     ellapsedTime: Long) {
+
+    override def toString: String = f"Errors: ${
+      errors
+    }%d; Words = ${
+      words
+    }%d; UnknownErrorRate: ${
+      unknownErrorRate * 100
+    }%2.2f%%; Accuracy = ${
+      accuracy * 100
+    }%2.2f%%; UnknownAccuracy: ${
+      unknownAccuracy * 100
+    }%2.2f%%; EllapsedTime = ${
+      ellapsedTime
+    } ms."
   }
 
   def timed[T](execution: => T): (T, Long) = {

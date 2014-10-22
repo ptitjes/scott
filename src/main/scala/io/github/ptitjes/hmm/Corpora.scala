@@ -14,6 +14,11 @@ object Corpora {
     def slice(from: Int, until: Int): Corpus[T] =
       Corpus(sequences.slice(from, until))
 
+    def splitBy(ratio: Double): (Corpus[T], Corpus[T]) = {
+      val splitIndex = (size * ratio).toInt
+      (slice(0, splitIndex), slice(splitIndex + 1, size))
+    }
+
     def map[U <: Sequence](f: T => U): Corpus[U] =
       Corpus(sequences.map(f))
   }
@@ -32,12 +37,12 @@ object Corpora {
   case class AnnotatedSequence(observables: Array[Int], states: Array[Int])
     extends Sequence with Annotation
 
-  def fromFile(file: File): Corpus[Sequence with Annotation] = {
+  def fromSource(source: Source): Corpus[Sequence with Annotation] = {
     val sequences = scala.collection.mutable.ListBuffer[Sequence with Annotation]()
 
     val observables: ArrayBuffer[Int] = ArrayBuffer()
     val states: ArrayBuffer[Int] = ArrayBuffer()
-    Source.fromFile(file).getLines().foreach { s =>
+    source.getLines().foreach { s =>
       if (s.isEmpty) {
         sequences += AnnotatedSequence(observables.toArray, states.toArray)
         observables.clear()
@@ -52,4 +57,8 @@ object Corpora {
 
     Corpus(sequences)
   }
+
+  def fromFile(file: File): Corpus[Sequence with Annotation] = fromSource(Source.fromFile(file))
+
+  def fromURL(url: java.net.URL): Corpus[Sequence with Annotation] = fromSource(Source.fromURL(url))
 }

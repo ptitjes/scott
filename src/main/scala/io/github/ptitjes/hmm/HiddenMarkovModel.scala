@@ -5,9 +5,11 @@ import java.io.{PrintWriter, FileWriter, File}
 import scala.io.Source
 import scala.reflect.ClassTag
 
+import scala.collection._
+
 case class HiddenMarkovModel(breadth: Int, depth: Int,
                              t: MatrixTree[Double],
-                             e: Map[Int, Array[Double]], ue: Array[Double]) {
+                             e: mutable.Map[Int, Array[Double]], ue: Array[Double]) {
 
   def T(d: Int): Array[Array[Double]] = t(d)
 
@@ -72,7 +74,7 @@ case class MatrixTree[T: ClassTag](breadth: Int, depth: Int) {
   private val tree = {
     val array: Array[Array[Array[T]]] = Array.ofDim(depth + 1)
     for (i <- 0 to depth) {
-      val targetStateCount = pow(breadth, depth)
+      val targetStateCount = pow(breadth, i)
       array(i) = Array.ofDim[T](breadth, targetStateCount)
     }
     array
