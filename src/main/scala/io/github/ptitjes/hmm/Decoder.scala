@@ -1,8 +1,11 @@
 package io.github.ptitjes.hmm
 
-import io.github.ptitjes.hmm.Corpora.{Annotation, Sequence, Corpus}
+import io.github.ptitjes.hmm.Corpora._
+import io.github.ptitjes.hmm.Utils._
 
 trait Decoder {
+
+  def maxDepth: Option[Int] = None
 
   def decode(hmm: HiddenMarkovModel,
              corpus: Corpus[Sequence]): Corpus[Sequence with Annotation]
@@ -55,31 +58,24 @@ trait Decoder {
 
     Results(errors, words, errorsOnUnknowns.toDouble / errors, accuracy, accurateUnknowns.toDouble / unknownCount, ellapsedTime)
   }
+}
 
-  case class Results(errors: Int, words: Int,
-                     unknownErrorRate: Double,
-                     accuracy: Double, unknownAccuracy: Double,
-                     ellapsedTime: Long) {
+case class Results(errors: Int, words: Int,
+                   unknownErrorRate: Double,
+                   accuracy: Double, unknownAccuracy: Double,
+                   ellapsedTime: Long) {
 
-    override def toString: String = f"Errors: ${
-      errors
-    }%d; Words = ${
-      words
-    }%d; UnknownErrorRate: ${
-      unknownErrorRate * 100
-    }%2.2f%%; Accuracy = ${
-      accuracy * 100
-    }%2.2f%%; UnknownAccuracy: ${
-      unknownAccuracy * 100
-    }%2.2f%%; EllapsedTime = ${
-      ellapsedTime
-    } ms."
-  }
-
-  def timed[T](execution: => T): (T, Long) = {
-    val start = System.currentTimeMillis()
-    val result = execution
-    val time = System.currentTimeMillis() - start
-    (result, time)
-  }
+  override def toString: String = f"Errors: ${
+    errors
+  }%d; Words = ${
+    words
+  }%d; UnknownErrorRate: ${
+    unknownErrorRate * 100
+  }%2.2f%%; Accuracy = ${
+    accuracy * 100
+  }%2.2f%%; UnknownAccuracy: ${
+    unknownAccuracy * 100
+  }%2.2f%%; EllapsedTime = ${
+    ellapsedTime
+  } ms."
 }

@@ -58,13 +58,6 @@ object HiddenMarkovModel {
       }
     }
   }*/
-
-  def using[A <: AutoCloseable, B](param: A)(f: A => B): B =
-    try {
-      f(param)
-    } finally {
-      param.close()
-    }
 }
 
 case class MatrixTree[T: ClassTag](breadth: Int, depth: Int) {

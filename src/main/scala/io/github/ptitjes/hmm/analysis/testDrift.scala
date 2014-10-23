@@ -1,7 +1,7 @@
-package io.github.ptitjes.hmm.analyses
+package io.github.ptitjes.hmm.analysis
 
-import io.github.ptitjes.hmm.didier.{ParDecoder, RelFreqSimpleTrainer}
-import io.github.ptitjes.hmm.{Corpora, Utils}
+import io.github.ptitjes.hmm._
+import io.github.ptitjes.hmm.didier._
 
 object testDrift extends App {
 
@@ -66,12 +66,16 @@ object testDrift extends App {
   //  val test = devCorpus
   val test = driftingSequence
 
+  val trainerConf = Configuration().set(Trainer.ORDER, 3)
+
+  val decoderConf = Configuration()
+
   val hmm = timed("Train HMM") {
-    RelFreqSimpleTrainer.train(15, 3, trainCorpus)
+    RelFreqSimpleTrainer.instantiate(trainerConf).train(15, trainCorpus)
   }
 
   timed("Test HMM") {
-    val results = ParDecoder.decodeAndCheck(hmm, test)
+    val results = ParDecoder.instantiate(decoderConf).decodeAndCheck(hmm, test)
     println(results)
   }
 }

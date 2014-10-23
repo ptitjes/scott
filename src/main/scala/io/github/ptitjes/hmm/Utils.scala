@@ -13,4 +13,18 @@ object Utils {
     println(step + ": " + time + "ms")
     result
   }
+
+  def timed[T](execution: => T): (T, Long) = {
+    val start = System.currentTimeMillis()
+    val result = execution
+    val time = System.currentTimeMillis() - start
+    (result, time)
+  }
+
+  def using[A <: AutoCloseable, B](param: A)(f: A => B): B =
+    try {
+      f(param)
+    } finally {
+      param.close()
+    }
 }
