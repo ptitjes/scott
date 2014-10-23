@@ -10,37 +10,45 @@ object test extends App {
   val orderAnalysis = new Analysis {
     def configurations: AnalysisConfigurations =
       AnalysisConfigurations()
+        .set(Analysis.ALGORITHMS,
+          List(
+            (didier.RelFreqSimpleTrainer, didier.ParDecoder),
+            (didier.RelFreqSRILMTrainer, didier.ParDecoder)
+          )
+        )
         .set(Trainer.ORDER, (1 to 4).toList)
-
-    def trainers: List[Algorithm[Trainer]] = List(
-      didier.RelFreqSimpleTrainer,
-      didier.RelFreqSRILMTrainer
-    )
-
-    def decoders: List[Algorithm[Decoder]] = List(
-      didier.ParDecoder
-    )
   }
 
   val unknownThresholdAnalysis = new Analysis {
     def configurations: AnalysisConfigurations =
       AnalysisConfigurations()
+        .set(Analysis.ALGORITHMS,
+          List(
+            (didier.RelFreqSimpleTrainer, didier.ParDecoder),
+            (didier.RelFreqSRILMTrainer, didier.ParDecoder)
+          )
+        )
         .set(Trainer.ORDER, (1 to 3).toList)
-        .set(didier.EmittingTraining.UNKNOWN_THRESHOLD, (1 to 10 by 2).toList)
-
-    def trainers: List[Algorithm[Trainer]] = List(
-      didier.RelFreqSimpleTrainer,
-      didier.RelFreqSRILMTrainer
-    )
-
-    def decoders: List[Algorithm[Decoder]] = List(
-      didier.ParDecoder
-    )
+        .set(didier.EmittingTraining.UNKNOWN_THRESHOLD, (1 to 10).toList)
   }
 
-  Analysis run(List(
+  val results = Analysis.run(List(
     //orderAnalysis,
     unknownThresholdAnalysis
   ), trainCorpus, devCorpus)
+
+  import LaTexReport._
+
+  LaTexReport.generate(results)(
+    Graph(unknownThresholdAnalysis,
+      didier.EmittingTraining.UNKNOWN_THRESHOLD,
+      (1 to 3).toList.map(i => Configuration()
+        .set(Analysis.ALGORITHMS, (didier.RelFreqSimpleTrainer, didier.ParDecoder))
+        .set(Trainer.ORDER, i)) :::
+        (1 to 3).toList.map(i => Configuration()
+          .set(Analysis.ALGORITHMS, (didier.RelFreqSRILMTrainer, didier.ParDecoder))
+          .set(Trainer.ORDER, i))
+    )
+  )
 }
 

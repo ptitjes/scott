@@ -1,5 +1,7 @@
 package io.github.ptitjes.hmm.analysis
 
+import java.io.PrintWriter
+
 import io.github.ptitjes.hmm._
 import io.github.ptitjes.hmm.Corpora._
 
@@ -9,52 +11,57 @@ import scala.collection._
 trait Analysis {
 
   def configurations: AnalysisConfigurations
-
-  def trainers: List[Algorithm[Trainer]]
-
-  def decoders: List[Algorithm[Decoder]]
 }
 
 object Analysis {
 
+  val ALGORITHMS = new Parameter[(Algorithm[Trainer], Algorithm[Decoder])]() {
+
+    def name: String = ""
+
+    def default: (Algorithm[Trainer], Algorithm[Decoder]) = (didier.RelFreqSimpleTrainer, didier.ParDecoder)
+
+    def formatValue(value: (Algorithm[Trainer], Algorithm[Decoder])): String =
+      value._1.name + " + " + value._2.name
+  }
+
   def run(analysis: List[Analysis],
           trainCorpus: Corpus[Sequence with Annotation],
-          testCorpus: Corpus[Sequence with Annotation]) = {
+          testCorpus: Corpus[Sequence with Annotation]): ResultPool = {
 
-    val trainerPool = mutable.Map[(Algorithm[Trainer], Configuration), Trainer]()
-    val decoderPool = mutable.Map[(Algorithm[Decoder], Configuration), Decoder]()
-    val resultPool = mutable.Map[(Algorithm[Trainer], Algorithm[Decoder], Configuration), Results]()
+    val trainerPool = mutable.Map[Configuration, Trainer]()
+    val decoderPool = mutable.Map[Configuration, Decoder]()
+    val results = mutable.Map[Configuration, Results]()
 
     for (
       a <- analysis;
-      c <- a.configurations.generate;
-      ta <- a.trainers;
-      da <- a.decoders
+      c <- a.configurations.generate
     ) {
-      if (!resultPool.contains((ta, da, c))) {
+      if (!results.contains(c)) {
         val trainer = {
-          if (!trainerPool.contains((ta, c))) {
-            trainerPool((ta, c)) = ta.instantiate(c)
+          if (!trainerPool.contains(c)) {
+            trainerPool(c) = c(ALGORITHMS)._1.instantiate(c)
           }
-          trainerPool((ta, c))
+          trainerPool(c)
         }
 
         val decoder = {
-          if (!decoderPool.contains((da, c))) {
-            decoderPool((da, c)) = da.instantiate(c)
+          if (!decoderPool.contains(c)) {
+            decoderPool(c) = c(ALGORITHMS)._2.instantiate(c)
           }
-          decoderPool((da, c))
+          decoderPool(c)
         }
 
-        val hmm = trainer.train(15, trainCorpus)
-        val results = decoder.decodeAndCheck(hmm, testCorpus)
-        resultPool((ta, da, c)) = results
-      }
+        println(s"Running " + c)
 
-      println(s"Algorithm= ${ta.name} + ${da.name}")
-      println("\t" + a.configurations.parameters.keys.map(p => s"${p.name} = ${c(p)}").mkString("; "))
-      println("\t" + resultPool((ta, da, c)))
+        val hmm = trainer.train(15, trainCorpus)
+        val r = decoder.decodeAndCheck(hmm, testCorpus)
+        results(c) = r
+
+        println("\t" + r)
+      }
     }
+    new ResultPool(results)
   }
 }
 
@@ -79,4 +86,16 @@ case class AnalysisConfigurations(parameters: Map[Parameter[_], List[_]] = Map()
 
     generateConfigurations(parameters.keySet.toList, List(Configuration()))
   }
+}
+
+class ResultPool(results: mutable.Map[Configuration, Results]) {
+
+  def extractData[X](analysis: Analysis,
+                     rows: Parameter[X],
+                     columns: List[Configuration]): List[(X, List[Double])] = {
+
+    for (row <- analysis.configurations(rows))
+    yield (row, columns.map { c => results(c.set(rows, row)).accuracy})
+  }
+
 }

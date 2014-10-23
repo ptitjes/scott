@@ -1,14 +1,14 @@
 package io.github.ptitjes.hmm.didier
 
 import io.github.ptitjes.hmm.Corpora._
-import io.github.ptitjes.hmm.Parameter
+import io.github.ptitjes.hmm.{SimpleParameter, Parameter}
 import io.github.ptitjes.hmm.Utils._
 
 import scala.collection.mutable
 
 object EmittingTraining {
 
-  val UNKNOWN_THRESHOLD = Parameter[Int]("unknownThreshold", 5)
+  val UNKNOWN_THRESHOLD = SimpleParameter[Int]("UnknownThreshold", 5)
 
   def train(breadth: Int, corpus: Corpus[Sequence with Annotation], threshold: Int): (mutable.Map[Int, Array[Double]], Array[Double]) = {
     val allWordCategoryCounts = Array.ofDim[Int](breadth)

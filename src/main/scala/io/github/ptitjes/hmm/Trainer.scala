@@ -8,5 +8,5 @@ trait Trainer {
 }
 
 object Trainer {
-  val ORDER = Parameter[Int]("order", 3)
+  val ORDER = SimpleParameter[Int]("Order", 3)
 }

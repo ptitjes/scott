@@ -9,7 +9,21 @@ trait Algorithm[T] {
   def instantiate(configuration: Configuration): T
 }
 
-case class Parameter[V](name: String, default: V)
+trait Parameter[V] {
+
+  def name: String
+
+  def default: V
+
+  def formatValue(value: V): String
+
+  def formatValue(c: Configuration): String = formatValue(c(this))
+}
+
+case class SimpleParameter[V](name: String, default: V) extends Parameter[V] {
+
+  def formatValue(value: V): String = value.toString
+}
 
 case class Configuration(parameters: Map[Parameter[_], Any] = Map()) {
 
@@ -18,4 +32,6 @@ case class Configuration(parameters: Map[Parameter[_], Any] = Map()) {
   def apply[V](parameter: Parameter[V]): V =
     if (parameters.contains(parameter)) parameters(parameter).asInstanceOf[V]
     else parameter.default
+
+  override def toString = parameters.keys.map(p => s"${p.name} ${p.formatValue(this)}").mkString("; ")
 }
