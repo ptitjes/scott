@@ -22,8 +22,25 @@ object test extends App {
     )
   }
 
+  val unknownThresholdAnalysis = new Analysis {
+    def configurations: AnalysisConfigurations =
+      AnalysisConfigurations()
+        .set(Trainer.ORDER, (1 to 3).toList)
+        .set(didier.EmittingTraining.UNKNOWN_THRESHOLD, (1 to 10 by 2).toList)
+
+    def trainers: List[Algorithm[Trainer]] = List(
+      didier.RelFreqSimpleTrainer,
+      didier.RelFreqSRILMTrainer
+    )
+
+    def decoders: List[Algorithm[Decoder]] = List(
+      didier.ParDecoder
+    )
+  }
+
   Analysis run(List(
-    orderAnalysis
+    //orderAnalysis,
+    unknownThresholdAnalysis
   ), trainCorpus, devCorpus)
 }
 

@@ -65,18 +65,18 @@ case class AnalysisConfigurations(parameters: Map[Parameter[_], List[_]] = Map()
 
   def apply[V](parameter: Parameter[V]): List[V] = parameters(parameter).asInstanceOf[List[V]]
 
-  def generate: Set[Configuration] = {
-    def applyParameters[V](base: Set[Configuration], param: Parameter[V]): Set[Configuration] = {
+  def generate: List[Configuration] = {
+    def applyParameters[V](base: List[Configuration], param: Parameter[V]): List[Configuration] = {
       base.flatMap(c => this(param).map(v => c.set(param, v)))
     }
 
-    @tailrec def generateConfigurations(paramList: List[Parameter[_]], base: Set[Configuration]): Set[Configuration] =
+    @tailrec def generateConfigurations(paramList: List[Parameter[_]], base: List[Configuration]): List[Configuration] =
       paramList match {
         case param :: tail =>
           generateConfigurations(tail, applyParameters(base, param))
         case Nil => base
       }
 
-    generateConfigurations(parameters.keySet.toList, Set(Configuration()))
+    generateConfigurations(parameters.keySet.toList, List(Configuration()))
   }
 }

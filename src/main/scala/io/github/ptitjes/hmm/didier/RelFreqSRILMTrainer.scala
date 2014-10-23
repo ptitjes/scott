@@ -59,64 +59,21 @@ object RelFreqSRILMTrainer extends Algorithm[Trainer] {
         seq.reverse.toList
       }
 
-      val allWordCategoryCounts = Array.ofDim[Int](breadth)
-      val perWordCategoryCounts: mutable.Map[Int, Array[Int]] = mutable.Map()
-      val perWordCounts: mutable.Map[Int, Int] = mutable.Map()
-      val unknownWordCategoryCounts: Array[Int] = Array.ofDim(breadth)
-
-      corpus.sequences.foreach { s: Sequence with Annotation =>
-        s.observablesAndStates.foreach { case (word, cat) =>
-
-          // Emission counts
-          if (!perWordCategoryCounts.contains(word)) {
-            perWordCounts += word -> 0
-            perWordCategoryCounts += word -> Array.ofDim(breadth)
-          }
-          perWordCounts(word) += 1
-          perWordCategoryCounts(word)(cat) += 1
-          allWordCategoryCounts(cat) += 1
-        }
-      }
-
       val T = MatrixTree[Double](breadth, depth)
-      var E: mutable.Map[Int, Array[Double]] = mutable.Map()
-      val UE: Array[Double] = Array.ofDim(breadth)
 
       for (d <- 0 to depth) {
         for (i <- 0 until pow(breadth, d)) {
           for (j <- 0 until breadth) {
             val seq = ngramSeq(d, i, j)
             val probability = probabilityFor(seq)
-            //println(seq + " " + probability)
             T(d)(j)(i) = probability
           }
         }
       }
 
-      perWordCategoryCounts.foreach {
-        case (o, wordCategoryCounts) =>
-          if (perWordCounts(o) < 5) {
-            for (j <- 0 until breadth) {
-              unknownWordCategoryCounts(j) += wordCategoryCounts(j)
-              allWordCategoryCounts(j) += 1
-            }
-          }
-      }
+      val (e, ue) = EmittingTraining.train(breadth, corpus, configuration(EmittingTraining.UNKNOWN_THRESHOLD))
 
-      perWordCategoryCounts.foreach {
-        case (o, wordCategoryCounts) =>
-          val emitProbabilities: Array[Double] = Array.ofDim(breadth)
-          for (j <- 0 until breadth) {
-            emitProbabilities(j) = log(wordCategoryCounts(j)) - log(allWordCategoryCounts(j))
-          }
-          E += o -> emitProbabilities
-      }
-
-      for (j <- 0 until breadth) {
-        UE(j) = log(unknownWordCategoryCounts(j)) - log(allWordCategoryCounts(j))
-      }
-
-      HiddenMarkovModel(breadth, depth, T, E, UE)
+      HiddenMarkovModel(breadth, depth, T, e, ue)
     }
 
     def runNgramCount(order: Int, corpus: Corpus[Sequence with Annotation]): mutable.Map[Seq[Int], NGramData] = {
