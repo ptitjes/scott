@@ -9,6 +9,9 @@ object LaTexReport {
 
   val PATH_TO_PDFLATEX = "/usr/bin"
 
+  val REPORT_DIRECTORY = "report"
+  val REPORT_FILENAME = "report.tex"
+
   trait ReportElement {
 
     def generate(results: ResultPool, writer: PrintWriter)
@@ -41,10 +44,11 @@ object LaTexReport {
   }
 
   def generate(results: ResultPool)(elements: ReportElement*) = {
-    val reportFilename = "report/report.tex"
 
-    val file = new File(reportFilename)
-    if (!file.getParentFile.exists()) file.getParentFile.mkdirs()
+    val reportDirectory = new File(REPORT_DIRECTORY)
+    if (!reportDirectory.exists()) reportDirectory.mkdirs()
+
+    val file = new File(reportDirectory, REPORT_FILENAME)
     if (file.exists()) file.delete()
 
     using(new FileWriter(file, true)) {
@@ -65,9 +69,12 @@ object LaTexReport {
     }
 
     val builder = new ProcessBuilder(PATH_TO_PDFLATEX + "/pdflatex",
-      reportFilename,
+      REPORT_FILENAME,
       "-output-format=pdf"
     )
+    builder.directory(reportDirectory)
+    builder.redirectOutput(ProcessBuilder.Redirect.INHERIT)
+    builder.redirectError(ProcessBuilder.Redirect.INHERIT)
     val proc = builder.start()
     if (proc.waitFor() != 0) throw new IllegalStateException()
   }

@@ -12,6 +12,10 @@ object RelFreqSRILMTrainer extends Algorithm[Trainer] {
 
   val PATH_TO_SRILM = "/home/didier/Documents/Work/Master/DM/InfStat/srilm/bin/i686-m64"
 
+  val WORK_DIRECTORY = "temp"
+  val SENTENCES_FILENAME = "srilm-sentences.txt"
+  val LM_FILENAME = "srilm-interpolated.lm"
+
   def name: String = "RelFreq-SRILM"
 
   override def parameters: Set[Parameter[_]] = Set(ORDER)
@@ -77,9 +81,16 @@ object RelFreqSRILMTrainer extends Algorithm[Trainer] {
     }
 
     def runNgramCount(order: Int, corpus: Corpus[Sequence with Annotation]): mutable.Map[Seq[Int], NGramData] = {
-      val sentencesFilename = "temp.txt"
 
-      using(new FileWriter(new File(sentencesFilename), true)) {
+      val workDirectory = new File(WORK_DIRECTORY)
+      if (!workDirectory.exists()) workDirectory.mkdirs()
+
+      val sentencesFile = new File(workDirectory, SENTENCES_FILENAME)
+      val lmFile = new File(workDirectory, LM_FILENAME)
+
+      if (sentencesFile.exists()) sentencesFile.delete()
+
+      using(new FileWriter(sentencesFile, true)) {
         fileWriter => using(new PrintWriter(fileWriter)) {
           out => corpus.sequences.foreach {
             s => out.println(s.observablesAndStates.map { case (o, c) => c}.mkString(" "))
@@ -87,21 +98,23 @@ object RelFreqSRILMTrainer extends Algorithm[Trainer] {
         }
       }
 
-      val lmFilename = "temp.lm"
       val builder = new ProcessBuilder(PATH_TO_SRILM + "/ngram-count",
         "-order", order.toString,
         "-interpolate", "-wbdiscount",
-        "-text", sentencesFilename,
-        "-lm", lmFilename
+        "-text", SENTENCES_FILENAME,
+        "-lm", LM_FILENAME
       )
+      builder.directory(workDirectory)
+      builder.redirectOutput(ProcessBuilder.Redirect.INHERIT)
+      builder.redirectError(ProcessBuilder.Redirect.INHERIT)
       val proc = builder.start()
       if (proc.waitFor() != 0) throw new IllegalStateException()
 
-      parseARPA(order, lmFilename)
+      parseARPA(order, lmFile)
     }
 
-    def parseARPA(order: Int, lmFilename: String): mutable.Map[Seq[Int], NGramData] = {
-      val lines = Source.fromFile(new File(lmFilename)).getLines()
+    def parseARPA(order: Int, lmFile: File): mutable.Map[Seq[Int], NGramData] = {
+      val lines = Source.fromFile(lmFile).getLines()
 
       lines.next()
       if (lines.next() != "\\data\\") throw new IllegalStateException()
