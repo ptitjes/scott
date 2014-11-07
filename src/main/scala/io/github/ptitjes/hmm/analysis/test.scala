@@ -7,48 +7,31 @@ object test extends App {
   val trainCorpus = Corpora.fromURL(getClass.getResource("/data/ftb.train.encode"))
   val devCorpus = Corpora.fromURL(getClass.getResource("/data/ftb.dev.encode"))
 
-  val orderAnalysis = new Analysis {
-    def configurations: AnalysisConfigurations =
-      AnalysisConfigurations()
-        .set(Analysis.ALGORITHMS,
-          List(
-            (didier.RelFreqSimpleTrainer, didier.ParDecoder),
-            (didier.RelFreqSRILMTrainer, didier.ParDecoder)
-          )
-        )
-        .set(Trainer.ORDER, (1 to 4).toList)
-  }
+  val orderAnalysis = Analysis()
+    .forAll(Analysis.ALGORITHMS,
+      (didier.RelFreqSimpleTrainer, didier.ParDecoder),
+      (didier.RelFreqSRILMTrainer, didier.ParDecoder)
+    )
+    .forAll(Trainer.ORDER, 1 to 4)
 
-  val unknownThresholdAnalysis = new Analysis {
-    def configurations: AnalysisConfigurations =
-      AnalysisConfigurations()
-        .set(Analysis.ALGORITHMS,
-          List(
-            (didier.RelFreqSimpleTrainer, didier.ParDecoder),
-            (didier.RelFreqSRILMTrainer, didier.ParDecoder)
-          )
-        )
-        .set(Trainer.ORDER, (1 to 3).toList)
-        .set(didier.EmittingTraining.UNKNOWN_THRESHOLD, (1 to 10).toList)
-  }
+  val unknownThresholdAnalysis = Analysis()
+    .forAll(Analysis.ALGORITHMS,
+      (didier.RelFreqSimpleTrainer, didier.ParDecoder),
+      (didier.RelFreqSRILMTrainer, didier.ParDecoder)
+    )
+    .forAll(Trainer.ORDER, 1 to 3)
+    .forAll(didier.EmittingTraining.UNKNOWN_THRESHOLD, 1 to 10)
 
-  val results = Analysis.run(List(
-    //orderAnalysis,
-    unknownThresholdAnalysis
-  ), trainCorpus, devCorpus)
+  val results = Analysis.run(trainCorpus, devCorpus,
+    List(
+      //orderAnalysis,
+      unknownThresholdAnalysis
+    )
+  )
 
   import LaTexReport._
 
   LaTexReport.generate(results)(
-    Graph(unknownThresholdAnalysis,
-      didier.EmittingTraining.UNKNOWN_THRESHOLD,
-      (1 to 3).toList.map(i => Configuration()
-        .set(Analysis.ALGORITHMS, (didier.RelFreqSimpleTrainer, didier.ParDecoder))
-        .set(Trainer.ORDER, i)) :::
-        (1 to 3).toList.map(i => Configuration()
-          .set(Analysis.ALGORITHMS, (didier.RelFreqSRILMTrainer, didier.ParDecoder))
-          .set(Trainer.ORDER, i))
-    )
+    Graph(unknownThresholdAnalysis, didier.EmittingTraining.UNKNOWN_THRESHOLD)
   )
 }
-

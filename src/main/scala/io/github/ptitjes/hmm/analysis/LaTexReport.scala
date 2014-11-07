@@ -18,9 +18,11 @@ object LaTexReport {
   }
 
   case class Graph(analysis: Analysis,
-                   rows: Parameter[_],
-                   columns: List[Configuration]) extends ReportElement {
+                   rows: Parameter[_]) extends ReportElement {
+
     def generate(results: ResultPool, out: PrintWriter) = {
+
+      val columns: List[Configuration] = results.buildColumns(analysis, rows)
 
       out.println(
         "\\begin{tikzpicture}" +

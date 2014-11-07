@@ -1,16 +1,23 @@
 package io.github.ptitjes.hmm.analysis
 
-import java.io.PrintWriter
-
 import io.github.ptitjes.hmm._
 import io.github.ptitjes.hmm.Corpora._
 
 import scala.annotation.tailrec
 import scala.collection._
 
-trait Analysis {
+case class Analysis(parameters: List[Parameter[_]] = List(), allValues: Map[Parameter[_], List[_]] = Map()) {
 
-  def configurations: AnalysisConfigurations
+  def forAll[V](parameter: Parameter[V], values: V*): Analysis =
+    forAll(parameter, values.toList)
+
+  def forAll(parameter: Parameter[Int], values: Range): Analysis =
+    forAll(parameter, values.toList)
+
+  def forAll[V](parameter: Parameter[V], values: List[V]): Analysis =
+    Analysis(parameters :+ parameter, allValues + (parameter -> values))
+
+  def apply[V](parameter: Parameter[V]): List[V] = allValues(parameter).asInstanceOf[List[V]]
 }
 
 object Analysis {
@@ -25,9 +32,9 @@ object Analysis {
       value._1.name + " + " + value._2.name
   }
 
-  def run(analysis: List[Analysis],
-          trainCorpus: Corpus[Sequence with Annotation],
-          testCorpus: Corpus[Sequence with Annotation]): ResultPool = {
+  def run(trainCorpus: Corpus[Sequence with Annotation],
+          testCorpus: Corpus[Sequence with Annotation],
+          analysis: List[Analysis]): ResultPool = {
 
     val trainerPool = mutable.Map[Configuration, Trainer]()
     val decoderPool = mutable.Map[Configuration, Decoder]()
@@ -35,7 +42,7 @@ object Analysis {
 
     for (
       a <- analysis;
-      c <- a.configurations.generate
+      c <- generateConfigurations(a)
     ) {
       if (!results.contains(c)) {
         val trainer = {
@@ -63,38 +70,43 @@ object Analysis {
     }
     new ResultPool(results)
   }
-}
 
-case class AnalysisConfigurations(parameters: Map[Parameter[_], List[_]] = Map()) {
+  @tailrec def generateConfigurations(analysis: Analysis,
+                                      selected: List[Parameter[_]],
+                                      base: List[Configuration]): List[Configuration] = {
 
-  def set[V](parameter: Parameter[V], values: List[V]): AnalysisConfigurations =
-    AnalysisConfigurations(parameters + (parameter -> values))
-
-  def apply[V](parameter: Parameter[V]): List[V] = parameters(parameter).asInstanceOf[List[V]]
-
-  def generate: List[Configuration] = {
     def applyParameters[V](base: List[Configuration], param: Parameter[V]): List[Configuration] = {
-      base.flatMap(c => this(param).map(v => c.set(param, v)))
+      base.flatMap(c => analysis(param).map(v => c.set(param, v)))
     }
 
-    @tailrec def generateConfigurations(paramList: List[Parameter[_]], base: List[Configuration]): List[Configuration] =
-      paramList match {
-        case param :: tail =>
-          generateConfigurations(tail, applyParameters(base, param))
-        case Nil => base
-      }
-
-    generateConfigurations(parameters.keySet.toList, List(Configuration()))
+    selected match {
+      case param :: tail =>
+        generateConfigurations(analysis, tail, applyParameters(base, param))
+      case Nil => base
+    }
   }
+
+  def generateConfigurations(analysis: Analysis, selected: List[Parameter[_]]): List[Configuration] =
+    generateConfigurations(analysis, selected, List(Configuration()))
+
+  def generateConfigurations(analysis: Analysis): List[Configuration] =
+    generateConfigurations(analysis, analysis.parameters)
 }
 
 class ResultPool(results: mutable.Map[Configuration, Results]) {
+
+  def buildColumns[X](analysis: Analysis, rows: Parameter[X]): List[Configuration] =
+    Analysis.generateConfigurations(analysis,
+      analysis.parameters.filter {
+        case `rows` => false
+        case _ => true
+      })
 
   def extractData[X](analysis: Analysis,
                      rows: Parameter[X],
                      columns: List[Configuration]): List[(X, List[Double])] = {
 
-    for (row <- analysis.configurations(rows))
+    for (row <- analysis(rows))
     yield (row, columns.map { c => results(c.set(rows, row)).accuracy})
   }
 
