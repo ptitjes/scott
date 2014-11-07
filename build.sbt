@@ -12,3 +12,5 @@ scalacOptions ++= Seq(
   "-feature",
   "-language:implicitConversions"
 )
+
+libraryDependencies += "org.json4s" %% "json4s-native" % "3.2.11"

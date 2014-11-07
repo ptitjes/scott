@@ -1,14 +1,14 @@
 package io.github.ptitjes.hmm.didier
 
 import io.github.ptitjes.hmm.Corpora._
-import io.github.ptitjes.hmm.{SimpleParameter, Parameter}
+import io.github.ptitjes.hmm.IntParameter
 import io.github.ptitjes.hmm.Utils._
 
 import scala.collection.mutable
 
 object EmittingTraining {
 
-  val UNKNOWN_THRESHOLD = SimpleParameter[Int]("UnknownThreshold", 5)
+  object UNKNOWN_THRESHOLD extends IntParameter("Unknown Word Threshold", 5)
 
   def train(breadth: Int, corpus: Corpus[Sequence with Annotation], threshold: Int): (mutable.Map[Int, Array[Double]], Array[Double]) = {
     val allWordCategoryCounts = Array.ofDim[Int](breadth)
@@ -33,14 +33,16 @@ object EmittingTraining {
     var E: mutable.Map[Int, Array[Double]] = mutable.Map()
     val UE: Array[Double] = Array.ofDim(breadth)
 
-    perWordCategoryCounts.foreach {
-      case (o, wordCategoryCounts) =>
-        if (perWordCounts(o) <= threshold) {
-          for (j <- 0 until breadth) {
-            unknownWordCategoryCounts(j) += wordCategoryCounts(j)
-            allWordCategoryCounts(j) += 1
+    if (threshold != 0) {
+      perWordCategoryCounts.foreach {
+        case (o, wordCategoryCounts) =>
+          if (perWordCounts(o) <= threshold) {
+            for (j <- 0 until breadth) {
+              unknownWordCategoryCounts(j) += wordCategoryCounts(j)
+              allWordCategoryCounts(j) += 1
+            }
           }
-        }
+      }
     }
 
     perWordCategoryCounts.foreach {
@@ -52,8 +54,14 @@ object EmittingTraining {
         E += o -> emitProbabilities
     }
 
-    for (j <- 0 until breadth) {
-      UE(j) = log(unknownWordCategoryCounts(j)) - log(allWordCategoryCounts(j))
+    if (threshold != 0) {
+      for (j <- 0 until breadth) {
+        UE(j) = log(unknownWordCategoryCounts(j)) - log(allWordCategoryCounts(j))
+      }
+    } else {
+      for (j <- 0 until breadth) {
+        UE(j) = log(1) - log(breadth)
+      }
     }
     (E, UE)
   }

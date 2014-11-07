@@ -7,7 +7,7 @@ import scala.collection.{mutable => mutable}
 
 object RelFreqSimpleTrainer extends Algorithm[Trainer] {
 
-  def name: String = "RelFreq"
+  def name: String = "Freq"
 
   override def parameters: Set[Parameter[_]] = Set(ORDER)
 

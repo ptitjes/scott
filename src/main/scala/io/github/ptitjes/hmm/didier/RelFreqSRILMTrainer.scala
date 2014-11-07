@@ -16,9 +16,11 @@ object RelFreqSRILMTrainer extends Algorithm[Trainer] {
   val SENTENCES_FILENAME = "srilm-sentences.txt"
   val LM_FILENAME = "srilm-interpolated.lm"
 
-  def name: String = "RelFreq-SRILM"
+  def name: String = "Freq-WB"
 
-  override def parameters: Set[Parameter[_]] = Set(ORDER)
+  override def parameters: Set[Parameter[_]] = Set(ORDER, MULTIPLIER)
+
+  object MULTIPLIER extends IntParameter("Multiplier", 1)
 
   def instantiate(configuration: Configuration): Trainer = new Instance(configuration)
 
@@ -90,11 +92,14 @@ object RelFreqSRILMTrainer extends Algorithm[Trainer] {
 
       if (sentencesFile.exists()) sentencesFile.delete()
 
-      using(new FileWriter(sentencesFile, true)) {
+      using(new FileWriter(sentencesFile)) {
         fileWriter => using(new PrintWriter(fileWriter)) {
-          out => corpus.sequences.foreach {
-            s => out.println(s.observablesAndStates.map { case (o, c) => c}.mkString(" "))
-          }
+          out =>
+            for (i <- 1 to configuration(MULTIPLIER)) {
+              corpus.sequences.foreach {
+                s => out.println(s.observablesAndStates.map { case (o, c) => c}.mkString(" "))
+              }
+            }
         }
       }
 

@@ -17,20 +17,34 @@ object LaTexReport {
     def generate(results: ResultPool, writer: PrintWriter)
   }
 
+  case class XAxis(param: Parameter[_])
+
+  case class YAxis(name: String, unit: String, f: Results => Double)
+
   case class Graph(analysis: Analysis,
-                   rows: Parameter[_]) extends ReportElement {
+                   xAxis: XAxis,
+                   yAxis: YAxis) extends ReportElement {
 
     def generate(results: ResultPool, out: PrintWriter) = {
 
-      val columns: List[Configuration] = results.buildColumns(analysis, rows)
+      val columns: List[Configuration] = results.buildColumns(analysis, xAxis.param)
+
+      def makeTicks = {
+        val ticks = analysis.allValues(xAxis.param)
+        if (ticks.size <= 10) "\txtick={" + ticks.mkString(",") + "},\n"
+        else ""
+      }
 
       out.println(
         "\\begin{tikzpicture}" +
-          "\\begin{axis}[\n\tlegend style={\n\t\tcells={anchor=east},\n\t\tlegend pos=outer north east,\n\t},\n\txlabel=Un,\n\tylabel=Accuracy]")
+          "\\begin{axis}[\n\tlegend style={\n\t\tcells={anchor=east},\n\t\tlegend pos=outer north east,\n\t},\n" +
+          "\tcycle list name=mark list*,\n" +
+          makeTicks +
+          s"\txlabel=${xAxis.param.name},\n\tylabel=${yAxis.name} (${yAxis.unit})]")
 
       out.println("\\pgfplotstableread{")
       out.println("x\t" + (0 until columns.length).map(i => s"y$i").mkString("\t"))
-      results.extractData(analysis, rows, columns).foreach {
+      results.extractData(analysis, xAxis.param, columns, yAxis.f).foreach {
         case (r, values) => out.println(r + "\t" + values.mkString("\t"))
       }
       out.println("}\\data")
@@ -41,7 +55,7 @@ object LaTexReport {
 
       out.println((0 until columns.length).map(i => s"\\addplot+[smooth] table[x=x,y=y$i] {\\data};").mkString("\n"))
 
-      out.println("\\end{axis}\n\\end{tikzpicture}")
+      out.println("\\end{axis}\n\\end{tikzpicture}\n\n")
     }
   }
 
@@ -58,10 +72,13 @@ object LaTexReport {
         out =>
           out.println(
             "\\documentclass{article}\n" +
+              "\\RequirePackage[a4paper,portrait]{geometry}\n" +
+              "\\geometry{lmargin=2cm,rmargin=2cm,tmargin=2cm,bmargin=2cm}\n" +
               "\\usepackage{tikz}\n" +
               "\\usepackage{pgfplots}\n" +
               "\\pgfplotsset{compat=1.9}\n" +
-              "\\begin{document}\n")
+              "\\usetikzlibrary{plotmarks}\n" +
+              "\\begin{document}\n\\selectcolormodel{gray}\n")
 
           elements foreach { e => e.generate(results, out)}
 

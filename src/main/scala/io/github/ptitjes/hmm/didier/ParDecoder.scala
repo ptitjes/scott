@@ -7,7 +7,7 @@ import scala.reflect.ClassTag
 
 object ParDecoder extends Algorithm[Decoder] {
 
-  def name: String = "ArrayMT"
+  def name: String = "Full-MT"
 
   override def parameters: Set[Parameter[_]] = Set()
 

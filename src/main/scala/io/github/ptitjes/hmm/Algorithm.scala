@@ -1,5 +1,7 @@
 package io.github.ptitjes.hmm
 
+import org.json4s.JsonAST.{JInt, JValue}
+
 trait Algorithm[T] {
 
   def name: String
@@ -18,11 +20,22 @@ trait Parameter[V] {
   def formatValue(value: V): String
 
   def formatValue(c: Configuration): String = formatValue(c(this))
+
+  def fromJson(value: JValue): V
+
+  def toJson(value: V): JValue
 }
 
-case class SimpleParameter[V](name: String, default: V) extends Parameter[V] {
+case class IntParameter(name: String, default: Int) extends Parameter[Int] {
 
-  def formatValue(value: V): String = value.toString
+  def formatValue(value: Int): String = value.toString
+
+  def fromJson(value: JValue): Int = value match {
+    case JInt(i) => i.toInt
+    case _ => throw new IllegalArgumentException
+  }
+
+  def toJson(value: Int): JValue = JInt(value)
 }
 
 case class Configuration(parameters: Map[Parameter[_], Any] = Map()) {

@@ -8,5 +8,5 @@ trait Trainer {
 }
 
 object Trainer {
-  val ORDER = SimpleParameter[Int]("Order", 3)
+  object ORDER extends IntParameter("Order", 3)
 }

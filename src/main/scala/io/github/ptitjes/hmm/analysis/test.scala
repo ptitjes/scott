@@ -14,24 +14,54 @@ object test extends App {
     )
     .forAll(Trainer.ORDER, 1 to 4)
 
-  val unknownThresholdAnalysis = Analysis()
+  val interpolatedOrderAnalysis = Analysis()
     .forAll(Analysis.ALGORITHMS,
-      (didier.RelFreqSimpleTrainer, didier.ParDecoder),
       (didier.RelFreqSRILMTrainer, didier.ParDecoder)
     )
-    .forAll(Trainer.ORDER, 1 to 3)
-    .forAll(didier.EmittingTraining.UNKNOWN_THRESHOLD, 1 to 10)
+    .forAll(Trainer.ORDER, 1 to 4)
+    .forAll(didier.RelFreqSRILMTrainer.MULTIPLIER, 1 to 5)
+
+  val interpolatedOrderAnalysisZoom = Analysis()
+    .forAll(Analysis.ALGORITHMS,
+      (didier.RelFreqSRILMTrainer, didier.ParDecoder)
+    )
+    .forAll(Trainer.ORDER, 2 to 4)
+    .forAll(didier.RelFreqSRILMTrainer.MULTIPLIER, 2 to 5)
+
+  val interpolatedOrderAnalysisZoomOrder3 = Analysis()
+    .forAll(Analysis.ALGORITHMS,
+      (didier.RelFreqSRILMTrainer, didier.ParDecoder)
+    )
+    .forAll(Trainer.ORDER, 2 to 3)
+    .forAll(didier.RelFreqSRILMTrainer.MULTIPLIER, 3 to 10)
+
+  val unknownThresholdAnalysis = Analysis()
+    .forAll(Analysis.ALGORITHMS,
+      (didier.RelFreqSRILMTrainer, didier.ParDecoder)
+    )
+    .forAll(Trainer.ORDER, 2 to 3)
+    .forAll(didier.RelFreqSRILMTrainer.MULTIPLIER, 8 to 8)
+    .forAll(didier.EmittingTraining.UNKNOWN_THRESHOLD, 1 to 20)
 
   val results = Analysis.run(trainCorpus, devCorpus,
     List(
-      //orderAnalysis,
+      orderAnalysis,
+      interpolatedOrderAnalysis,
+      interpolatedOrderAnalysisZoom,
+      interpolatedOrderAnalysisZoomOrder3,
       unknownThresholdAnalysis
     )
   )
 
   import LaTexReport._
 
+  val accuracyMeasure = YAxis("Accuracy", "\\%", r => r.accuracy * 100)
+
   LaTexReport.generate(results)(
-    Graph(unknownThresholdAnalysis, didier.EmittingTraining.UNKNOWN_THRESHOLD)
+    Graph(orderAnalysis, XAxis(Trainer.ORDER), accuracyMeasure),
+    Graph(interpolatedOrderAnalysis, XAxis(Trainer.ORDER), accuracyMeasure),
+    Graph(interpolatedOrderAnalysisZoom, XAxis(Trainer.ORDER), accuracyMeasure),
+    Graph(interpolatedOrderAnalysisZoomOrder3, XAxis(didier.RelFreqSRILMTrainer.MULTIPLIER), accuracyMeasure),
+    Graph(unknownThresholdAnalysis, XAxis(didier.EmittingTraining.UNKNOWN_THRESHOLD), accuracyMeasure)
   )
 }
