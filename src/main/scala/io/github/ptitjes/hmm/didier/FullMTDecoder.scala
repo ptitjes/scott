@@ -5,7 +5,7 @@ import io.github.ptitjes.hmm._
 import scala.annotation.tailrec
 import scala.reflect.ClassTag
 
-object ParDecoder extends Algorithm[Decoder] {
+object FullMTDecoder extends Algorithm[Decoder] {
 
   def name: String = "Full-MT"
 

@@ -5,7 +5,7 @@ import io.github.ptitjes.hmm.Trainer._
 
 import scala.collection.{mutable => mutable}
 
-object RelFreqSimpleTrainer extends Algorithm[Trainer] {
+object RelFreqTrainer extends Algorithm[Trainer] {
 
   def name: String = "Freq"
 

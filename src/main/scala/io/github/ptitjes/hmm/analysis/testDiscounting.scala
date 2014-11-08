@@ -2,17 +2,17 @@ package io.github.ptitjes.hmm.analysis
 
 import io.github.ptitjes.hmm.Utils._
 import io.github.ptitjes.hmm._
-import io.github.ptitjes.hmm.didier.{ParDecoder, RelFreqSRILMTrainer}
+import io.github.ptitjes.hmm.didier.{FullMTDecoder, RelFreqDiscountingTrainer}
 
-object testSRILM extends App {
+object testDiscounting extends App {
 
   val trainCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"))
   val devCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"))
 
   val conf = Configuration().set(Trainer.ORDER, 2)
 
-  val trainer = RelFreqSRILMTrainer.instantiate(conf)
-  val decoder = ParDecoder.instantiate(conf)
+  val trainer = RelFreqDiscountingTrainer.instantiate(conf)
+  val decoder = FullMTDecoder.instantiate(conf)
 
   val hmm = trainer.train(trainCorpus)
 

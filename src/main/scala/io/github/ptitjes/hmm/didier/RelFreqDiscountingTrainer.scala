@@ -8,7 +8,7 @@ import io.github.ptitjes.hmm.Trainer._
 import scala.io.Source
 import scala.collection.{mutable => mutable}
 
-object RelFreqSRILMTrainer extends Algorithm[Trainer] {
+object RelFreqDiscountingTrainer extends Algorithm[Trainer] {
 
   val PATH_TO_SRILM = "/home/didier/Documents/Work/Master/DM/InfStat/srilm/bin/i686-m64"
 

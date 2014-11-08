@@ -32,7 +32,7 @@ object Analysis {
 
     def name: String = ""
 
-    def default: (Algorithm[Trainer], Algorithm[Decoder]) = (didier.RelFreqSimpleTrainer, didier.ParDecoder)
+    def default: (Algorithm[Trainer], Algorithm[Decoder]) = (didier.RelFreqTrainer, didier.FullMTDecoder)
 
     def formatValue(value: (Algorithm[Trainer], Algorithm[Decoder])): String =
       value._1.name + " + " + value._2.name
