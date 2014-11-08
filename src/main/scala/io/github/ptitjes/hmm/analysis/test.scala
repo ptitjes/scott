@@ -4,45 +4,41 @@ import io.github.ptitjes.hmm._
 
 object test extends App {
 
+  import ConfigurationSet._
+
   implicit val runner: AnalysisRunner = new AnalysisRunner("report/results.json",
     Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode")),
     Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode")))
 
-  val orderAnalysis = Analysis()
-    .forAll(Analysis.ALGORITHMS,
-      (didier.RelFreqTrainer, didier.FullMTDecoder),
-      (didier.RelFreqDiscountingTrainer, didier.FullMTDecoder)
-    )
-    .forAll(Trainer.ORDER, 1 to 4)
+  val orderAnalysis =
+    (Analysis.TRAINER forAll didier.RelFreqTrainer and didier.RelFreqDiscountingTrainer) *
+      (Analysis.DECODER as didier.FullMTDecoder) *
+      (Trainer.ORDER from (1 to 4))
 
-  val interpolatedOrderAnalysis = Analysis()
-    .forAll(Analysis.ALGORITHMS,
-      (didier.RelFreqDiscountingTrainer, didier.FullMTDecoder)
-    )
-    .forAll(Trainer.ORDER, 1 to 4)
-    .forAll(didier.RelFreqDiscountingTrainer.MULTIPLIER, 1 to 5)
+  val interpolatedOrderAnalysis =
+    (Analysis.TRAINER as didier.RelFreqDiscountingTrainer) *
+      (Analysis.DECODER as didier.FullMTDecoder) *
+      (Trainer.ORDER from (1 to 4)) *
+      (didier.RelFreqDiscountingTrainer.MULTIPLIER from (1 to 5))
 
-  val interpolatedOrderAnalysisZoom = Analysis()
-    .forAll(Analysis.ALGORITHMS,
-      (didier.RelFreqDiscountingTrainer, didier.FullMTDecoder)
-    )
-    .forAll(Trainer.ORDER, 2 to 4)
-    .forAll(didier.RelFreqDiscountingTrainer.MULTIPLIER, 2 to 5)
+  val interpolatedOrderAnalysisZoom =
+    (Analysis.TRAINER as didier.RelFreqDiscountingTrainer) *
+      (Analysis.DECODER as didier.FullMTDecoder) *
+      (Trainer.ORDER from (2 to 4)) *
+      (didier.RelFreqDiscountingTrainer.MULTIPLIER from (2 to 5))
 
-  val interpolatedOrderAnalysisZoomOrder3 = Analysis()
-    .forAll(Analysis.ALGORITHMS,
-      (didier.RelFreqDiscountingTrainer, didier.FullMTDecoder)
-    )
-    .forAll(Trainer.ORDER, 2 to 3)
-    .forAll(didier.RelFreqDiscountingTrainer.MULTIPLIER, 3 to 10)
+  val interpolatedOrderAnalysisZoomOrder3 =
+    (Analysis.TRAINER as didier.RelFreqDiscountingTrainer) *
+      (Analysis.DECODER as didier.FullMTDecoder) *
+      (Trainer.ORDER from (2 to 3)) *
+      (didier.RelFreqDiscountingTrainer.MULTIPLIER from (3 to 10))
 
-  val unknownThresholdAnalysis = Analysis()
-    .forAll(Analysis.ALGORITHMS,
-      (didier.RelFreqDiscountingTrainer, didier.FullMTDecoder)
-    )
-    .forAll(Trainer.ORDER, 2 to 3)
-    .forAll(didier.RelFreqDiscountingTrainer.MULTIPLIER, 8 to 8)
-    .forAll(didier.EmittingTraining.UNKNOWN_THRESHOLD, 1 to 20)
+  val unknownThresholdAnalysis =
+    (Analysis.TRAINER as didier.RelFreqDiscountingTrainer) *
+      (Analysis.DECODER as didier.FullMTDecoder) *
+      (Trainer.ORDER from (2 to 3)) *
+      (didier.RelFreqDiscountingTrainer.MULTIPLIER as 8) *
+      (didier.EmittingTraining.UNKNOWN_THRESHOLD from (1 to 20))
 
   import LaTexReport._
 

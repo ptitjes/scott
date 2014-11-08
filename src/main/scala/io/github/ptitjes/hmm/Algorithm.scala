@@ -42,9 +42,20 @@ case class Configuration(parameters: Map[Parameter[_], Any] = Map()) {
 
   def set[V](parameter: Parameter[V], value: V): Configuration = Configuration(parameters + (parameter -> value))
 
+  def copyFrom[V](param: Parameter[V], other: Configuration): Configuration = set(param, other(param))
+
+  def merge(other: Configuration): Configuration = {
+    other.parameters.keys.foldLeft(this) {
+      case (c, param) => c.copyFrom(param, other)
+    }
+  }
+
   def apply[V](parameter: Parameter[V]): V =
     if (parameters.contains(parameter)) parameters(parameter).asInstanceOf[V]
     else parameter.default
 
-  override def toString = parameters.keys.map(p => s"${p.name} ${p.formatValue(this)}").mkString("; ")
+  override def toString =
+    parameters.keys.toList.sortBy(_.name).map {
+      p => (if (p.name != "") p.name + " " else "") + p.formatValue(this)
+    }.mkString("; ")
 }

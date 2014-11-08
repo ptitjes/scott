@@ -21,18 +21,18 @@ object LaTexReport {
 
   case class YAxis(name: String, unit: String, f: Results => Double)
 
-  case class Graph(analysis: Analysis,
+  case class Graph(configurations: ConfigurationSet,
                    xAxis: XAxis,
                    yAxis: YAxis) extends ReportElement {
 
     def generate(runner: AnalysisRunner, out: PrintWriter) = {
 
-      val results = runner.resultsFor(analysis)
+      val results = runner.resultsFor(configurations)
 
-      val columns: List[Configuration] = results.buildColumns(analysis, xAxis.param)
+      val columns: List[Configuration] = results.buildColumns(configurations, xAxis.param)
 
       def makeTicks = {
-        val ticks = analysis.allValues(xAxis.param)
+        val ticks = configurations(xAxis.param)
         if (ticks.size <= 10) "\txtick={" + ticks.mkString(",") + "},\n"
         else ""
       }
@@ -46,7 +46,7 @@ object LaTexReport {
 
       out.println("\\pgfplotstableread{")
       out.println("x\t" + (0 until columns.length).map(i => s"y$i").mkString("\t"))
-      results.extractData(analysis, xAxis.param, columns, yAxis.f).foreach {
+      results.extractData(configurations, xAxis.param, columns, yAxis.f).foreach {
         case (r, values) => out.println(r + "\t" + values.mkString("\t"))
       }
       out.println("}\\data")

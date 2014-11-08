@@ -8,22 +8,7 @@ import io.github.ptitjes.hmm.analysis.ResultPool._
 import io.github.ptitjes.hmm.analysis.Results._
 import org.json4s._
 
-import scala.annotation.tailrec
 import scala.collection._
-
-case class Analysis(parameters: List[Parameter[_]] = List(), allValues: Map[Parameter[_], List[_]] = Map()) {
-
-  def forAll[V](parameter: Parameter[V], values: V*): Analysis =
-    forAll(parameter, values.toList)
-
-  def forAll(parameter: Parameter[Int], values: Range): Analysis =
-    forAll(parameter, values.toList)
-
-  def forAll[V](parameter: Parameter[V], values: List[V]): Analysis =
-    Analysis(parameters :+ parameter, allValues + (parameter -> values))
-
-  def apply[V](parameter: Parameter[V]): List[V] = allValues(parameter).asInstanceOf[List[V]]
-}
 
 class AnalysisRunner(cacheFilename: String,
                      trainCorpus: Corpus[Sequence with Annotation],
@@ -38,12 +23,12 @@ class AnalysisRunner(cacheFilename: String,
 
   import io.github.ptitjes.hmm.analysis.Analysis._
 
-  def resultsFor(analysis: Analysis): ResultPool = {
+  def resultsFor(configurations: ConfigurationSet): ResultPool = {
     for (
-      c <- generateConfigurations(analysis);
+      c <- configurations.generate();
       conf = completeConfiguration(c);
-      ta = c(ALGORITHMS)._1;
-      da = c(ALGORITHMS)._2
+      ta = c(TRAINER);
+      da = c(DECODER)
     ) {
       if (!pool.results.contains(conf)) {
         val trainer = {
@@ -78,50 +63,42 @@ class AnalysisRunner(cacheFilename: String,
 
 object Analysis {
 
-  object ALGORITHMS extends Parameter[(Algorithm[Trainer], Algorithm[Decoder])]() {
+  object TRAINER extends Parameter[Algorithm[Trainer]]() {
 
     def name: String = ""
 
-    def default: (Algorithm[Trainer], Algorithm[Decoder]) = (didier.RelFreqTrainer, didier.FullMTDecoder)
+    def default: Algorithm[Trainer] = didier.RelFreqTrainer
 
-    def formatValue(value: (Algorithm[Trainer], Algorithm[Decoder])): String =
-      value._1.name + " + " + value._2.name
+    def formatValue(value: Algorithm[Trainer]): String = value.name
 
-    def fromJson(value: JValue): (Algorithm[Trainer], Algorithm[Decoder]) = value match {
-      case JObject(JField("_1", JString(t)) :: JField("_2", JString(d)) :: Nil) =>
-        (nameToObject[Algorithm[Trainer]](t), nameToObject[Algorithm[Decoder]](d))
+    def fromJson(value: JValue): Algorithm[Trainer] = value match {
+      case JString(t) => nameToObject[Algorithm[Trainer]](t)
       case _ => throw new IllegalArgumentException
     }
 
-    def toJson(value: (Algorithm[Trainer], Algorithm[Decoder])): JValue =
-      JObject(JField("_1", JString(objectToName(value._1))) :: JField("_2", JString(objectToName(value._2))) :: Nil)
+    def toJson(value: Algorithm[Trainer]): JValue = JString(objectToName(value))
   }
 
-  @tailrec def generateConfigurations(analysis: Analysis,
-                                      selected: List[Parameter[_]],
-                                      base: List[Configuration]): List[Configuration] = {
+  object DECODER extends Parameter[Algorithm[Decoder]]() {
 
-    def applyParameter[V](base: List[Configuration], param: Parameter[V]): List[Configuration] = {
-      base.flatMap(c => analysis(param).map(v => c.set(param, v)))
+    def name: String = ""
+
+    def default: Algorithm[Decoder] = didier.FullMTDecoder
+
+    def formatValue(value: Algorithm[Decoder]): String = value.name
+
+    def fromJson(value: JValue): Algorithm[Decoder] = value match {
+      case JString(t) => nameToObject[Algorithm[Decoder]](t)
+      case _ => throw new IllegalArgumentException
     }
 
-    selected match {
-      case param :: tail =>
-        generateConfigurations(analysis, tail, applyParameter(base, param))
-      case Nil => base
-    }
+    def toJson(value: Algorithm[Decoder]): JValue = JString(objectToName(value))
   }
-
-  def generateConfigurations(analysis: Analysis, selected: List[Parameter[_]]): List[Configuration] =
-    generateConfigurations(analysis, selected, List(Configuration()))
-
-  def generateConfigurations(analysis: Analysis): List[Configuration] =
-    generateConfigurations(analysis, analysis.parameters)
 
   def completeConfiguration(configuration: Configuration): Configuration = {
 
-    val ta = configuration(ALGORITHMS)._1
-    val da = configuration(ALGORITHMS)._2
+    val ta = configuration(TRAINER)
+    val da = configuration(DECODER)
 
     (ta.parameters ++ da.parameters).foldLeft(configuration) {
       case (c, param) => if (c.parameters.contains(param)) c else c.set(param, param.default)

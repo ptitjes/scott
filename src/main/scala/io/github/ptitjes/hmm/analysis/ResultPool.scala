@@ -15,19 +15,15 @@ case class ResultPool(results: Map[Configuration, Results] = Map[Configuration, 
 
   def update(k: Configuration, v: Results) = ResultPool(results + (k -> v))
 
-  def buildColumns[X](analysis: Analysis, rows: Parameter[X]): List[Configuration] =
-    Analysis.generateConfigurations(analysis,
-      analysis.parameters.filter {
-        case `rows` => false
-        case _ => true
-      })
+  def buildColumns[X](configurations: ConfigurationSet, rows: Parameter[X]): List[Configuration] =
+    configurations.generate(Set(rows))
 
-  def extractData[X](analysis: Analysis,
+  def extractData[X](configurations: ConfigurationSet,
                      rows: Parameter[X],
                      columns: List[Configuration],
                      f: Results => Double): List[(X, List[Double])] = {
 
-    for (row <- analysis(rows))
+    for (row <- configurations(rows))
     yield (row, columns.map { c =>
       val conf = Analysis.completeConfiguration(c.set(rows, row))
       f(results(conf))
