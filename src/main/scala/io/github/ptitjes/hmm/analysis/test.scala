@@ -55,7 +55,7 @@ object test extends App {
 
   import LaTexReport._
 
-  val accuracyMeasure = YAxis("Accuracy", "\\%", r => r.accuracy * 100)
+  val accuracyMeasure = YAxis("Accuracy", "\\%", _.accuracy * 100)
 
   LaTexReport.generate(results)(
     Graph(orderAnalysis, XAxis(Trainer.ORDER), accuracyMeasure),

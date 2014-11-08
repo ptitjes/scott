@@ -1,24 +1,33 @@
 package io.github.ptitjes.hmm.analysis
 
-import io.github.ptitjes.hmm.Corpora.{Annotation, Sequence, Corpus}
-import io.github.ptitjes.hmm.{Decoder, HiddenMarkovModel}
+import io.github.ptitjes.hmm.Corpora.{Annotation, Corpus, Sequence}
 import io.github.ptitjes.hmm.Utils._
+import io.github.ptitjes.hmm.{Decoder, HiddenMarkovModel}
 
-case class Results(errors: Int, words: Int,
-                   unknownErrorRate: Double,
-                   accuracy: Double, unknownAccuracy: Double,
+case class Results(errors: Int, wordCount: Int,
+                   unknownErrors: Int, unknownWordCount: Int,
                    elapsedTime: Long) {
+
+  def errorRate = errors.toDouble / wordCount.toDouble
+
+  def accuracy = 1 - errorRate
+
+  def unknownErrorRate = unknownErrors.toDouble / unknownWordCount.toDouble
+
+  def unknownAccuracy = 1 - unknownErrorRate
+
+  def unknownErrorRatio = unknownErrors.toDouble / errors.toDouble
 
   override def toString: String = f"Errors: ${
     errors
   }%d; Words = ${
-    words
-  }%d; UnknownErrorRate: ${
-    unknownErrorRate * 100
-  }%2.2f%%; Accuracy = ${
+    wordCount
+  }%d; Accuracy = ${
     accuracy * 100
   }%2.2f%%; UnknownAccuracy: ${
     unknownAccuracy * 100
+  }%2.2f%%; UnknownErrorRatio: ${
+    unknownErrorRatio * 100
   }%2.2f%%; ElapsedTime = ${
     elapsedTime
   } ms."
@@ -29,9 +38,8 @@ object Results {
   def decodeAndCheck(decoder: Decoder, hmm: HiddenMarkovModel,
                      refCorpus: Corpus[Sequence with Annotation], debug: Boolean = false): Results = {
     var errors = 0
-    var errorsOnUnknowns = 0
-    var accurateUnknowns = 0
-    var unknownCount = 0
+    var unknownErrors = 0
+    var unknownWordCount = 0
     var words = 0
 
     val (hypCorpus, elapsedTime) = timed {
@@ -56,9 +64,8 @@ object Results {
               errors += 1
             }
             if (hmm.isUnknown(oRef)) {
-              unknownCount += 1
-              if (error) errorsOnUnknowns += 1
-              else accurateUnknowns += 1
+              unknownWordCount += 1
+              if (error) unknownErrors += 1
             }
 
             if (debug) {
@@ -70,9 +77,6 @@ object Results {
         if (debug) println()
     }
 
-    val errorRate = errors.toDouble / words.toDouble
-    val accuracy = 1 - errorRate
-
-    Results(errors, words, errorsOnUnknowns.toDouble / errors, accuracy, accurateUnknowns.toDouble / unknownCount, elapsedTime)
+    Results(errors, words, unknownErrors, unknownWordCount, elapsedTime)
   }
 }
