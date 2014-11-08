@@ -1,6 +1,6 @@
 package io.github.ptitjes.hmm
 
-import io.github.ptitjes.hmm.Corpora.{Annotation, Sequence, Corpus}
+import io.github.ptitjes.hmm.Corpora._
 
 trait Trainer {
 

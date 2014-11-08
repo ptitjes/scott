@@ -66,16 +66,19 @@ object testDrift extends App {
   //  val test = devCorpus
   val test = driftingSequence
 
-  val trainerConf = Configuration().set(Trainer.ORDER, 3)
+  val conf = Configuration().set(Trainer.ORDER, 3)
 
-  val decoderConf = Configuration()
+  val trainer = RelFreqSimpleTrainer.instantiate(conf)
+  val decoder = ParDecoder.instantiate(conf)
 
   val hmm = timed("Train HMM") {
-    RelFreqSimpleTrainer.instantiate(trainerConf).train(15, trainCorpus)
+    trainer.train(15, trainCorpus)
   }
 
+  import io.github.ptitjes.hmm.analysis.Results._
+
   timed("Test HMM") {
-    val results = ParDecoder.instantiate(decoderConf).decodeAndCheck(hmm, test)
+    val results = decodeAndCheck(decoder, hmm, test)
     println(results)
   }
 }

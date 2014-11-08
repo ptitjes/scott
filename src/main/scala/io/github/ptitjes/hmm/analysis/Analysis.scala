@@ -3,15 +3,11 @@ package io.github.ptitjes.hmm.analysis
 import java.io._
 
 import io.github.ptitjes.hmm.Corpora._
-import io.github.ptitjes.hmm.Utils._
 import io.github.ptitjes.hmm._
+import org.json4s._
 
 import scala.annotation.tailrec
 import scala.collection._
-
-import org.json4s._
-import org.json4s.native.Serialization
-import org.json4s.native.Serialization.{read, writePretty}
 
 case class Analysis(parameters: List[Parameter[_]] = List(), allValues: Map[Parameter[_], List[_]] = Map()) {
 
@@ -28,6 +24,9 @@ case class Analysis(parameters: List[Parameter[_]] = List(), allValues: Map[Para
 }
 
 object Analysis {
+
+  import io.github.ptitjes.hmm.analysis.ResultPool._
+  import io.github.ptitjes.hmm.analysis.Results._
 
   object ALGORITHMS extends Parameter[(Algorithm[Trainer], Algorithm[Decoder])]() {
 
@@ -81,7 +80,7 @@ object Analysis {
         println(s"Running " + c)
 
         val hmm = trainer.train(15, trainCorpus)
-        val r = decoder.decodeAndCheck(hmm, testCorpus)
+        val r = decodeAndCheck(decoder, hmm, testCorpus)
 
         println("\t" + r)
 
@@ -113,96 +112,4 @@ object Analysis {
 
   def generateConfigurations(analysis: Analysis): List[Configuration] =
     generateConfigurations(analysis, analysis.parameters)
-
-  implicit val formats = Serialization.formats(NoTypeHints) +
-    new ResultPoolSerializer +
-    new ConfigurationSerializer
-
-  def loadResults(file: File): ResultPool = {
-    using(new FileReader(file)) {
-      fileReader => using(new BufferedReader(fileReader)) {
-        reader => read[ResultPool](reader)
-      }
-    }
-  }
-
-  def saveResults(file: File, results: ResultPool): Unit = {
-    using(new FileWriter(file)) {
-      fileOutput => using(new PrintWriter(fileOutput)) {
-        out => writePretty(results, out)
-      }
-    }
-  }
-
-  class ResultPoolSerializer extends CustomSerializer[ResultPool](format => ( {
-    case JArray(resultArray) =>
-      resultArray.foldLeft(ResultPool()) {
-        case (pool, JObject(JField("configuration", conf) :: JField("results.json", results) :: Nil)) =>
-          pool(Extraction.extract[Configuration](conf)) = Extraction.extract[Results](results)
-      }
-  }, {
-    case pool: ResultPool =>
-      JArray(pool.results.toList.map {
-        case (conf, results) =>
-          JObject(JField("configuration", Extraction.decompose(conf)) ::
-            JField("results.json", Extraction.decompose(results)) :: Nil)
-      })
-  }
-    ))
-
-  class ConfigurationSerializer extends CustomSerializer[Configuration](format => ( {
-    case JObject(fields) =>
-      fields.foldLeft(Configuration()) {
-        case (conf, JField(key, value)) =>
-          val param = nameToObject[Parameter[_]](key)
-
-          def applyParameter[V](param: Parameter[V]): Configuration = {
-            conf.set(param, param.fromJson(value))
-          }
-
-          applyParameter(param)
-      }
-  }, {
-    case conf: Configuration =>
-      JObject(conf.parameters.toList.map {
-        case (key, value) =>
-          def readParameter[V](param: Parameter[V]): JValue = {
-            param.toJson(value.asInstanceOf[V])
-          }
-
-          JField(objectToName(key), readParameter(key))
-      })
-  }
-    ))
-
-  def nameToObject[T](name: String): T = {
-    Class.forName(name).getField("MODULE$").get(null).asInstanceOf[T]
-  }
-
-  def objectToName(o: Any) = {
-    o.getClass.getName
-  }
-
-}
-
-case class ResultPool(results: Map[Configuration, Results] = Map[Configuration, Results]()) {
-
-  def update(k: Configuration, v: Results) = ResultPool(results + (k -> v))
-
-  def buildColumns[X](analysis: Analysis, rows: Parameter[X]): List[Configuration] =
-    Analysis.generateConfigurations(analysis,
-      analysis.parameters.filter {
-        case `rows` => false
-        case _ => true
-      })
-
-  def extractData[X](analysis: Analysis,
-                     rows: Parameter[X],
-                     columns: List[Configuration],
-                     f: Results => Double): List[(X, List[Double])] = {
-
-    for (row <- analysis(rows))
-    yield (row, columns.map { c => f(results(c.set(rows, row)))})
-  }
-
 }
