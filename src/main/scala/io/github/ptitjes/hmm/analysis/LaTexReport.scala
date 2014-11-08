@@ -14,7 +14,7 @@ object LaTexReport {
 
   trait ReportElement {
 
-    def generate(results: ResultPool, writer: PrintWriter)
+    def generate(runner: AnalysisRunner, writer: PrintWriter)
   }
 
   case class XAxis(param: Parameter[_])
@@ -25,7 +25,9 @@ object LaTexReport {
                    xAxis: XAxis,
                    yAxis: YAxis) extends ReportElement {
 
-    def generate(results: ResultPool, out: PrintWriter) = {
+    def generate(runner: AnalysisRunner, out: PrintWriter) = {
+
+      val results = runner.resultsFor(analysis)
 
       val columns: List[Configuration] = results.buildColumns(analysis, xAxis.param)
 
@@ -59,7 +61,7 @@ object LaTexReport {
     }
   }
 
-  def generate(results: ResultPool)(elements: ReportElement*) = {
+  def generate(elements: ReportElement*)(implicit runner: AnalysisRunner) = {
 
     val reportDirectory = new File(REPORT_DIRECTORY)
     if (!reportDirectory.exists()) reportDirectory.mkdirs()
@@ -80,7 +82,7 @@ object LaTexReport {
               "\\usetikzlibrary{plotmarks}\n" +
               "\\begin{document}\n\\selectcolormodel{gray}\n")
 
-          elements foreach { e => e.generate(results, out)}
+          elements foreach { e => e.generate(runner, out)}
 
           out.println(
             "\\end{document}")

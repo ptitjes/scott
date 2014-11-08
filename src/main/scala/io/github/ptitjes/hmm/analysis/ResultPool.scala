@@ -46,6 +46,8 @@ object ResultPool {
   }
 
   def saveResults(file: File, results: ResultPool): Unit = {
+    if (!file.getParentFile.exists()) file.getParentFile.mkdirs()
+
     using(new FileWriter(file)) {
       fileOutput => using(new PrintWriter(fileOutput)) {
         out => writePretty(results, out)

@@ -4,8 +4,9 @@ import io.github.ptitjes.hmm._
 
 object test extends App {
 
-  val trainCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"))
-  val devCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"))
+  implicit val runner: AnalysisRunner = new AnalysisRunner("report/results.json",
+    Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode")),
+    Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode")))
 
   val orderAnalysis = Analysis()
     .forAll(Analysis.ALGORITHMS,
@@ -43,21 +44,11 @@ object test extends App {
     .forAll(didier.RelFreqDiscountingTrainer.MULTIPLIER, 8 to 8)
     .forAll(didier.EmittingTraining.UNKNOWN_THRESHOLD, 1 to 20)
 
-  val results = Analysis.run(trainCorpus, devCorpus,
-    List(
-      orderAnalysis,
-      interpolatedOrderAnalysis,
-      interpolatedOrderAnalysisZoom,
-      interpolatedOrderAnalysisZoomOrder3,
-      unknownThresholdAnalysis
-    )
-  )
-
   import LaTexReport._
 
   val accuracyMeasure = YAxis("Accuracy", "\\%", _.accuracy * 100)
 
-  LaTexReport.generate(results)(
+  LaTexReport.generate(
     Graph(orderAnalysis, XAxis(Trainer.ORDER), accuracyMeasure),
     Graph(interpolatedOrderAnalysis, XAxis(Trainer.ORDER), accuracyMeasure),
     Graph(interpolatedOrderAnalysisZoom, XAxis(Trainer.ORDER), accuracyMeasure),

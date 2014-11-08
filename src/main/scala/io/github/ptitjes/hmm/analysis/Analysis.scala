@@ -4,6 +4,8 @@ import java.io._
 
 import io.github.ptitjes.hmm.Corpora._
 import io.github.ptitjes.hmm._
+import io.github.ptitjes.hmm.analysis.ResultPool._
+import io.github.ptitjes.hmm.analysis.Results._
 import org.json4s._
 
 import scala.annotation.tailrec
@@ -23,44 +25,22 @@ case class Analysis(parameters: List[Parameter[_]] = List(), allValues: Map[Para
   def apply[V](parameter: Parameter[V]): List[V] = allValues(parameter).asInstanceOf[List[V]]
 }
 
-object Analysis {
+class AnalysisRunner(cacheFilename: String,
+                     trainCorpus: Corpus[Sequence with Annotation],
+                     testCorpus: Corpus[Sequence with Annotation]) {
 
-  import io.github.ptitjes.hmm.analysis.ResultPool._
-  import io.github.ptitjes.hmm.analysis.Results._
+  private val cacheFile = new File(cacheFilename)
 
-  object ALGORITHMS extends Parameter[(Algorithm[Trainer], Algorithm[Decoder])]() {
+  private val trainerPool = mutable.Map[Configuration, Trainer]()
+  private val decoderPool = mutable.Map[Configuration, Decoder]()
 
-    def name: String = ""
+  private var pool = if (!cacheFile.exists()) ResultPool() else loadResults(cacheFile)
 
-    def default: (Algorithm[Trainer], Algorithm[Decoder]) = (didier.RelFreqTrainer, didier.FullMTDecoder)
+  import io.github.ptitjes.hmm.analysis.Analysis._
 
-    def formatValue(value: (Algorithm[Trainer], Algorithm[Decoder])): String =
-      value._1.name + " + " + value._2.name
-
-    def fromJson(value: JValue): (Algorithm[Trainer], Algorithm[Decoder]) = value match {
-      case JObject(JField("_1", JString(t)) :: JField("_2", JString(d)) :: Nil) =>
-        (nameToObject[Algorithm[Trainer]](t), nameToObject[Algorithm[Decoder]](d))
-      case _ => throw new IllegalArgumentException
-    }
-
-    def toJson(value: (Algorithm[Trainer], Algorithm[Decoder])): JValue =
-      JObject(JField("_1", JString(objectToName(value._1))) :: JField("_2", JString(objectToName(value._2))) :: Nil)
-  }
-
-  def run(trainCorpus: Corpus[Sequence with Annotation],
-          testCorpus: Corpus[Sequence with Annotation],
-          analysis: List[Analysis]): ResultPool = {
-
-    val resultFile = new File("temp/results.json")
-
-    val trainerPool = mutable.Map[Configuration, Trainer]()
-    val decoderPool = mutable.Map[Configuration, Decoder]()
-
-    var pool = if (!resultFile.exists()) ResultPool() else loadResults(resultFile)
-
+  def resultsFor(analysis: Analysis): ResultPool = {
     for (
-      a <- analysis;
-      c <- generateConfigurations(a);
+      c <- generateConfigurations(analysis);
       conf = completeConfiguration(c);
       ta = c(ALGORITHMS)._1;
       da = c(ALGORITHMS)._2
@@ -88,11 +68,33 @@ object Analysis {
         println("\t" + r)
 
         pool = pool(conf) = r
-        saveResults(resultFile, pool)
+        saveResults(cacheFile, pool)
       }
     }
 
     pool
+  }
+}
+
+object Analysis {
+
+  object ALGORITHMS extends Parameter[(Algorithm[Trainer], Algorithm[Decoder])]() {
+
+    def name: String = ""
+
+    def default: (Algorithm[Trainer], Algorithm[Decoder]) = (didier.RelFreqTrainer, didier.FullMTDecoder)
+
+    def formatValue(value: (Algorithm[Trainer], Algorithm[Decoder])): String =
+      value._1.name + " + " + value._2.name
+
+    def fromJson(value: JValue): (Algorithm[Trainer], Algorithm[Decoder]) = value match {
+      case JObject(JField("_1", JString(t)) :: JField("_2", JString(d)) :: Nil) =>
+        (nameToObject[Algorithm[Trainer]](t), nameToObject[Algorithm[Decoder]](d))
+      case _ => throw new IllegalArgumentException
+    }
+
+    def toJson(value: (Algorithm[Trainer], Algorithm[Decoder])): JValue =
+      JObject(JField("_1", JString(objectToName(value._1))) :: JField("_2", JString(objectToName(value._2))) :: Nil)
   }
 
   @tailrec def generateConfigurations(analysis: Analysis,
