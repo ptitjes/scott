@@ -1,15 +1,16 @@
 package io.github.ptitjes.hmm.didier
 
-import io.github.ptitjes.hmm._
 import io.github.ptitjes.hmm.Trainer._
+import io.github.ptitjes.hmm._
+import io.github.ptitjes.hmm.didier.EmittingTraining.UNKNOWN_THRESHOLD
 
-import scala.collection.{mutable => mutable}
+import scala.collection.mutable
 
 object RelFreqTrainer extends Algorithm[Trainer] {
 
   def name: String = "Freq"
 
-  override def parameters: Set[Parameter[_]] = Set(ORDER)
+  override def parameters: Set[Parameter[_]] = Set(ORDER, UNKNOWN_THRESHOLD)
 
   def instantiate(configuration: Configuration): Trainer = new Instance(configuration)
 

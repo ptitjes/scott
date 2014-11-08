@@ -4,6 +4,7 @@ import java.io._
 
 import io.github.ptitjes.hmm._
 import io.github.ptitjes.hmm.Trainer._
+import io.github.ptitjes.hmm.didier.EmittingTraining.UNKNOWN_THRESHOLD
 
 import scala.io.Source
 import scala.collection.{mutable => mutable}
@@ -18,7 +19,7 @@ object RelFreqDiscountingTrainer extends Algorithm[Trainer] {
 
   def name: String = "Freq-WB"
 
-  override def parameters: Set[Parameter[_]] = Set(ORDER, MULTIPLIER)
+  override def parameters: Set[Parameter[_]] = Set(ORDER, UNKNOWN_THRESHOLD, MULTIPLIER)
 
   object MULTIPLIER extends IntParameter("Multiplier", 1)
 

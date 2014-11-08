@@ -28,7 +28,10 @@ case class ResultPool(results: Map[Configuration, Results] = Map[Configuration, 
                      f: Results => Double): List[(X, List[Double])] = {
 
     for (row <- analysis(rows))
-    yield (row, columns.map { c => f(results(c.set(rows, row)))})
+    yield (row, columns.map { c =>
+      val conf = Analysis.completeConfiguration(c.set(rows, row))
+      f(results(conf))
+    })
   }
 }
 

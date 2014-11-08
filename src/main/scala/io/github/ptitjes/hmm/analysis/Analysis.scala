@@ -60,31 +60,34 @@ object Analysis {
 
     for (
       a <- analysis;
-      c <- generateConfigurations(a)
+      c <- generateConfigurations(a);
+      conf = completeConfiguration(c);
+      ta = c(ALGORITHMS)._1;
+      da = c(ALGORITHMS)._2
     ) {
-      if (!pool.results.contains(c)) {
+      if (!pool.results.contains(conf)) {
         val trainer = {
-          if (!trainerPool.contains(c)) {
-            trainerPool(c) = c(ALGORITHMS)._1.instantiate(c)
+          if (!trainerPool.contains(conf)) {
+            trainerPool(conf) = ta.instantiate(conf)
           }
-          trainerPool(c)
+          trainerPool(conf)
         }
 
         val decoder = {
-          if (!decoderPool.contains(c)) {
-            decoderPool(c) = c(ALGORITHMS)._2.instantiate(c)
+          if (!decoderPool.contains(conf)) {
+            decoderPool(conf) = da.instantiate(conf)
           }
-          decoderPool(c)
+          decoderPool(conf)
         }
 
-        println(s"Running " + c)
+        println(s"Running " + conf)
 
         val hmm = trainer.train(trainCorpus)
         val r = decodeAndCheck(decoder, hmm, testCorpus)
 
         println("\t" + r)
 
-        pool = pool(c) = r
+        pool = pool(conf) = r
         saveResults(resultFile, pool)
       }
     }
@@ -112,4 +115,14 @@ object Analysis {
 
   def generateConfigurations(analysis: Analysis): List[Configuration] =
     generateConfigurations(analysis, analysis.parameters)
+
+  def completeConfiguration(configuration: Configuration): Configuration = {
+
+    val ta = configuration(ALGORITHMS)._1
+    val da = configuration(ALGORITHMS)._2
+
+    (ta.parameters ++ da.parameters).foldLeft(configuration) {
+      case (c, param) => if (c.parameters.contains(param)) c else c.set(param, param.default)
+    }
+  }
 }
