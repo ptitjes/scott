@@ -4,8 +4,8 @@ import io.github.ptitjes.hmm._
 
 object test extends App {
 
-  val trainCorpus = Corpora.fromURL(getClass.getResource("/data/ftb.train.encode"))
-  val devCorpus = Corpora.fromURL(getClass.getResource("/data/ftb.dev.encode"))
+  val trainCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"))
+  val devCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"))
 
   val orderAnalysis = Analysis()
     .forAll(Analysis.ALGORITHMS,

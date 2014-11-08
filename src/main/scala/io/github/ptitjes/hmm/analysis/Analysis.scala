@@ -79,7 +79,7 @@ object Analysis {
 
         println(s"Running " + c)
 
-        val hmm = trainer.train(15, trainCorpus)
+        val hmm = trainer.train(trainCorpus)
         val r = decodeAndCheck(decoder, hmm, testCorpus)
 
         println("\t" + r)

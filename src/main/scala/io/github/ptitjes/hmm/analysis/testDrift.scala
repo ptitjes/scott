@@ -56,11 +56,11 @@ object testDrift extends App {
         10))))
 
   val trainCorpus = timed("Open train corpus") {
-    Corpora.fromURL(getClass.getResource("/data/ftb.train.encode"))
+    Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"))
   }
 
   val devCorpus = timed("Open dev corpus") {
-    Corpora.fromURL(getClass.getResource("/data/ftb.dev.encode"))
+    Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"))
   }
 
   //  val test = devCorpus
@@ -72,7 +72,7 @@ object testDrift extends App {
   val decoder = ParDecoder.instantiate(conf)
 
   val hmm = timed("Train HMM") {
-    trainer.train(15, trainCorpus)
+    trainer.train(trainCorpus)
   }
 
   import io.github.ptitjes.hmm.analysis.Results._

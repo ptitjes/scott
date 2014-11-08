@@ -34,10 +34,24 @@ object Corpora {
     def observablesAndStates: Array[(Int, Int)] = observables.zip(states)
   }
 
+  def stateCount(corpus: Corpus[Sequence with Annotation]): Int = {
+    var maxState = -1
+    corpus.sequences.foreach {
+      case seq =>
+        seq.observablesAndStates.foreach {
+          case (o, s) => if (s > maxState) maxState = s
+        }
+    }
+    maxState + 1
+  }
+
   case class AnnotatedSequence(observables: Array[Int], states: Array[Int])
     extends Sequence with Annotation
 
-  def fromSource(source: Source): Corpus[Sequence with Annotation] = {
+  case class NonAnnotatedSequence(observables: Array[Int])
+    extends Sequence
+
+  def annotatedFrom(source: Source): Corpus[Sequence with Annotation] = {
     val sequences = scala.collection.mutable.ListBuffer[Sequence with Annotation]()
 
     val observables: ArrayBuffer[Int] = ArrayBuffer()
@@ -58,7 +72,29 @@ object Corpora {
     Corpus(sequences)
   }
 
-  def fromFile(file: File): Corpus[Sequence with Annotation] = fromSource(Source.fromFile(file))
+  def annotatedFrom(file: File): Corpus[Sequence with Annotation] = annotatedFrom(Source.fromFile(file))
 
-  def fromURL(url: java.net.URL): Corpus[Sequence with Annotation] = fromSource(Source.fromURL(url))
+  def annotatedFrom(url: java.net.URL): Corpus[Sequence with Annotation] = annotatedFrom(Source.fromURL(url))
+
+  def nonAnnotatedfrom(source: Source): Corpus[Sequence] = {
+    val sequences = scala.collection.mutable.ListBuffer[Sequence]()
+
+    val observables: ArrayBuffer[Int] = ArrayBuffer()
+    source.getLines().foreach { s =>
+      if (s.isEmpty) {
+        sequences += NonAnnotatedSequence(observables.toArray)
+        observables.clear()
+      }
+      else {
+        val split = s.split(' ')
+        observables += split(0).toInt
+      }
+    }
+
+    Corpus(sequences)
+  }
+
+  def nonAnnotatedfrom(file: File): Corpus[Sequence] = nonAnnotatedfrom(Source.fromFile(file))
+
+  def nonAnnotatedfrom(url: java.net.URL): Corpus[Sequence] = nonAnnotatedfrom(Source.fromURL(url))
 }

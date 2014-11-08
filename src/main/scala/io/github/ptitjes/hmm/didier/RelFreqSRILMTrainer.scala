@@ -32,7 +32,8 @@ object RelFreqSRILMTrainer extends Algorithm[Trainer] {
     val SENTENCE_START = -1
     val SENTENCE_STOP = -2
 
-    def train(breadth: Int, corpus: Corpus[Sequence with Annotation]): HiddenMarkovModel = {
+    def train(corpus: Corpus[Sequence with Annotation]): HiddenMarkovModel = {
+      val breadth = stateCount(corpus)
       val depth = configuration(ORDER)
 
       val ngrams = runNgramCount(depth + 1, corpus)

@@ -4,7 +4,7 @@ import io.github.ptitjes.hmm.Corpora._
 
 trait Trainer {
 
-  def train(breadth: Int, corpus: Corpus[Sequence with Annotation]): HiddenMarkovModel
+  def train(corpus: Corpus[Sequence with Annotation]): HiddenMarkovModel
 }
 
 object Trainer {

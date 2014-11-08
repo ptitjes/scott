@@ -18,7 +18,8 @@ object RelFreqSimpleTrainer extends Algorithm[Trainer] {
     import io.github.ptitjes.hmm.Corpora._
     import io.github.ptitjes.hmm.Utils._
 
-    def train(breadth: Int, corpus: Corpus[Sequence with Annotation]): HiddenMarkovModel = {
+    def train(corpus: Corpus[Sequence with Annotation]): HiddenMarkovModel = {
+      val breadth = stateCount(corpus)
       val depth = configuration(ORDER)
 
       val size = pow(breadth, depth)
