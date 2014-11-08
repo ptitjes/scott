@@ -7,7 +7,7 @@ import io.github.ptitjes.hmm.Utils._
 case class Results(errors: Int, words: Int,
                    unknownErrorRate: Double,
                    accuracy: Double, unknownAccuracy: Double,
-                   ellapsedTime: Long) {
+                   elapsedTime: Long) {
 
   override def toString: String = f"Errors: ${
     errors
@@ -19,8 +19,8 @@ case class Results(errors: Int, words: Int,
     accuracy * 100
   }%2.2f%%; UnknownAccuracy: ${
     unknownAccuracy * 100
-  }%2.2f%%; EllapsedTime = ${
-    ellapsedTime
+  }%2.2f%%; ElapsedTime = ${
+    elapsedTime
   } ms."
 }
 
@@ -34,7 +34,7 @@ object Results {
     var unknownCount = 0
     var words = 0
 
-    val (hypCorpus, ellapsedTime) = timed {
+    val (hypCorpus, elapsedTime) = timed {
       decoder.decode(hmm, refCorpus)
     }
 
@@ -73,6 +73,6 @@ object Results {
     val errorRate = errors.toDouble / words.toDouble
     val accuracy = 1 - errorRate
 
-    Results(errors, words, errorsOnUnknowns.toDouble / errors, accuracy, accurateUnknowns.toDouble / unknownCount, ellapsedTime)
+    Results(errors, words, errorsOnUnknowns.toDouble / errors, accuracy, accurateUnknowns.toDouble / unknownCount, elapsedTime)
   }
 }

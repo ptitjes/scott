@@ -4,6 +4,5 @@ import io.github.ptitjes.hmm.Corpora._
 
 trait Decoder {
 
-  def decode(hmm: HiddenMarkovModel,
-             corpus: Corpus[Sequence]): Corpus[Sequence with Annotation]
+  def decode(hmm: HiddenMarkovModel, corpus: Corpus[Sequence]): Corpus[Sequence with Annotation]
 }
