@@ -21,7 +21,7 @@ object RelFreqDiscountingTrainer extends Algorithm[Trainer] {
 
   override def parameters: Set[Parameter[_]] = Set(ORDER, UNKNOWN_THRESHOLD, MULTIPLIER)
 
-  object MULTIPLIER extends IntParameter("Multiplier", 1)
+  object MULTIPLIER extends IntParameter("Multiplier", 8)
 
   def instantiate(configuration: Configuration): Trainer = new Instance(configuration)
 

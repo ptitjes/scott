@@ -47,7 +47,9 @@ class AnalysisRunner(cacheFilename: String,
 
         println(s"Running " + conf)
 
-        val hmm = trainer.train(trainCorpus)
+        val corpusRatio = c(CORPUS_RATIO).toDouble / 100
+
+        val hmm = trainer.train(trainCorpus.splitBy(corpusRatio)._1)
         val r = decodeAndCheck(decoder, hmm, testCorpus)
 
         println("\t" + r)
@@ -62,6 +64,8 @@ class AnalysisRunner(cacheFilename: String,
 }
 
 object Analysis {
+
+  object CORPUS_RATIO extends IntParameter("Corpus Ratio", 100)
 
   object TRAINER extends Parameter[Algorithm[Trainer]]() {
 
@@ -100,7 +104,7 @@ object Analysis {
     val ta = configuration(TRAINER)
     val da = configuration(DECODER)
 
-    (ta.parameters ++ da.parameters).foldLeft(configuration) {
+    (List(CORPUS_RATIO) ++ ta.parameters ++ da.parameters).foldLeft(configuration) {
       case (c, param) => if (c.parameters.contains(param)) c else c.set(param, param.default)
     }
   }

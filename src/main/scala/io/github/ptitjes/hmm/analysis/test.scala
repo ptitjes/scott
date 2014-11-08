@@ -10,6 +10,12 @@ object test extends App {
     Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode")),
     Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode")))
 
+  val ratioAnalysis =
+    (Analysis.TRAINER forAll didier.RelFreqTrainer and didier.RelFreqDiscountingTrainer) *
+      (Analysis.DECODER as didier.FullMTDecoder) *
+      (Trainer.ORDER from (1 to 3)) *
+      (Analysis.CORPUS_RATIO from (10 to 100 by 10))
+
   val orderAnalysis =
     (Analysis.TRAINER forAll didier.RelFreqTrainer and didier.RelFreqDiscountingTrainer) *
       (Analysis.DECODER as didier.FullMTDecoder) *
@@ -43,12 +49,15 @@ object test extends App {
   import LaTexReport._
 
   val accuracyMeasure = YAxis("Accuracy", "\\%", _.accuracy * 100)
+  val unknownAccuracyMeasure = YAxis("Unknown Word Accuracy", "\\%", _.unknownAccuracy * 100)
 
   LaTexReport.generate(
+    Graph(ratioAnalysis, XAxis(Analysis.CORPUS_RATIO), accuracyMeasure),
     Graph(orderAnalysis, XAxis(Trainer.ORDER), accuracyMeasure),
     Graph(interpolatedOrderAnalysis, XAxis(Trainer.ORDER), accuracyMeasure),
     Graph(interpolatedOrderAnalysisZoom, XAxis(Trainer.ORDER), accuracyMeasure),
     Graph(interpolatedOrderAnalysisZoomOrder3, XAxis(didier.RelFreqDiscountingTrainer.MULTIPLIER), accuracyMeasure),
-    Graph(unknownThresholdAnalysis, XAxis(didier.EmittingTraining.UNKNOWN_THRESHOLD), accuracyMeasure)
+    Graph(unknownThresholdAnalysis, XAxis(didier.EmittingTraining.UNKNOWN_THRESHOLD), accuracyMeasure),
+    Graph(unknownThresholdAnalysis, XAxis(didier.EmittingTraining.UNKNOWN_THRESHOLD), unknownAccuracyMeasure)
   )
 }
