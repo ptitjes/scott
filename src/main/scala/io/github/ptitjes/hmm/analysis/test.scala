@@ -12,36 +12,36 @@ object test extends App {
 
   val ratioAnalysis =
     (Analysis.TRAINER forAll didier.RelFreqTrainer and didier.RelFreqDiscountingTrainer) *
-      (Analysis.DECODER as didier.FullMTDecoder) *
+      (Analysis.DECODER as didier.FullDecoder) *
       (Trainer.ORDER from (1 to 3)) *
       (Analysis.CORPUS_RATIO from (10 to 100 by 10))
 
   val ratioAnalysisZoom =
     (((Analysis.TRAINER as didier.RelFreqTrainer) * (Trainer.ORDER from (1 to 3))) +
       ((Analysis.TRAINER as didier.RelFreqDiscountingTrainer) * (Trainer.ORDER from (1 to 3)))) *
-      (Analysis.DECODER as didier.FullMTDecoder) *
+      (Analysis.DECODER as didier.FullDecoder) *
       (Analysis.CORPUS_RATIO from (50 to 100 by 10))
 
   val orderAnalysis =
     (Analysis.TRAINER forAll didier.RelFreqTrainer and didier.RelFreqDiscountingTrainer) *
-      (Analysis.DECODER as didier.FullMTDecoder) *
+      (Analysis.DECODER as didier.FullDecoder) *
       (Trainer.ORDER from (1 to 4))
 
   val interpolatedOrderAnalysis =
     (Analysis.TRAINER as didier.RelFreqDiscountingTrainer) *
-      (Analysis.DECODER as didier.FullMTDecoder) *
+      (Analysis.DECODER as didier.FullDecoder) *
       (Trainer.ORDER from (1 to 4)) *
       (didier.RelFreqDiscountingTrainer.MULTIPLIER from (1 to 5))
 
   val interpolatedOrderAnalysisZoom =
     (Analysis.TRAINER as didier.RelFreqDiscountingTrainer) *
-      (Analysis.DECODER as didier.FullMTDecoder) *
+      (Analysis.DECODER as didier.FullDecoder) *
       (Trainer.ORDER from (2 to 4)) *
       (didier.RelFreqDiscountingTrainer.MULTIPLIER from (2 to 10))
 
   val interpolatedOrderAnalysisZoomOrder3 =
     (Analysis.TRAINER as didier.RelFreqDiscountingTrainer) *
-      (Analysis.DECODER as didier.FullMTDecoder) *
+      (Analysis.DECODER as didier.FullDecoder) *
       (Trainer.ORDER from (2 to 4)) *
       (didier.RelFreqDiscountingTrainer.MULTIPLIER from (3 to 10))
 
@@ -49,7 +49,7 @@ object test extends App {
     (((Analysis.TRAINER as didier.RelFreqDiscountingTrainer) *
       (didier.RelFreqDiscountingTrainer.MULTIPLIER as 8) * (Trainer.ORDER from (2 to 3))) +
       ((Analysis.TRAINER as didier.RelFreqTrainer) * (Trainer.ORDER as 2))) *
-      (Analysis.DECODER as didier.FullMTDecoder) *
+      (Analysis.DECODER as didier.FullDecoder) *
       (didier.EmittingTraining.UNKNOWN_THRESHOLD from (1 to 20))
 
   import LaTexReport._

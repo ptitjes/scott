@@ -68,7 +68,7 @@ object testDrift extends App {
   val conf = Configuration().set(Trainer.ORDER, 3)
 
   val trainer = RelFreqTrainer.instantiate(conf)
-  val decoder = FullMTDecoder.instantiate(conf)
+  val decoder = FullDecoder.instantiate(conf)
 
   val hmm = timed("Train HMM") {
     trainer.train(trainCorpus)

@@ -69,9 +69,9 @@ object Analysis {
 
   object TRAINER extends Parameter[Algorithm[Trainer]]() {
 
-    def name: String = ""
+    def name = ""
 
-    def default: Algorithm[Trainer] = didier.RelFreqTrainer
+    def default = c => didier.RelFreqTrainer
 
     def formatValue(value: Algorithm[Trainer]): String = value.name
 
@@ -85,9 +85,9 @@ object Analysis {
 
   object DECODER extends Parameter[Algorithm[Decoder]]() {
 
-    def name: String = ""
+    def name = ""
 
-    def default: Algorithm[Decoder] = didier.FullMTDecoder
+    def default = c => didier.FullDecoder
 
     def formatValue(value: Algorithm[Decoder]): String = value.name
 
@@ -105,7 +105,7 @@ object Analysis {
     val da = configuration(DECODER)
 
     (List(CORPUS_RATIO) ++ ta.parameters ++ da.parameters).foldLeft(configuration) {
-      case (c, param) => if (c.parameters.contains(param)) c else c.set(param, param.default)
+      case (c, param) => if (c.parameters.contains(param)) c else c.set(param, param.default(c))
     }
   }
 }

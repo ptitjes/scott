@@ -40,7 +40,7 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
       }
 
       val hmm = HiddenMarkovModel(breadth, depth, T, E, UE)
-      val decoder = FullMTDecoder.instantiate(configuration)
+      val decoder = FullDecoder.instantiate(configuration)
       decoder.setHmm(hmm)
 
       val iterationCount = configuration(ITERATION_COUNT)

@@ -11,7 +11,7 @@ object testDiscounting extends App {
   val conf = Configuration().set(Trainer.ORDER, 2)
 
   val trainer = RelFreqDiscountingTrainer.instantiate(conf)
-  val decoder = FullMTDecoder.instantiate(conf)
+  val decoder = FullDecoder.instantiate(conf)
 
   val hmm = trainer.train(trainCorpus)
 

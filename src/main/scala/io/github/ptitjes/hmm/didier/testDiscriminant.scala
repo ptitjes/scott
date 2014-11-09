@@ -2,9 +2,8 @@ package io.github.ptitjes.hmm.didier
 
 import io.github.ptitjes.hmm.Utils._
 import io.github.ptitjes.hmm._
-import io.github.ptitjes.hmm.analysis.test._
-import io.github.ptitjes.hmm.analysis.{Analysis, AnalysisRunner, ConfigurationSet}
 import io.github.ptitjes.hmm.analysis.Results._
+import io.github.ptitjes.hmm.analysis._
 
 object testDiscriminant extends App {
 
@@ -16,7 +15,7 @@ object testDiscriminant extends App {
     .set(DiscriminantTrainer.ITERATION_COUNT, 1)
 
   val trainer = DiscriminantTrainer.instantiate(conf)
-  val decoder = FullMTDecoder.instantiate(conf)
+  val decoder = FullDecoder.instantiate(conf)
 
   val hmm = timed("Train HMM") {
     trainer.train(trainCorpus)
@@ -26,7 +25,7 @@ object testDiscriminant extends App {
     println(decodeAndCheck(decoder, hmm, devCorpus))
   }
 
-  import ConfigurationSet._
+  import io.github.ptitjes.hmm.analysis.ConfigurationSet._
 
   implicit val runner: AnalysisRunner = new AnalysisRunner("report/results2.json",
     Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode")),
@@ -34,7 +33,7 @@ object testDiscriminant extends App {
 
   val iterationAnalysis =
     (Analysis.TRAINER as didier.DiscriminantTrainer) *
-      (Analysis.DECODER as didier.FullMTDecoder) *
+      (Analysis.DECODER as didier.FullDecoder) *
       (Trainer.ORDER as 1) *
       (DiscriminantTrainer.ITERATION_COUNT from (1 to 40))
 

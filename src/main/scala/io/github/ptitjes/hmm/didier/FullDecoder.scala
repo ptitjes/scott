@@ -3,13 +3,16 @@ package io.github.ptitjes.hmm.didier
 import io.github.ptitjes.hmm._
 
 import scala.annotation.tailrec
+import scala.collection.GenSeq
 import scala.reflect.ClassTag
 
-object FullMTDecoder extends Algorithm[Decoder] {
+object FullDecoder extends Algorithm[Decoder] {
 
-  def name: String = "Full-MT"
+  def name: String = "Full"
 
-  override def parameters: Set[Parameter[_]] = Set()
+  override def parameters: Set[Parameter[_]] = Set(MULTI_THREADED)
+
+  object MULTI_THREADED extends BooleanParameter("MultiThreaded", c => c(Trainer.ORDER) >= 3)
 
   def instantiate(configuration: Configuration): Decoder = new Instance(configuration)
 
@@ -17,6 +20,8 @@ object FullMTDecoder extends Algorithm[Decoder] {
 
     import io.github.ptitjes.hmm.Corpora._
     import io.github.ptitjes.hmm.Utils._
+
+    val multiThreaded = configuration(MULTI_THREADED)
 
     var hmm: HiddenMarkovModel = null
 
@@ -40,7 +45,7 @@ object FullMTDecoder extends Algorithm[Decoder] {
       var T = hmm.T(d)
       var sourceCount = 1
       var targetCount = hmm.breadth
-      var targets = (0 until targetCount)//.par
+      var targets = makeRange(targetCount)
 
       sequence.observables.foreach { o =>
         val E = hmm.E(o)
@@ -70,7 +75,7 @@ object FullMTDecoder extends Algorithm[Decoder] {
           } else {
             targetCount = pow(hmm.breadth, d + 1)
           }
-          targets = (0 until targetCount)//.par
+          targets = makeRange(targetCount)
         }
 
         deltas.swap()
@@ -91,6 +96,10 @@ object FullMTDecoder extends Algorithm[Decoder] {
       psis.rewind()
 
       AnnotatedSequence(sequence.observables, states.toArray)
+    }
+
+    def makeRange(targetCount: Int): GenSeq[Int] = {
+      if (multiThreaded) (0 until targetCount).par else 0 until targetCount
     }
 
     def maxArgMax(count: Int, arg: Int => Int, f: Int => Double): (Double, Int) = {

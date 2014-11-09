@@ -66,7 +66,7 @@ object ResultPool {
   class ResultPoolSerializer extends CustomSerializer[ResultPool](format => ( {
     case JArray(resultArray) =>
       resultArray.foldLeft(ResultPool()) {
-        case (pool, JObject(JField("configuration", conf) :: JField("results.json", results) :: Nil)) =>
+        case (pool, JObject(JField("configuration", conf) :: JField("results", results) :: Nil)) =>
           pool(Extraction.extract[Configuration](conf)) = Extraction.extract[Results](results)
       }
   }, {
@@ -74,7 +74,7 @@ object ResultPool {
       JArray(pool.results.toList.map {
         case (conf, results) =>
           JObject(JField("configuration", Extraction.decompose(conf)) ::
-            JField("results.json", Extraction.decompose(results)) :: Nil)
+            JField("results", Extraction.decompose(results)) :: Nil)
       })
   }
     ))

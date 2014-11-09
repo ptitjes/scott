@@ -13,7 +13,7 @@ object testRelFreq extends App {
     .set(EmittingTraining.UNKNOWN_THRESHOLD, 0)
 
   val trainer = RelFreqTrainer.instantiate(conf)
-  val decoder = FullMTDecoder.instantiate(conf)
+  val decoder = FullDecoder.instantiate(conf)
 
   val hmm = trainer.train(trainCorpus)
 

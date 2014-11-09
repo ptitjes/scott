@@ -1,6 +1,6 @@
 package io.github.ptitjes.hmm
 
-import org.json4s.JsonAST.{JInt, JValue}
+import org.json4s.JsonAST.{JBool, JInt, JValue}
 
 trait Algorithm[T] {
 
@@ -15,7 +15,7 @@ trait Parameter[V] {
 
   def name: String
 
-  def default: V
+  def default: Configuration => V
 
   def formatValue(value: V): String
 
@@ -26,7 +26,23 @@ trait Parameter[V] {
   def toJson(value: V): JValue
 }
 
-case class IntParameter(name: String, default: Int) extends Parameter[Int] {
+case class BooleanParameter(name: String, default: Configuration => Boolean) extends Parameter[Boolean] {
+
+  def this(name: String, default: Boolean) = this(name, conf => default)
+
+  def formatValue(value: Boolean): String = if (value) "Yes" else "No"
+
+  def fromJson(value: JValue): Boolean = value match {
+    case JBool(b) => b
+    case _ => throw new IllegalArgumentException
+  }
+
+  def toJson(value: Boolean): JValue = JBool(value)
+}
+
+case class IntParameter(name: String, default: Configuration => Int) extends Parameter[Int] {
+
+  def this(name: String, default: Int) = this(name, conf => default)
 
   def formatValue(value: Int): String = value.toString
 
@@ -52,7 +68,7 @@ case class Configuration(parameters: Map[Parameter[_], Any] = Map()) {
 
   def apply[V](parameter: Parameter[V]): V =
     if (parameters.contains(parameter)) parameters(parameter).asInstanceOf[V]
-    else parameter.default
+    else parameter.default(this)
 
   override def toString =
     parameters.keys.toList.sortBy(_.name).map {
