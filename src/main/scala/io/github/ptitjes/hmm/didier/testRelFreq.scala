@@ -15,6 +15,6 @@ object testRelFreq extends App {
   val trainer = RelFreqTrainer.instantiate(conf)
   val decoder = FullDecoder.instantiate(conf)
 
-  trainDecodeAndCheck(trainer, decoder, trainCorpus, trainCorpus).display
-  trainDecodeAndCheck(trainer, decoder, trainCorpus, devCorpus).display
+  trainDecodeAndCheck(trainer, decoder, trainCorpus, trainCorpus).display()
+  trainDecodeAndCheck(trainer, decoder, trainCorpus, devCorpus, debug = true).display()
 }

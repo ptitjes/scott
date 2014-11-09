@@ -61,7 +61,8 @@ object ResultPool {
 
   implicit val formats = Serialization.formats(NoTypeHints) +
     new ResultPoolSerializer +
-    new ConfigurationSerializer
+    new ConfigurationSerializer +
+    FieldSerializer[ErrorCount]()
 
   class ResultPoolSerializer extends CustomSerializer[ResultPool](format => ( {
     case JArray(resultArray) =>

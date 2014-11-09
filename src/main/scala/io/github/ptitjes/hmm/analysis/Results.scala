@@ -2,7 +2,7 @@ package io.github.ptitjes.hmm.analysis
 
 import io.github.ptitjes.hmm.Corpora._
 import io.github.ptitjes.hmm.Utils._
-import io.github.ptitjes.hmm.{Trainer, Decoder}
+import io.github.ptitjes.hmm.{Lexica, Trainer, Decoder}
 
 case class Results(globalCounts: ErrorCount,
                    perCategoryCounts: Array[ErrorCount],
@@ -18,10 +18,11 @@ case class Results(globalCounts: ErrorCount,
 
   def unknownErrorRatio = globalCounts.unknownErrors.toDouble / globalCounts.errors.toDouble
 
-  def display = {
+  def display(): Unit = {
     println(this)
     for (i <- 0 until perCategoryCounts.length)
-      println(f"\tCategory: $i%2d > ${perCategoryCounts(i)}")
+      println(s"\tCategory: ${Lexica.CATEGORIES.padded(i)} > ${perCategoryCounts(i)}")
+    println()
   }
 
   override def toString: String = f"Errors: ${
@@ -111,7 +112,8 @@ object Results {
             if (debug) {
               print(if (error) ">" else " ")
               print(if (hmm.isUnknown(oRef)) "     U" else f"$oRef%6d")
-              println(f"\t$sRef%2d\t$sHyp%2d")
+              print(f"\t$sRef%2d\t$sHyp%2d\t")
+              println(Lexica.WORDS(oRef))
             }
         }
         if (debug) println()
