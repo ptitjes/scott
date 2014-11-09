@@ -2,11 +2,11 @@ package io.github.ptitjes.hmm.analysis
 
 import io.github.ptitjes.hmm.Corpora.{Annotation, Corpus, Sequence}
 import io.github.ptitjes.hmm.Utils._
-import io.github.ptitjes.hmm.{Decoder, HiddenMarkovModel}
+import io.github.ptitjes.hmm.{Trainer, Decoder}
 
 case class Results(errors: Int, wordCount: Int,
                    unknownErrors: Int, unknownWordCount: Int,
-                   elapsedTime: Long) {
+                   trainingElapsedTime: Long, decodingElapsedTime: Long) {
 
   def errorRate = errors.toDouble / wordCount.toDouble
 
@@ -28,26 +28,36 @@ case class Results(errors: Int, wordCount: Int,
     unknownAccuracy * 100
   }%2.2f%%; UnknownErrorRatio: ${
     unknownErrorRatio * 100
-  }%2.2f%%; ElapsedTime = ${
-    elapsedTime
+  }%2.2f%%; TrainingTime = ${
+    trainingElapsedTime
+  } ms; DecodingTime = ${
+    decodingElapsedTime
   } ms."
 }
 
 object Results {
 
-  def decodeAndCheck(decoder: Decoder, hmm: HiddenMarkovModel,
-                     refCorpus: Corpus[Sequence with Annotation], debug: Boolean = false): Results = {
+  def trainDecodeAndCheck(trainer: Trainer,
+                          decoder: Decoder,
+                          trainCorpus: Corpus[Sequence with Annotation],
+                          testCorpus: Corpus[Sequence with Annotation],
+                          debug: Boolean = false): Results = {
+
+    val (hmm, trainingElapsedTime) = timed {
+      trainer.train(trainCorpus)
+    }
+
     var errors = 0
     var unknownErrors = 0
     var unknownWordCount = 0
     var words = 0
 
-    val (hypCorpus, elapsedTime) = timed {
+    val (hypCorpus, decodingElapsedTime) = timed {
       decoder.setHmm(hmm)
-      decoder.decode(refCorpus)
+      decoder.decode(testCorpus)
     }
 
-    refCorpus.sequences.zip(hypCorpus.sequences).foreach {
+    testCorpus.sequences.zip(hypCorpus.sequences).foreach {
       case (refSeq, hypSeq) =>
 
         if (refSeq.observables.length != hypSeq.observables.length || refSeq.states.length != hypSeq.states.length) {
@@ -78,6 +88,6 @@ object Results {
         if (debug) println()
     }
 
-    Results(errors, words, unknownErrors, unknownWordCount, elapsedTime)
+    Results(errors, words, unknownErrors, unknownWordCount, trainingElapsedTime, decodingElapsedTime)
   }
 }

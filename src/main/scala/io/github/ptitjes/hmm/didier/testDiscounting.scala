@@ -1,7 +1,7 @@
 package io.github.ptitjes.hmm.didier
 
-import io.github.ptitjes.hmm.Utils._
 import io.github.ptitjes.hmm._
+import io.github.ptitjes.hmm.analysis.Results._
 
 object testDiscounting extends App {
 
@@ -13,12 +13,5 @@ object testDiscounting extends App {
   val trainer = RelFreqDiscountingTrainer.instantiate(conf)
   val decoder = FullDecoder.instantiate(conf)
 
-  val hmm = trainer.train(trainCorpus)
-
-  import io.github.ptitjes.hmm.analysis.Results._
-
-  timed("Test HMM") {
-    val results = decodeAndCheck(decoder, hmm, devCorpus /*, true*/)
-    println(results)
-  }
+  println(trainDecodeAndCheck(trainer, decoder, trainCorpus, devCorpus /*, true*/))
 }

@@ -49,8 +49,8 @@ class AnalysisRunner(cacheFilename: String,
 
         val corpusRatio = c(CORPUS_RATIO).toDouble / 100
 
-        val hmm = trainer.train(trainCorpus.splitBy(corpusRatio)._1)
-        val r = decodeAndCheck(decoder, hmm, testCorpus)
+        val r = trainDecodeAndCheck(trainer, decoder,
+          trainCorpus.splitBy(corpusRatio)._1, testCorpus)
 
         println("\t" + r)
 

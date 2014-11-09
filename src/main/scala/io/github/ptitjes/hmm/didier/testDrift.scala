@@ -6,6 +6,7 @@ object testDrift extends App {
 
   import io.github.ptitjes.hmm.Corpora._
   import io.github.ptitjes.hmm.Utils._
+  import io.github.ptitjes.hmm.analysis.Results._
 
   val driftingSequence = Corpus(Seq(
     AnnotatedSequence(
@@ -70,14 +71,5 @@ object testDrift extends App {
   val trainer = RelFreqTrainer.instantiate(conf)
   val decoder = FullDecoder.instantiate(conf)
 
-  val hmm = timed("Train HMM") {
-    trainer.train(trainCorpus)
-  }
-
-  import io.github.ptitjes.hmm.analysis.Results._
-
-  timed("Test HMM") {
-    val results = decodeAndCheck(decoder, hmm, test)
-    println(results)
-  }
+  println(trainDecodeAndCheck(trainer, decoder, trainCorpus, test /*, true*/))
 }

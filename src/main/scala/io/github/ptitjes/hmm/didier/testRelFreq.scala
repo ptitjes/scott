@@ -1,7 +1,7 @@
 package io.github.ptitjes.hmm.didier
 
-import io.github.ptitjes.hmm.Utils._
 import io.github.ptitjes.hmm._
+import io.github.ptitjes.hmm.analysis.Results._
 
 object testRelFreq extends App {
 
@@ -15,12 +15,6 @@ object testRelFreq extends App {
   val trainer = RelFreqTrainer.instantiate(conf)
   val decoder = FullDecoder.instantiate(conf)
 
-  val hmm = trainer.train(trainCorpus)
-
-  import io.github.ptitjes.hmm.analysis.Results._
-
-  timed("Test HMM") {
-    println(decodeAndCheck(decoder, hmm, trainCorpus))
-    println(decodeAndCheck(decoder, hmm, devCorpus))
-  }
+  println(trainDecodeAndCheck(trainer, decoder, trainCorpus, trainCorpus))
+  println(trainDecodeAndCheck(trainer, decoder, trainCorpus, devCorpus))
 }

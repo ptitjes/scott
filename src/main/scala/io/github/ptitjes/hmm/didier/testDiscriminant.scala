@@ -1,9 +1,9 @@
 package io.github.ptitjes.hmm.didier
 
-import io.github.ptitjes.hmm.Utils._
 import io.github.ptitjes.hmm._
 import io.github.ptitjes.hmm.analysis.Results._
 import io.github.ptitjes.hmm.analysis._
+import io.github.ptitjes.hmm.analysis.ConfigurationSet._
 
 object testDiscriminant extends App {
 
@@ -17,15 +17,7 @@ object testDiscriminant extends App {
   val trainer = DiscriminantTrainer.instantiate(conf)
   val decoder = FullDecoder.instantiate(conf)
 
-  val hmm = timed("Train HMM") {
-    trainer.train(trainCorpus)
-  }
-
-  timed("Test HMM") {
-    println(decodeAndCheck(decoder, hmm, devCorpus))
-  }
-
-  import io.github.ptitjes.hmm.analysis.ConfigurationSet._
+  println(trainDecodeAndCheck(trainer, decoder, trainCorpus, devCorpus /*, true*/))
 
   implicit val runner: AnalysisRunner = new AnalysisRunner("report/results-discriminant.json",
     Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode")),
