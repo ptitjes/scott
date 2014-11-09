@@ -1,38 +1,61 @@
 package io.github.ptitjes.hmm.analysis
 
-import io.github.ptitjes.hmm.Corpora.{Annotation, Corpus, Sequence}
+import io.github.ptitjes.hmm.Corpora._
 import io.github.ptitjes.hmm.Utils._
 import io.github.ptitjes.hmm.{Trainer, Decoder}
 
-case class Results(errors: Int, wordCount: Int,
-                   unknownErrors: Int, unknownWordCount: Int,
+case class Results(globalCounts: ErrorCount,
+                   perCategoryCounts: Array[ErrorCount],
                    trainingElapsedTime: Long, decodingElapsedTime: Long) {
 
-  def errorRate = errors.toDouble / wordCount.toDouble
+  def errorRate = globalCounts.errors.toDouble / globalCounts.total.toDouble
 
   def accuracy = 1 - errorRate
 
-  def unknownErrorRate = unknownErrors.toDouble / unknownWordCount.toDouble
+  def unknownErrorRate = globalCounts.unknownErrors.toDouble / globalCounts.unknownTotal.toDouble
 
   def unknownAccuracy = 1 - unknownErrorRate
 
-  def unknownErrorRatio = unknownErrors.toDouble / errors.toDouble
+  def unknownErrorRatio = globalCounts.unknownErrors.toDouble / globalCounts.errors.toDouble
+
+  def display = {
+    println(this)
+    for (i <- 0 until perCategoryCounts.length)
+      println(f"\tCategory: $i%2d > ${perCategoryCounts(i)}")
+  }
 
   override def toString: String = f"Errors: ${
-    errors
-  }%d; Words = ${
-    wordCount
-  }%d; Accuracy = ${
+    globalCounts.errors
+  }%d; Words: ${
+    globalCounts.total
+  }%d; Accuracy: ${
     accuracy * 100
   }%2.2f%%; UnknownAccuracy: ${
     unknownAccuracy * 100
   }%2.2f%%; UnknownErrorRatio: ${
     unknownErrorRatio * 100
-  }%2.2f%%; TrainingTime = ${
+  }%2.2f%%; TrainingTime: ${
     trainingElapsedTime
-  } ms; DecodingTime = ${
+  } ms; DecodingTime: ${
     decodingElapsedTime
   } ms."
+}
+
+class ErrorCount {
+  var errors: Int = 0
+  var total: Int = 0
+  var unknownErrors: Int = 0
+  var unknownTotal: Int = 0
+
+  override def toString: String = f"Errors: ${
+    errors
+  }%5d; Total: ${
+    total
+  }%5d; UnknownErrors: ${
+    unknownErrors
+  }%5d; UnknownTotal: ${
+    unknownTotal
+  }%5d"
 }
 
 object Results {
@@ -43,14 +66,12 @@ object Results {
                           testCorpus: Corpus[Sequence with Annotation],
                           debug: Boolean = false): Results = {
 
+    val globalCounts = new ErrorCount
+    val perCategoryCounts = Array.fill(stateCount(trainCorpus))(new ErrorCount)
+
     val (hmm, trainingElapsedTime) = timed {
       trainer.train(trainCorpus)
     }
-
-    var errors = 0
-    var unknownErrors = 0
-    var unknownWordCount = 0
-    var words = 0
 
     val (hypCorpus, decodingElapsedTime) = timed {
       decoder.setHmm(hmm)
@@ -64,19 +85,27 @@ object Results {
           throw new IllegalStateException("Observable length mismatch!")
         }
 
-        words += refSeq.observables.length
         refSeq.observablesAndStates.zip(hypSeq.observablesAndStates).foreach {
           case ((oRef, sRef), (oHyp, sHyp)) =>
             if (oRef != oHyp) {
               throw new IllegalStateException("Observable mismatch!")
             }
             val error = sRef != sHyp
+
+            globalCounts.total += 1
+            perCategoryCounts(sRef).total += 1
             if (error) {
-              errors += 1
+              globalCounts.errors += 1
+              perCategoryCounts(sRef).errors += 1
             }
+
             if (hmm.isUnknown(oRef)) {
-              unknownWordCount += 1
-              if (error) unknownErrors += 1
+              globalCounts.unknownTotal += 1
+              perCategoryCounts(sRef).unknownTotal += 1
+              if (error) {
+                globalCounts.unknownErrors += 1
+                perCategoryCounts(sRef).unknownErrors += 1
+              }
             }
 
             if (debug) {
@@ -88,6 +117,6 @@ object Results {
         if (debug) println()
     }
 
-    Results(errors, words, unknownErrors, unknownWordCount, trainingElapsedTime, decodingElapsedTime)
+    Results(globalCounts, perCategoryCounts, trainingElapsedTime, decodingElapsedTime)
   }
 }
