@@ -3,6 +3,7 @@ package io.github.ptitjes.hmm.analysis
 import io.github.ptitjes.hmm._
 import io.github.ptitjes.hmm.analysis.ConfigurationSet._
 import io.github.ptitjes.hmm.analysis.LaTexReport._
+import io.github.ptitjes.hmm.didier.DiscriminantTrainer
 
 object test extends App {
 
@@ -72,6 +73,13 @@ object test extends App {
   report << Graph("unknownUnknownAccuracy", "Impact du seuil de mot inconnu",
     unknownThresholdAnalysis,
     XAxis(didier.EmittingTraining.UNKNOWN_THRESHOLD), unknownAccuracy)
+
+  report << Graph("discriminant", "Impact du nombre d'itérations sur la méthode discriminant",
+    (Analysis.TRAINER as didier.DiscriminantTrainer) *
+      (Analysis.DECODER as didier.FullDecoder) *
+      (Trainer.ORDER as 1) *
+      (DiscriminantTrainer.ITERATION_COUNT from (1 to 40)),
+    XAxis(didier.DiscriminantTrainer.ITERATION_COUNT), accuracy)
 
   report.generate
 }
