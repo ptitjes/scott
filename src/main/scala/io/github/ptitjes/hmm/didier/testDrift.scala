@@ -1,7 +1,6 @@
-package io.github.ptitjes.hmm.analysis
+package io.github.ptitjes.hmm.didier
 
 import io.github.ptitjes.hmm._
-import io.github.ptitjes.hmm.didier._
 
 object testDrift extends App {
 

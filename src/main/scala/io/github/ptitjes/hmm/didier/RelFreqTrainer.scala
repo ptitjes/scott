@@ -50,12 +50,7 @@ object RelFreqTrainer extends Algorithm[Trainer] {
       for (d <- 0 to depth) {
         for (i <- 0 until pow(breadth, d)) {
           for (j <- 0 until breadth) {
-            var probability = log(perCategoryCounts(d)(j)(i)) - log(allCategoryCounts(d)(0)(i))
-
-            // Drift hacks
-            if (probability.isNaN) probability = Double.NegativeInfinity
-
-            T(d)(j)(i) = probability
+            T(d)(j)(i) = avoidInfinity(log(perCategoryCounts(d)(j)(i)) - log(allCategoryCounts(d)(0)(i)))
           }
         }
       }

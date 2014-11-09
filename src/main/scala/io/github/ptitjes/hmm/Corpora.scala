@@ -97,4 +97,7 @@ object Corpora {
   def nonAnnotatedfrom(file: File): Corpus[Sequence] = nonAnnotatedfrom(Source.fromFile(file))
 
   def nonAnnotatedfrom(url: java.net.URL): Corpus[Sequence] = nonAnnotatedfrom(Source.fromURL(url))
+
+  def merge[T <: Sequence](c1: Corpus[T], c2: Corpus[T]): Corpus[T] =
+    Corpus(c1.sequences ++ c2.sequences)
 }

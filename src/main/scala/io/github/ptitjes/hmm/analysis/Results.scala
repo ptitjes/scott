@@ -43,7 +43,8 @@ object Results {
     var words = 0
 
     val (hypCorpus, elapsedTime) = timed {
-      decoder.decode(hmm, refCorpus)
+      decoder.setHmm(hmm)
+      decoder.decode(refCorpus)
     }
 
     refCorpus.sequences.zip(hypCorpus.sequences).foreach {

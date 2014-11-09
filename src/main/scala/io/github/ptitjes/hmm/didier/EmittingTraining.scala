@@ -8,7 +8,7 @@ import scala.collection.mutable
 
 object EmittingTraining {
 
-  object UNKNOWN_THRESHOLD extends IntParameter("Unknown Word Threshold", 5)
+  object UNKNOWN_THRESHOLD extends IntParameter("Unknown Word Threshold", 18)
 
   def train(breadth: Int, corpus: Corpus[Sequence with Annotation], threshold: Int): (mutable.Map[Int, Array[Double]], Array[Double]) = {
     val allWordCategoryCounts = Array.ofDim[Int](breadth)
@@ -49,18 +49,18 @@ object EmittingTraining {
       case (o, wordCategoryCounts) =>
         val emitProbabilities: Array[Double] = Array.ofDim(breadth)
         for (j <- 0 until breadth) {
-          emitProbabilities(j) = log(wordCategoryCounts(j)) - log(allWordCategoryCounts(j))
+          emitProbabilities(j) = avoidInfinity(log(wordCategoryCounts(j)) - log(allWordCategoryCounts(j)))
         }
         E += o -> emitProbabilities
     }
 
     if (threshold != 0) {
       for (j <- 0 until breadth) {
-        UE(j) = log(unknownWordCategoryCounts(j)) - log(allWordCategoryCounts(j))
+        UE(j) = avoidInfinity(log(unknownWordCategoryCounts(j)) - log(allWordCategoryCounts(j)))
       }
     } else {
       for (j <- 0 until breadth) {
-        UE(j) = log(1) - log(breadth)
+        UE(j) = avoidInfinity(-log(breadth))
       }
     }
     (E, UE)

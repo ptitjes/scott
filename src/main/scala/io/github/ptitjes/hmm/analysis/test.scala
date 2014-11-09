@@ -6,7 +6,7 @@ object test extends App {
 
   import ConfigurationSet._
 
-  implicit val runner: AnalysisRunner = new AnalysisRunner("report/results.json",
+  implicit val runner: AnalysisRunner = new AnalysisRunner("report/results2.json",
     Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode")),
     Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode")))
 
@@ -15,6 +15,12 @@ object test extends App {
       (Analysis.DECODER as didier.FullMTDecoder) *
       (Trainer.ORDER from (1 to 3)) *
       (Analysis.CORPUS_RATIO from (10 to 100 by 10))
+
+  val ratioAnalysisZoom =
+    (((Analysis.TRAINER as didier.RelFreqTrainer) * (Trainer.ORDER from (1 to 3))) +
+      ((Analysis.TRAINER as didier.RelFreqDiscountingTrainer) * (Trainer.ORDER from (1 to 3)))) *
+      (Analysis.DECODER as didier.FullMTDecoder) *
+      (Analysis.CORPUS_RATIO from (50 to 100 by 10))
 
   val orderAnalysis =
     (Analysis.TRAINER forAll didier.RelFreqTrainer and didier.RelFreqDiscountingTrainer) *
@@ -31,19 +37,19 @@ object test extends App {
     (Analysis.TRAINER as didier.RelFreqDiscountingTrainer) *
       (Analysis.DECODER as didier.FullMTDecoder) *
       (Trainer.ORDER from (2 to 4)) *
-      (didier.RelFreqDiscountingTrainer.MULTIPLIER from (2 to 5))
+      (didier.RelFreqDiscountingTrainer.MULTIPLIER from (2 to 10))
 
   val interpolatedOrderAnalysisZoomOrder3 =
     (Analysis.TRAINER as didier.RelFreqDiscountingTrainer) *
       (Analysis.DECODER as didier.FullMTDecoder) *
-      (Trainer.ORDER from (2 to 3)) *
+      (Trainer.ORDER from (2 to 4)) *
       (didier.RelFreqDiscountingTrainer.MULTIPLIER from (3 to 10))
 
   val unknownThresholdAnalysis =
-    (Analysis.TRAINER as didier.RelFreqDiscountingTrainer) *
+    (((Analysis.TRAINER as didier.RelFreqDiscountingTrainer) *
+      (didier.RelFreqDiscountingTrainer.MULTIPLIER as 8) * (Trainer.ORDER from (2 to 3))) +
+      ((Analysis.TRAINER as didier.RelFreqTrainer) * (Trainer.ORDER as 2))) *
       (Analysis.DECODER as didier.FullMTDecoder) *
-      (Trainer.ORDER from (2 to 3)) *
-      (didier.RelFreqDiscountingTrainer.MULTIPLIER as 8) *
       (didier.EmittingTraining.UNKNOWN_THRESHOLD from (1 to 20))
 
   import LaTexReport._
@@ -53,6 +59,7 @@ object test extends App {
 
   LaTexReport.generate(
     Graph(ratioAnalysis, XAxis(Analysis.CORPUS_RATIO), accuracyMeasure),
+    Graph(ratioAnalysisZoom, XAxis(Analysis.CORPUS_RATIO), accuracyMeasure),
     Graph(orderAnalysis, XAxis(Trainer.ORDER), accuracyMeasure),
     Graph(interpolatedOrderAnalysis, XAxis(Trainer.ORDER), accuracyMeasure),
     Graph(interpolatedOrderAnalysisZoom, XAxis(Trainer.ORDER), accuracyMeasure),
