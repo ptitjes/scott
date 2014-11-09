@@ -27,7 +27,7 @@ object testDiscriminant extends App {
 
   import io.github.ptitjes.hmm.analysis.ConfigurationSet._
 
-  implicit val runner: AnalysisRunner = new AnalysisRunner("report/results2.json",
+  implicit val runner: AnalysisRunner = new AnalysisRunner("report/results-discriminant.json",
     Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode")),
     Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode")))
 

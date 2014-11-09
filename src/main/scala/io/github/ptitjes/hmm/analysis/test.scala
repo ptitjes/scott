@@ -1,49 +1,62 @@
 package io.github.ptitjes.hmm.analysis
 
 import io.github.ptitjes.hmm._
+import io.github.ptitjes.hmm.analysis.ConfigurationSet._
+import io.github.ptitjes.hmm.analysis.LaTexReport._
 
 object test extends App {
 
-  import ConfigurationSet._
-
-  implicit val runner: AnalysisRunner = new AnalysisRunner("report/results2.json",
+  implicit val runner: AnalysisRunner = new AnalysisRunner("report/results.json",
     Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode")),
     Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode")))
 
-  val ratioAnalysis =
+  val report: LaTexReport = new LaTexReport("report/report.tex")
+
+  val accuracy = YAxis("Accuracy", "\\%", _.accuracy * 100)
+  val unknownAccuracy = YAxis("Unknown Word Accuracy", "\\%", _.unknownAccuracy * 100)
+
+  val `all freq trainers + full decoder` =
     (Analysis.TRAINER forAll didier.RelFreqTrainer and didier.RelFreqDiscountingTrainer) *
-      (Analysis.DECODER as didier.FullDecoder) *
+      (Analysis.DECODER as didier.FullDecoder)
+
+  val `discounting freq trainer + full decoder` =
+    (Analysis.TRAINER as didier.RelFreqDiscountingTrainer) *
+      (Analysis.DECODER as didier.FullDecoder)
+
+  report << Graph("corpusRatioFull", "Impact de la quantité de corpus d'apprentissage",
+    `all freq trainers + full decoder` *
       (Trainer.ORDER from (1 to 3)) *
-      (Analysis.CORPUS_RATIO from (10 to 100 by 10))
+      (Analysis.CORPUS_RATIO from (10 to 100 by 10)),
+    XAxis(Analysis.CORPUS_RATIO), accuracy)
 
-  val ratioAnalysisZoom =
-    (((Analysis.TRAINER as didier.RelFreqTrainer) * (Trainer.ORDER from (1 to 3))) +
-      ((Analysis.TRAINER as didier.RelFreqDiscountingTrainer) * (Trainer.ORDER from (1 to 3)))) *
-      (Analysis.DECODER as didier.FullDecoder) *
-      (Analysis.CORPUS_RATIO from (50 to 100 by 10))
+  report << Graph("corpusRatioZoom", "Impact de la quantité de corpus d'apprentissage",
+    `all freq trainers + full decoder` *
+      (Trainer.ORDER from (1 to 3)) *
+      (Analysis.CORPUS_RATIO from (50 to 100 by 10)),
+    XAxis(Analysis.CORPUS_RATIO), accuracy)
 
-  val orderAnalysis =
-    (Analysis.TRAINER forAll didier.RelFreqTrainer and didier.RelFreqDiscountingTrainer) *
-      (Analysis.DECODER as didier.FullDecoder) *
-      (Trainer.ORDER from (1 to 4))
+  report << Graph("orderAnalysis", "Impact de l'ordre",
+    `all freq trainers + full decoder` *
+      (Trainer.ORDER from (1 to 4)),
+    XAxis(Trainer.ORDER), accuracy)
 
-  val interpolatedOrderAnalysis =
-    (Analysis.TRAINER as didier.RelFreqDiscountingTrainer) *
-      (Analysis.DECODER as didier.FullDecoder) *
+  report << Graph("interpolatedOrderAnalysis", "Impact de l'ordre (avec interpolation)",
+    `discounting freq trainer + full decoder` *
       (Trainer.ORDER from (1 to 4)) *
-      (didier.RelFreqDiscountingTrainer.MULTIPLIER from (1 to 5))
+      (didier.RelFreqDiscountingTrainer.MULTIPLIER from (1 to 5)),
+    XAxis(Trainer.ORDER), accuracy)
 
-  val interpolatedOrderAnalysisZoom =
-    (Analysis.TRAINER as didier.RelFreqDiscountingTrainer) *
-      (Analysis.DECODER as didier.FullDecoder) *
+  report << Graph("interpolatedOrderAnalysisZoom", "Impact de l'ordre (avec interpolation)",
+    `discounting freq trainer + full decoder` *
       (Trainer.ORDER from (2 to 4)) *
-      (didier.RelFreqDiscountingTrainer.MULTIPLIER from (2 to 10))
+      (didier.RelFreqDiscountingTrainer.MULTIPLIER from (2 to 10)),
+    XAxis(Trainer.ORDER), accuracy)
 
-  val interpolatedOrderAnalysisZoomOrder3 =
-    (Analysis.TRAINER as didier.RelFreqDiscountingTrainer) *
-      (Analysis.DECODER as didier.FullDecoder) *
+  report << Graph("interpolatedOrderAnalysisZoomOrder3", "Relativisation de l'interpolation",
+    `discounting freq trainer + full decoder` *
       (Trainer.ORDER from (2 to 4)) *
-      (didier.RelFreqDiscountingTrainer.MULTIPLIER from (3 to 10))
+      (didier.RelFreqDiscountingTrainer.MULTIPLIER from (3 to 10)),
+    XAxis(didier.RelFreqDiscountingTrainer.MULTIPLIER), accuracy)
 
   val unknownThresholdAnalysis =
     (((Analysis.TRAINER as didier.RelFreqDiscountingTrainer) *
@@ -52,19 +65,13 @@ object test extends App {
       (Analysis.DECODER as didier.FullDecoder) *
       (didier.EmittingTraining.UNKNOWN_THRESHOLD from (1 to 20))
 
-  import LaTexReport._
+  report << Graph("unknownGlobalAccuracy", "Impact du seuil de mot inconnu",
+    unknownThresholdAnalysis,
+    XAxis(didier.EmittingTraining.UNKNOWN_THRESHOLD), accuracy)
 
-  val accuracyMeasure = YAxis("Accuracy", "\\%", _.accuracy * 100)
-  val unknownAccuracyMeasure = YAxis("Unknown Word Accuracy", "\\%", _.unknownAccuracy * 100)
+  report << Graph("unknownUnknownAccuracy", "Impact du seuil de mot inconnu",
+    unknownThresholdAnalysis,
+    XAxis(didier.EmittingTraining.UNKNOWN_THRESHOLD), unknownAccuracy)
 
-  LaTexReport.generate(
-    Graph(ratioAnalysis, XAxis(Analysis.CORPUS_RATIO), accuracyMeasure),
-    Graph(ratioAnalysisZoom, XAxis(Analysis.CORPUS_RATIO), accuracyMeasure),
-    Graph(orderAnalysis, XAxis(Trainer.ORDER), accuracyMeasure),
-    Graph(interpolatedOrderAnalysis, XAxis(Trainer.ORDER), accuracyMeasure),
-    Graph(interpolatedOrderAnalysisZoom, XAxis(Trainer.ORDER), accuracyMeasure),
-    Graph(interpolatedOrderAnalysisZoomOrder3, XAxis(didier.RelFreqDiscountingTrainer.MULTIPLIER), accuracyMeasure),
-    Graph(unknownThresholdAnalysis, XAxis(didier.EmittingTraining.UNKNOWN_THRESHOLD), accuracyMeasure),
-    Graph(unknownThresholdAnalysis, XAxis(didier.EmittingTraining.UNKNOWN_THRESHOLD), unknownAccuracyMeasure)
-  )
+  report.generate
 }

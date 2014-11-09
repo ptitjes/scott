@@ -11,9 +11,9 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 
   def name: String = "Disc"
 
-  override def parameters: Set[Parameter[_]] = Set(ORDER)
+  override def parameters: Set[Parameter[_]] = Set(ORDER, ITERATION_COUNT)
 
-  object ITERATION_COUNT extends IntParameter("Iterations", 2)
+  object ITERATION_COUNT extends IntParameter("Iterations", 1)
 
   def instantiate(configuration: Configuration): Trainer = new Instance(configuration)
 
@@ -63,11 +63,13 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
                 throw new IllegalStateException("Observable mismatch!")
               }
 
-              E(oRef)(sRef) += 1
-              E(oRef)(sHyp) -= 1
+              val Eo = E(oRef)
+              Eo(sRef) += 1
+              Eo(sHyp) -= 1
 
-              T(d)(sRef)(previousRefState) += 1
-              T(d)(sHyp)(previousHypState) -= 1
+              val Td = T(d)
+              Td(sRef)(previousRefState) += 1
+              Td(sHyp)(previousHypState) -= 1
 
               if (d < depth) {
                 d += 1
