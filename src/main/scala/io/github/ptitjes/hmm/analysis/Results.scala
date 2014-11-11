@@ -2,7 +2,7 @@ package io.github.ptitjes.hmm.analysis
 
 import io.github.ptitjes.hmm.Corpora._
 import io.github.ptitjes.hmm.Utils._
-import io.github.ptitjes.hmm.{Lexica, Trainer, Decoder}
+import io.github.ptitjes.hmm.{HiddenMarkovModel, Lexica, Trainer, Decoder}
 
 case class Results(globalCounts: ErrorCount,
                    perCategoryCounts: Array[ErrorCount],
@@ -67,9 +67,6 @@ object Results {
                           testCorpus: Corpus[Sequence with Annotation],
                           debug: Boolean = false): Results = {
 
-    val globalCounts = new ErrorCount
-    val perCategoryCounts = Array.fill(stateCount(trainCorpus))(new ErrorCount)
-
     val (hmm, trainingElapsedTime) = timed {
       trainer.train(trainCorpus)
     }
@@ -79,46 +76,60 @@ object Results {
       decoder.decode(testCorpus)
     }
 
-    testCorpus.sequences.zip(hypCorpus.sequences).foreach {
-      case (refSeq, hypSeq) =>
-
-        if (refSeq.observables.length != hypSeq.observables.length || refSeq.states.length != hypSeq.states.length) {
-          throw new IllegalStateException("Observable length mismatch!")
-        }
-
-        refSeq.observablesAndStates.zip(hypSeq.observablesAndStates).foreach {
-          case ((oRef, sRef), (oHyp, sHyp)) =>
-            if (oRef != oHyp) {
-              throw new IllegalStateException("Observable mismatch!")
-            }
-            val error = sRef != sHyp
-
-            globalCounts.total += 1
-            perCategoryCounts(sRef).total += 1
-            if (error) {
-              globalCounts.errors += 1
-              perCategoryCounts(sRef).errors += 1
-            }
-
-            if (hmm.isUnknown(oRef)) {
-              globalCounts.unknownTotal += 1
-              perCategoryCounts(sRef).unknownTotal += 1
-              if (error) {
-                globalCounts.unknownErrors += 1
-                perCategoryCounts(sRef).unknownErrors += 1
-              }
-            }
-
-            if (debug) {
-              print(if (error) ">" else " ")
-              print(if (hmm.isUnknown(oRef)) "     U" else f"$oRef%6d")
-              print(f"\t$sRef%2d\t$sHyp%2d\t")
-              println(Lexica.WORDS(oRef))
-            }
-        }
-        if (debug) println()
-    }
-
-    Results(globalCounts, perCategoryCounts, trainingElapsedTime, decodingElapsedTime)
+	  check(trainCorpus, testCorpus, hmm, hypCorpus,
+		  trainingElapsedTime, decodingElapsedTime , debug)
   }
+
+	def check(trainCorpus: Corpus[Sequence with Annotation],
+	          testCorpus: Corpus[Sequence with Annotation],
+						hmm: HiddenMarkovModel,
+	          hypCorpus: Corpus[Sequence with Annotation],
+	          trainingElapsedTime: Long, decodingElapsedTime: Long,
+	          debug: Boolean = false): Results = {
+
+		val globalCounts = new ErrorCount
+		val perCategoryCounts = Array.fill(stateCount(trainCorpus))(new ErrorCount)
+
+		testCorpus.sequences.zip(hypCorpus.sequences).foreach {
+			case (refSeq, hypSeq) =>
+
+				if (refSeq.observables.length != hypSeq.observables.length || refSeq.states.length != hypSeq.states.length) {
+					throw new IllegalStateException("Observable length mismatch!")
+				}
+
+				refSeq.observablesAndStates.zip(hypSeq.observablesAndStates).foreach {
+					case ((oRef, sRef), (oHyp, sHyp)) =>
+						if (oRef != oHyp) {
+							throw new IllegalStateException("Observable mismatch!")
+						}
+						val error = sRef != sHyp
+
+						globalCounts.total += 1
+						perCategoryCounts(sRef).total += 1
+						if (error) {
+							globalCounts.errors += 1
+							perCategoryCounts(sRef).errors += 1
+						}
+
+						if (hmm.isUnknown(oRef)) {
+							globalCounts.unknownTotal += 1
+							perCategoryCounts(sRef).unknownTotal += 1
+							if (error) {
+								globalCounts.unknownErrors += 1
+								perCategoryCounts(sRef).unknownErrors += 1
+							}
+						}
+
+						if (debug) {
+							print(if (error) ">" else " ")
+							print(if (hmm.isUnknown(oRef)) "     U" else f"$oRef%6d")
+							print(f"\t$sRef%2d\t$sHyp%2d\t")
+							println(Lexica.WORDS(oRef))
+						}
+				}
+				if (debug) println()
+		}
+
+		Results(globalCounts, perCategoryCounts, trainingElapsedTime, decodingElapsedTime)
+	}
 }

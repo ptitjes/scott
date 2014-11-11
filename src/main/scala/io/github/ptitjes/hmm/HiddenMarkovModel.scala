@@ -1,77 +1,88 @@
 package io.github.ptitjes.hmm
 
-import java.io.{PrintWriter, FileWriter, File}
+import java.io._
 
-import scala.io.Source
-import scala.reflect.ClassTag
+import io.github.ptitjes.hmm.Utils._
+import org.json4s._
+import org.json4s.native.Serialization
+import org.json4s.native.Serialization._
 
 import scala.collection._
+import scala.reflect.ClassTag
 
 case class HiddenMarkovModel(breadth: Int, depth: Int,
                              t: MatrixTree[Double],
-                             e: mutable.Map[Int, Array[Double]], ue: Array[Double]) {
+                             e: Map[Int, Array[Double]], ue: Array[Double]) {
 
-  def T(d: Int): Array[Array[Double]] = t(d)
+	def T(d: Int): Array[Array[Double]] = t(d)
 
-  def E(o: Int): Array[Double] =
-    if (e.contains(o)) e(o) else ue
+	def E(o: Int): Array[Double] =
+		if (e.contains(o)) e(o) else ue
 
-  def isUnknown(o: Int): Boolean = !e.contains(o)
+	def isUnknown(o: Int): Boolean = !e.contains(o)
+}
+
+case class MatrixTree[T: ClassTag](breadth: Int, depth: Int, tree: Array[Array[Array[T]]]) {
+
+	def apply(d: Int): Array[Array[T]] = tree(d)
+}
+
+object MatrixTree {
+
+	def apply[T: ClassTag](breadth: Int, depth: Int): MatrixTree[T] =
+		new MatrixTree(breadth, depth, MatrixTree.initializeTree(breadth, depth))
+
+	def initializeTree[T: ClassTag](breadth: Int, depth: Int) = {
+		val array: Array[Array[Array[T]]] = Array.ofDim(depth + 1)
+		for (i <- 0 to depth) {
+			val targetStateCount = pow(breadth, i)
+			array(i) = Array.ofDim[T](breadth, targetStateCount)
+		}
+		array
+	}
 }
 
 object HiddenMarkovModel {
 
-  /*def fromFile(file: File): HiddenMarkovModel = {
-    val lines = Source.fromFile(file).getLines()
+	implicit val formats = Serialization.formats(NoTypeHints) +
+		new HMMSerializer
 
-    val nbe = lines.next().toInt
-    val nbo = lines.next().toInt
+	def fromFile(file: File): HiddenMarkovModel = {
+		using(new FileReader(file)) {
+			fileReader => using(new BufferedReader(fileReader)) {
+				reader => read[HiddenMarkovModel](reader)
+			}
+		}
+	}
 
-    val hmm = HiddenMarkovModel(nbe, nbo)
-    for (i <- 0 to nbe - 1)
-      hmm.PI(i) = Math.log(lines.next().toDouble)
+	def toFile(hmm: HiddenMarkovModel, file: File): Unit = {
+		if (!file.getParentFile.exists()) file.getParentFile.mkdirs()
 
-    for (i <- 0 to nbe - 1; j <- 0 to nbe - 1)
-      hmm.T(i)(j) = Math.log(lines.next().toDouble)
+		using(new FileWriter(file)) {
+			fileOutput => using(new PrintWriter(fileOutput)) {
+				out => write(hmm, out)
+			}
+		}
+	}
 
-    for (i <- 0 to nbe - 1; j <- 0 to nbo - 1)
-      hmm.E(i)(j) = Math.log(lines.next().toDouble)
+	class HMMSerializer extends CustomSerializer[HiddenMarkovModel](format => ( {
+		case JObject(JField("b", JInt(b)) :: JField("d", JInt(d)) ::
+			JField("t", t) :: JField("e", e) :: JField("ue", ue) :: Nil) =>
 
-    hmm
-  }
+			val breadth = b.toInt
+			val depth = d.toInt
+			HiddenMarkovModel(breadth, depth,
+				MatrixTree(breadth, depth, Extraction.extract[Array[Array[Array[Double]]]](t)),
+				Extraction.extract[Map[Int, Array[Double]]](e),
+				Extraction.extract[Array[Double]](ue))
+	}, {
+		case hmm: HiddenMarkovModel =>
+			JObject(JField("b", JInt(hmm.breadth)) ::
+				JField("d", JInt(hmm.depth)) ::
+				JField("t", Extraction.decompose(hmm.t.tree)) ::
+				JField("e", Extraction.decompose(hmm.e)) ::
+				JField("ue", Extraction.decompose(hmm.ue)) :: Nil)
+	}
+		))
 
-  def toFile(hmm: HiddenMarkovModel, file: File): Unit = {
-    using(new FileWriter(file, true)) {
-      fileWriter => using(new PrintWriter(fileWriter)) {
-        out =>
-          out.println(hmm.nbe)
-          out.println(hmm.nbo)
-
-          for (i <- 0 to hmm.nbe - 1)
-            out.println(Math.exp(hmm.PI(i)))
-
-          for (i <- 0 to hmm.nbe - 1; j <- 0 to hmm.nbe - 1)
-            out.println(Math.exp(hmm.T(i)(j)))
-
-          for (i <- 0 to hmm.nbe - 1; j <- 0 to hmm.nbo - 1)
-            out.println(Math.exp(hmm.E(i)(j)))
-      }
-    }
-  }*/
-}
-
-case class MatrixTree[T: ClassTag](breadth: Int, depth: Int) {
-
-  import Utils._
-
-  private val tree = {
-    val array: Array[Array[Array[T]]] = Array.ofDim(depth + 1)
-    for (i <- 0 to depth) {
-      val targetStateCount = pow(breadth, i)
-      array(i) = Array.ofDim[T](breadth, targetStateCount)
-    }
-    array
-  }
-
-  def apply(d: Int): Array[Array[T]] = tree(d)
 }
