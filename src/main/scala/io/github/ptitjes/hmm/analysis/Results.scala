@@ -8,81 +8,81 @@ case class Results(globalCounts: ErrorCount,
                    perCategoryCounts: Array[ErrorCount],
                    trainingElapsedTime: Long, decodingElapsedTime: Long) {
 
-  def errorRate = globalCounts.errors.toDouble / globalCounts.total.toDouble
+	def errorRate = globalCounts.errors.toDouble / globalCounts.total.toDouble
 
-  def accuracy = 1 - errorRate
+	def accuracy = 1 - errorRate
 
-  def unknownErrorRate = globalCounts.unknownErrors.toDouble / globalCounts.unknownTotal.toDouble
+	def unknownErrorRate = globalCounts.unknownErrors.toDouble / globalCounts.unknownTotal.toDouble
 
-  def unknownAccuracy = 1 - unknownErrorRate
+	def unknownAccuracy = 1 - unknownErrorRate
 
-  def unknownErrorRatio = globalCounts.unknownErrors.toDouble / globalCounts.errors.toDouble
+	def unknownErrorRatio = globalCounts.unknownErrors.toDouble / globalCounts.errors.toDouble
 
-  def display(): Unit = {
-    println(this)
-    for (i <- 0 until perCategoryCounts.length)
-      println(s"\tCategory: ${Lexica.CATEGORIES.padded(i)} > ${perCategoryCounts(i)}")
-    println()
-  }
+	def display(): Unit = {
+		println(this)
+		for (i <- 0 until perCategoryCounts.length)
+			println(s"\tCategory: ${Lexica.CATEGORIES.padded(i)} > ${perCategoryCounts(i)}")
+		println()
+	}
 
-  override def toString: String = f"Errors: ${
-    globalCounts.errors
-  }%d; Words: ${
-    globalCounts.total
-  }%d; Accuracy: ${
-    accuracy * 100
-  }%2.2f%%; UnknownAccuracy: ${
-    unknownAccuracy * 100
-  }%2.2f%%; UnknownErrorRatio: ${
-    unknownErrorRatio * 100
-  }%2.2f%%; TrainingTime: ${
-    trainingElapsedTime
-  } ms; DecodingTime: ${
-    decodingElapsedTime
-  } ms."
+	override def toString: String = f"Errors: ${
+		globalCounts.errors
+	}%d; Words: ${
+		globalCounts.total
+	}%d; Accuracy: ${
+		accuracy * 100
+	}%2.2f%%; UnknownAccuracy: ${
+		unknownAccuracy * 100
+	}%2.2f%%; UnknownErrorRatio: ${
+		unknownErrorRatio * 100
+	}%2.2f%%; TrainingTime: ${
+		trainingElapsedTime
+	} ms; DecodingTime: ${
+		decodingElapsedTime
+	} ms."
 }
 
 class ErrorCount {
-  var errors: Int = 0
-  var total: Int = 0
-  var unknownErrors: Int = 0
-  var unknownTotal: Int = 0
+	var errors: Int = 0
+	var total: Int = 0
+	var unknownErrors: Int = 0
+	var unknownTotal: Int = 0
 
-  override def toString: String = f"Errors: ${
-    errors
-  }%5d; Total: ${
-    total
-  }%5d; UnknownErrors: ${
-    unknownErrors
-  }%5d; UnknownTotal: ${
-    unknownTotal
-  }%5d"
+	override def toString: String = f"Errors: ${
+		errors
+	}%5d; Total: ${
+		total
+	}%5d; UnknownErrors: ${
+		unknownErrors
+	}%5d; UnknownTotal: ${
+		unknownTotal
+	}%5d"
 }
 
 object Results {
 
-  def trainDecodeAndCheck(trainer: Trainer,
-                          decoder: Decoder,
-                          trainCorpus: Corpus[Sequence with Annotation],
-                          testCorpus: Corpus[Sequence with Annotation],
-                          debug: Boolean = false): Results = {
+	def trainDecodeAndCheck(trainer: Trainer,
+	                        decoder: Decoder,
+	                        trainCorpus: Corpus[Sequence with Annotation],
+	                        testCorpus: Corpus[Sequence with Annotation],
+	                        debug: Boolean = false): Results = {
 
-    val (hmm, trainingElapsedTime) = timed {
-      trainer.train(trainCorpus)
-    }
+		val (hmm, trainingElapsedTime) = timed {
+			trainer.train(trainCorpus)
+		}
 
-    val (hypCorpus, decodingElapsedTime) = timed {
-      decoder.setHmm(hmm)
-      decoder.decode(testCorpus)
-    }
+		val (hypCorpus, decodingElapsedTime) = timed {
+			decoder.setHmm(hmm)
+			decoder.decode(testCorpus)
+		}
 
-	  check(trainCorpus, testCorpus, hmm, hypCorpus,
-		  trainingElapsedTime, decodingElapsedTime , debug)
-  }
+		check(trainCorpus, testCorpus, hmm, hypCorpus,
+			trainingElapsedTime, decodingElapsedTime, debug)
+	}
 
 	def check(trainCorpus: Corpus[Sequence with Annotation],
 	          testCorpus: Corpus[Sequence with Annotation],
-						hmm: HiddenMarkovModel,
+	          hmm: HiddenMarkovModel,
 	          hypCorpus: Corpus[Sequence with Annotation],
 	          trainingElapsedTime: Long, decodingElapsedTime: Long,
 	          debug: Boolean = false): Results = {

@@ -4,9 +4,11 @@ import io.github.ptitjes.hmm.Corpora._
 
 trait Trainer {
 
-  def train(corpus: Corpus[Sequence with Annotation]): HiddenMarkovModel
+	def train(corpus: Corpus[Sequence with Annotation]): HiddenMarkovModel
 }
 
 object Trainer {
-  object ORDER extends IntParameter("Order", 3)
+
+	object ORDER extends IntParameter("Order", 3)
+
 }

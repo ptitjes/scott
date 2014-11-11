@@ -14,98 +14,98 @@ class AnalysisRunner(cacheFilename: String,
                      trainCorpus: Corpus[Sequence with Annotation],
                      testCorpus: Corpus[Sequence with Annotation]) {
 
-  private val cacheFile = new File(cacheFilename)
+	private val cacheFile = new File(cacheFilename)
 
-  private val trainerPool = mutable.Map[Configuration, Trainer]()
-  private val decoderPool = mutable.Map[Configuration, Decoder]()
+	private val trainerPool = mutable.Map[Configuration, Trainer]()
+	private val decoderPool = mutable.Map[Configuration, Decoder]()
 
-  private var pool = if (!cacheFile.exists()) ResultPool() else loadResults(cacheFile)
+	private var pool = if (!cacheFile.exists()) ResultPool() else loadResults(cacheFile)
 
-  import io.github.ptitjes.hmm.analysis.Analysis._
+	import io.github.ptitjes.hmm.analysis.Analysis._
 
-  def resultsFor(configurations: ConfigurationSet): ResultPool = {
-    for (
-      c <- configurations.generate();
-      conf = completeConfiguration(c);
-      ta = c(TRAINER);
-      da = c(DECODER)
-    ) {
-      if (!pool.results.contains(conf)) {
-        val trainer = {
-          if (!trainerPool.contains(conf)) {
-            trainerPool(conf) = ta.instantiate(conf)
-          }
-          trainerPool(conf)
-        }
+	def resultsFor(configurations: ConfigurationSet): ResultPool = {
+		for (
+			c <- configurations.generate();
+			conf = completeConfiguration(c);
+			ta = c(TRAINER);
+			da = c(DECODER)
+		) {
+			if (!pool.results.contains(conf)) {
+				val trainer = {
+					if (!trainerPool.contains(conf)) {
+						trainerPool(conf) = ta.instantiate(conf)
+					}
+					trainerPool(conf)
+				}
 
-        val decoder = {
-          if (!decoderPool.contains(conf)) {
-            decoderPool(conf) = da.instantiate(conf)
-          }
-          decoderPool(conf)
-        }
+				val decoder = {
+					if (!decoderPool.contains(conf)) {
+						decoderPool(conf) = da.instantiate(conf)
+					}
+					decoderPool(conf)
+				}
 
-        println(s"Running " + conf)
+				println(s"Running " + conf)
 
-        val corpusRatio = c(CORPUS_RATIO).toDouble / 100
+				val corpusRatio = c(CORPUS_RATIO).toDouble / 100
 
-        val r = trainDecodeAndCheck(trainer, decoder,
-          trainCorpus.splitBy(corpusRatio)._1, testCorpus)
+				val r = trainDecodeAndCheck(trainer, decoder,
+					trainCorpus.splitBy(corpusRatio)._1, testCorpus)
 
-        println("\t" + r)
+				println("\t" + r)
 
-        pool = pool(conf) = r
-        saveResults(cacheFile, pool)
-      }
-    }
+				pool = pool(conf) = r
+				saveResults(cacheFile, pool)
+			}
+		}
 
-    pool
-  }
+		pool
+	}
 }
 
 object Analysis {
 
-  object CORPUS_RATIO extends IntParameter("Corpus Ratio", 100)
+	object CORPUS_RATIO extends IntParameter("Corpus Ratio", 100)
 
-  object TRAINER extends Parameter[Algorithm[Trainer]]() {
+	object TRAINER extends Parameter[Algorithm[Trainer]]() {
 
-    def name = ""
+		def name = ""
 
-    def default = c => didier.RelFreqTrainer
+		def default = c => didier.RelFreqTrainer
 
-    def formatValue(value: Algorithm[Trainer]): String = value.name
+		def formatValue(value: Algorithm[Trainer]): String = value.name
 
-    def fromJson(value: JValue): Algorithm[Trainer] = value match {
-      case JString(t) => nameToObject[Algorithm[Trainer]](t)
-      case _ => throw new IllegalArgumentException
-    }
+		def fromJson(value: JValue): Algorithm[Trainer] = value match {
+			case JString(t) => nameToObject[Algorithm[Trainer]](t)
+			case _ => throw new IllegalArgumentException
+		}
 
-    def toJson(value: Algorithm[Trainer]): JValue = JString(objectToName(value))
-  }
+		def toJson(value: Algorithm[Trainer]): JValue = JString(objectToName(value))
+	}
 
-  object DECODER extends Parameter[Algorithm[Decoder]]() {
+	object DECODER extends Parameter[Algorithm[Decoder]]() {
 
-    def name = ""
+		def name = ""
 
-    def default = c => didier.FullDecoder
+		def default = c => didier.FullDecoder
 
-    def formatValue(value: Algorithm[Decoder]): String = value.name
+		def formatValue(value: Algorithm[Decoder]): String = value.name
 
-    def fromJson(value: JValue): Algorithm[Decoder] = value match {
-      case JString(t) => nameToObject[Algorithm[Decoder]](t)
-      case _ => throw new IllegalArgumentException
-    }
+		def fromJson(value: JValue): Algorithm[Decoder] = value match {
+			case JString(t) => nameToObject[Algorithm[Decoder]](t)
+			case _ => throw new IllegalArgumentException
+		}
 
-    def toJson(value: Algorithm[Decoder]): JValue = JString(objectToName(value))
-  }
+		def toJson(value: Algorithm[Decoder]): JValue = JString(objectToName(value))
+	}
 
-  def completeConfiguration(configuration: Configuration): Configuration = {
+	def completeConfiguration(configuration: Configuration): Configuration = {
 
-    val ta = configuration(TRAINER)
-    val da = configuration(DECODER)
+		val ta = configuration(TRAINER)
+		val da = configuration(DECODER)
 
-    (List(CORPUS_RATIO) ++ ta.parameters ++ da.parameters).foldLeft(configuration) {
-      case (c, param) => if (c.parameters.contains(param)) c else c.set(param, param.default(c))
-    }
-  }
+		(List(CORPUS_RATIO) ++ ta.parameters ++ da.parameters).foldLeft(configuration) {
+			case (c, param) => if (c.parameters.contains(param)) c else c.set(param, param.default(c))
+		}
+	}
 }
