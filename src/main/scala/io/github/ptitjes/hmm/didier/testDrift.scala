@@ -8,52 +8,33 @@ object testDrift extends App {
 	import io.github.ptitjes.hmm.Utils._
 	import io.github.ptitjes.hmm.analysis.Results._
 
-	val driftingSequence = Corpus(Seq(
+	val driftingSequence = Corpus(Array(
 		AnnotatedSequence(
 			Array(
-				5422,
-				20159,
-				10566,
-				3217,
-				25743,
-				15988,
-				3698,
-				2,
-				15706,
-				26170,
-				9715,
-				11627,
-				-1,
-				8882,
-				2,
-				18703,
-				24915,
-				26220,
-				13499,
-				10163,
-				8),
-			Array(
-				2,
-				8,
-				3,
-				14,
-				0,
-				4,
-				7,
-				10,
-				4,
-				7,
-				14,
-				14,
-				14,
-				1,
-				10,
-				2,
-				8,
-				4,
-				0,
-				7,
-				10))))
+				(5422, 2),
+				(20159, 8),
+				(10566, 3),
+				(3217, 14),
+				(25743, 0),
+				(15988, 4),
+				(3698, 7),
+				(2, 10),
+				(15706, 4),
+				(26170, 7),
+				(9715, 14),
+				(11627, 14),
+				(21994, 14),
+				(8882, 1),
+				(2, 10),
+				(18703, 2),
+				(24915, 8),
+				(26220, 4),
+				(13499, 0),
+				(10163, 7),
+				(8, 10)
+			)
+		)
+	))
 
 	val trainCorpus = timed("Open train corpus") {
 		Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"))
@@ -63,7 +44,7 @@ object testDrift extends App {
 		Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"))
 	}
 
-	//  val test = devCorpus
+	//val test = devCorpus
 	val test = driftingSequence
 
 	val conf = Configuration().set(Trainer.ORDER, 3)
@@ -71,5 +52,5 @@ object testDrift extends App {
 	val trainer = RelFreqTrainer.instantiate(conf)
 	val decoder = FullDecoder.instantiate(conf)
 
-	println(trainDecodeAndCheck(trainer, decoder, trainCorpus, test /*, true*/))
+	println(trainDecodeAndCheck(trainer, decoder, trainCorpus, test , true))
 }

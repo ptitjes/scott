@@ -10,7 +10,8 @@ scalacOptions ++= Seq(
   "-deprecation",
   "-unchecked",
   "-feature",
-  "-language:implicitConversions"
+  "-language:implicitConversions",
+	"-Xmax-classfile-name 100"
 )
 
 libraryDependencies += "org.json4s" %% "json4s-native" % "3.2.11"

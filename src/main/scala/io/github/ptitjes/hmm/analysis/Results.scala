@@ -8,38 +8,37 @@ case class Results(globalCounts: ErrorCount,
                    perCategoryCounts: Array[ErrorCount],
                    trainingElapsedTime: Long, decodingElapsedTime: Long) {
 
-	def errorRate = globalCounts.errors.toDouble / globalCounts.total.toDouble
+	def errorRate = globalCounts.errorRate
 
-	def accuracy = 1 - errorRate
+	def accuracy = globalCounts.accuracy
 
-	def unknownErrorRate = globalCounts.unknownErrors.toDouble / globalCounts.unknownTotal.toDouble
+	def unknownErrorRate = globalCounts.unknownErrorRate
 
-	def unknownAccuracy = 1 - unknownErrorRate
+	def unknownAccuracy = globalCounts.unknownAccuracy
 
-	def unknownErrorRatio = globalCounts.unknownErrors.toDouble / globalCounts.errors.toDouble
+	def unknownErrorRatio = globalCounts.unknownErrorRatio
+
+	def categoryErrorRatio(i: Int) = perCategoryCounts(i).errors.toDouble / globalCounts.errors
 
 	def display(): Unit = {
 		println(this)
 		for (i <- 0 until perCategoryCounts.length)
-			println(s"\tCategory: ${Lexica.CATEGORIES.padded(i)} > ${perCategoryCounts(i)}")
+			println(f"\tCategory: ${
+				Lexica.CATEGORIES.padded(i)
+			} ${
+				perCategoryCounts(i)
+			}; Of Total; ${
+				categoryErrorRatio(i) * 100
+			}%5.2f%%")
 		println()
 	}
 
-	override def toString: String = f"Errors: ${
-		globalCounts.errors
-	}%d; Words: ${
-		globalCounts.total
-	}%d; Accuracy: ${
-		accuracy * 100
-	}%2.2f%%; UnknownAccuracy: ${
-		unknownAccuracy * 100
-	}%2.2f%%; UnknownErrorRatio: ${
-		unknownErrorRatio * 100
-	}%2.2f%%; TrainingTime: ${
-		trainingElapsedTime
-	} ms; DecodingTime: ${
-		decodingElapsedTime
-	} ms."
+	override def toString: String = globalCounts +
+		s"; TrainingTime: ${
+			trainingElapsedTime
+		} ms; DecodingTime: ${
+			decodingElapsedTime
+		} ms."
 }
 
 class ErrorCount {
@@ -48,15 +47,32 @@ class ErrorCount {
 	var unknownErrors: Int = 0
 	var unknownTotal: Int = 0
 
-	override def toString: String = f"Errors: ${
-		errors
-	}%5d; Total: ${
-		total
-	}%5d; UnknownErrors: ${
-		unknownErrors
-	}%5d; UnknownTotal: ${
-		unknownTotal
-	}%5d"
+	def errorRate = errors.toDouble / total.toDouble
+
+	def accuracy = 1 - errorRate
+
+	def unknownErrorRate = unknownErrors.toDouble / unknownTotal.toDouble
+
+	def unknownAccuracy = 1 - unknownErrorRate
+
+	def unknownErrorRatio = unknownErrors.toDouble / errors.toDouble
+
+	override def toString: String =
+		f"Errors: ${
+			errors
+		}%5d; Total: ${
+			total
+		}%5d; UnknownErrors: ${
+			unknownErrors
+		}%5d; UnknownTotal: ${
+			unknownTotal
+		}%5d Accuracy: ${
+			accuracy * 100
+		}%5.2f%%; UnknownAccuracy: ${
+			unknownAccuracy * 100
+		}%5.2f%%; UnknownErrorRatio: ${
+			unknownErrorRatio * 100
+		}%5.2f%%"
 }
 
 object Results {
@@ -122,8 +138,10 @@ object Results {
 
 						if (debug) {
 							print(if (error) ">" else " ")
-							print(if (hmm.isUnknown(oRef)) "     U" else f"$oRef%6d")
-							print(f"\t$sRef%2d\t$sHyp%2d\t")
+							print(f"$oRef%6d")
+							print(if (hmm.isUnknown(oRef)) " U" else "  ")
+							print(f"\t$sRef%2d ${Lexica.CATEGORIES(sRef)}%-5s")
+							print(f"\t$sHyp%2d ${Lexica.CATEGORIES(sHyp)}%-5s\t")
 							println(Lexica.WORDS(oRef))
 						}
 				}

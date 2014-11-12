@@ -10,6 +10,24 @@ object Lexica {
 	val WORDS = from(getClass.getResource("/data/vocabulary"))
 	val CATEGORIES = from(getClass.getResource("/data/categories"))
 
+	object Categories {
+		val A = 0
+		val ADV = 1
+		val C = 2
+		val CL = 3
+		val D = 4
+		val ET = 5
+		val I = 6
+		val N = 7
+		val P = 8
+		val P_D = 9
+		val PONCT = 10
+		val P_PRO = 11
+		val PREF = 12
+		val PRO = 13
+		val V = 14
+	}
+
 	case class Lexicon(elements: Seq[String], maxLength: Int) {
 
 		def apply(i: Int) = elements(i)

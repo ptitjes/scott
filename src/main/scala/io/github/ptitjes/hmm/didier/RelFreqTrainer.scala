@@ -40,8 +40,7 @@ object RelFreqTrainer extends Algorithm[Trainer] {
 					if (d < depth) {
 						d += 1
 					}
-					previousState = previousState * breadth + cat
-					previousState = previousState % size
+					previousState = (previousState * breadth + cat) % size
 				}
 			}
 
@@ -57,7 +56,7 @@ object RelFreqTrainer extends Algorithm[Trainer] {
 
 			val (e, ue) = EmittingTraining.train(breadth, corpus, configuration(EmittingTraining.UNKNOWN_THRESHOLD))
 
-			HiddenMarkovModel(breadth, depth, T, e, ue)
+			HiddenMarkovModel(breadth, depth, T, e, UEPShared(ue))
 		}
 	}
 

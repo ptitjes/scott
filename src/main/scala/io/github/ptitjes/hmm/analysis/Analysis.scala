@@ -12,7 +12,8 @@ import scala.collection._
 
 class AnalysisRunner(cacheFilename: String,
                      trainCorpus: Corpus[Sequence with Annotation],
-                     testCorpus: Corpus[Sequence with Annotation]) {
+                     testCorpus: Corpus[Sequence with Annotation],
+                     force: Boolean = false) {
 
 	private val cacheFile = new File(cacheFilename)
 
@@ -30,7 +31,7 @@ class AnalysisRunner(cacheFilename: String,
 			ta = c(TRAINER);
 			da = c(DECODER)
 		) {
-			if (!pool.results.contains(conf)) {
+			if (force || !pool.results.contains(conf)) {
 				val trainer = {
 					if (!trainerPool.contains(conf)) {
 						trainerPool(conf) = ta.instantiate(conf)

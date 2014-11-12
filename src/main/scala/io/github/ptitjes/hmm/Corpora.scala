@@ -2,7 +2,7 @@ package io.github.ptitjes.hmm
 
 import java.io.File
 
-import scala.collection.mutable.ArrayBuffer
+import scala.collection._
 import scala.io.Source
 
 object Corpora {
@@ -24,14 +24,14 @@ object Corpora {
 	}
 
 	trait Sequence {
-		def observables: Array[Int]
+		def observables: Seq[Int]
 	}
 
 	trait Annotation {
 		self: Sequence =>
-		def states: Array[Int]
+		def states: Seq[Int]
 
-		def observablesAndStates: Array[(Int, Int)] = observables.zip(states)
+		def observablesAndStates: Seq[(Int, Int)]
 	}
 
 	def stateCount(corpus: Corpus[Sequence with Annotation]): Int = {
@@ -45,27 +45,31 @@ object Corpora {
 		maxState + 1
 	}
 
-	case class AnnotatedSequence(observables: Array[Int], states: Array[Int])
-		extends Sequence with Annotation
+	case class AnnotatedSequence(elements: Seq[(Int, Int)])
+		extends Sequence with Annotation {
 
-	case class NonAnnotatedSequence(observables: Array[Int])
+		def observables: Seq[Int] = elements.map(_._1)
+
+		def states: Seq[Int] = elements.map(_._2)
+
+		def observablesAndStates: Seq[(Int, Int)] = elements
+	}
+
+	case class NonAnnotatedSequence(observables: Seq[Int])
 		extends Sequence
 
 	def annotatedFrom(source: Source): Corpus[Sequence with Annotation] = {
-		val sequences = scala.collection.mutable.ListBuffer[Sequence with Annotation]()
+		val sequences = mutable.ListBuffer[Sequence with Annotation]()
 
-		val observables: ArrayBuffer[Int] = ArrayBuffer()
-		val states: ArrayBuffer[Int] = ArrayBuffer()
+		val elements = mutable.ListBuffer[(Int, Int)]()
 		source.getLines().foreach { s =>
 			if (s.isEmpty) {
-				sequences += AnnotatedSequence(observables.toArray, states.toArray)
-				observables.clear()
-				states.clear()
+				sequences += AnnotatedSequence(elements.toSeq)
+				elements.clear()
 			}
 			else {
 				val split = s.split(' ')
-				observables += split(0).toInt
-				states += split(1).toInt
+				elements += ((split(0).toInt, split(1).toInt))
 			}
 		}
 
@@ -77,12 +81,12 @@ object Corpora {
 	def annotatedFrom(url: java.net.URL): Corpus[Sequence with Annotation] = annotatedFrom(Source.fromURL(url))
 
 	def nonAnnotatedfrom(source: Source): Corpus[Sequence] = {
-		val sequences = scala.collection.mutable.ListBuffer[Sequence]()
+		val sequences = mutable.ListBuffer[Sequence]()
 
-		val observables: ArrayBuffer[Int] = ArrayBuffer()
+		val observables = mutable.ListBuffer[Int]()
 		source.getLines().foreach { s =>
 			if (s.isEmpty) {
-				sequences += NonAnnotatedSequence(observables.toArray)
+				sequences += NonAnnotatedSequence(observables.toSeq)
 				observables.clear()
 			}
 			else {
