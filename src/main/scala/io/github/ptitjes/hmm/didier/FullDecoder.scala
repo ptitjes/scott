@@ -96,6 +96,7 @@ object FullDecoder extends Algorithm[Decoder] {
 									val sourceState = sourceTag * sourceTagsFanning + sharedTag
 									val h_1 = if (d == 0) -1 else sourceState % breadth
 									val h_2 = if (d <= 1) -1 else sourceState / breadth % breadth
+
 									features.foreach { case (f, weights) =>
 										if (f(h_2, h_1, word)) {
 											targetTags.foreach { targetTag =>

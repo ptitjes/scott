@@ -50,8 +50,8 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 					val features =
 						List[Feature](FH0(WPContains('-')), FH0(WPNumber())) ++
 							(for {
-							h_1 <- -1 until breadth
-							} yield FH1(WPCapitalized(), h_1)) ++/*
+								h_1 <- -1 until breadth
+							} yield FH1(WPCapitalized(), h_1)) ++ /*
 							(for {
 								s <- SUFFIXES
 								p = WordPredicate.makeSuffix(s)
@@ -121,6 +121,7 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 									val h_2_ref = if (d <= 1) -1 else previousRefState / breadth % breadth
 									val h_2_hyp = if (d <= 1) -1 else previousHypState / breadth % breadth
 									val word = WordComponents(Lexica.WORDS(oRef))
+
 									featuresWeight.foreach {
 										case (f, weights) =>
 											if (f(h_2_ref, h_1_ref, word)) {

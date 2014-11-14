@@ -29,7 +29,7 @@ case class Results(globalCounts: ErrorCount,
 				perCategoryCounts(i)
 			}; Of Total; ${
 				categoryErrorRatio(i) * 100
-			}%5.2f%%")
+			}%6.2f%%")
 		println()
 	}
 
@@ -68,11 +68,11 @@ class ErrorCount {
 			unknownTotal
 		}%5d Accuracy: ${
 			accuracy * 100
-		}%5.2f%%; UnknownAccuracy: ${
+		}%6.2f%%; UnknownAccuracy: ${
 			unknownAccuracy * 100
-		}%5.2f%%; UnknownErrorRatio: ${
+		}%6.2f%%; UnknownErrorRatio: ${
 			unknownErrorRatio * 100
-		}%5.2f%%"
+		}%6.2f%%"
 }
 
 object Results {
