@@ -2,6 +2,7 @@ package io.github.ptitjes.hmm
 
 import java.io.File
 
+import scala.collection.mutable
 import scala.collection.mutable.{ListBuffer, ArrayBuffer}
 import scala.io.Source
 
@@ -28,7 +29,7 @@ object Lexica {
 		val V = 14
 	}
 
-	case class Lexicon(elements: Seq[String], maxLength: Int) {
+	case class Lexicon(elements: IndexedSeq[String], maxLength: Int) {
 
 		def apply(i: Int) = elements(i)
 
@@ -40,7 +41,7 @@ object Lexica {
 
 	def from(source: Source): Lexicon = {
 		var maxLength = 0
-		val elements = ListBuffer[String]()
+		val elements = ArrayBuffer[String]()
 		source.getLines().foreach { s =>
 			if (s.length > maxLength) maxLength = s.length
 			elements += s

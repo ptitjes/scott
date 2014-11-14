@@ -9,186 +9,133 @@ import scala.collection.mutable
 
 object DiscriminantTrainer extends Algorithm[Trainer] {
 
-	def name: String = "Disc"
+  def name: String = "Disc"
 
-	override def parameters: Set[Parameter[_]] = Set(ORDER, ITERATION_COUNT, FEATURES, AVERAGING)
+  override def parameters: Set[Parameter[_]] = Set(ORDER, ITERATION_COUNT, AVERAGING)
 
-	object ITERATION_COUNT extends IntParameter("Iterations", 1)
+  object ITERATION_COUNT extends IntParameter("Iterations", 1)
 
-	object FEATURES extends BooleanParameter("Features", true)
+  object AVERAGING extends BooleanParameter("Averaging", true)
 
-	object AVERAGING extends BooleanParameter("Averaging", true)
+  def instantiate(configuration: Configuration): Trainer = new Instance(configuration)
 
-	def instantiate(configuration: Configuration): Trainer = new Instance(configuration)
+  class Instance(configuration: Configuration) extends Trainer {
 
-	class Instance(configuration: Configuration) extends Trainer {
+    import io.github.ptitjes.hmm.Corpora._
 
-		import io.github.ptitjes.hmm.Corpora._
+    def train(corpus: Corpus[Sequence with Annotation]): HiddenMarkovModel = {
+      val breadth = stateCount(corpus)
+      val depth = configuration(ORDER)
+      val useAveraging = configuration(AVERAGING)
 
-		def train(corpus: Corpus[Sequence with Annotation]): HiddenMarkovModel = {
-			val breadth = stateCount(corpus)
-			val depth = configuration(ORDER)
-			val useFeatures = configuration(FEATURES)
-			val useAveraging = configuration(AVERAGING)
+      val size = pow(breadth, depth)
 
-			val size = pow(breadth, depth)
+      val dictionary: mutable.Map[Int, Int] = mutable.Map()
 
-			val T = MatrixTree[Double](breadth, depth)
-			var E: mutable.Map[Int, Array[Double]] = mutable.Map()
+      val sequences = corpus.sequences
 
-			corpus.sequences.foreach { s: Sequence with Annotation =>
-				s.observablesAndStates.foreach { case (word, cat) =>
-					if (!E.contains(word)) {
-						E += word -> Array.ofDim(breadth)
-					}
-				}
-			}
+      sequences.foreach { s: Sequence with Annotation =>
+        s.observablesAndStates.foreach { case (word, cat) =>
+          if (!dictionary.contains(word))
+            dictionary(word) = 1
+          else
+            dictionary(word) += 1
+        }
+      }
 
-			val featuresWeight =
-				if (!useFeatures) null
-				else {
-					val features =
-						List[Feature](FH0(WPContains('-')), FH0(WPNumber())) ++
-							(for {
-								h_1 <- -1 until breadth
-							} yield FH1(WPCapitalized(), h_1)) ++ /*
-							(for {
-								s <- SUFFIXES
-								p = WordPredicate.makeSuffix(s)
-							} yield FH0(p)) ++
-							(for {
-								h_1 <- -1 until breadth
-								s <- SUFFIXES
-								p = WordPredicate.makeSuffix(s)
-							} yield FH1(p, h_1)) ++*/
-							(for {
-								h_1 <- -1 until breadth
-								h_2 <- -1 until breadth
-								s <- SUFFIXES
-								p = WordPredicate.makeSuffix(s)
-							} yield FH2(p, h_1, h_2))
+      val allTags = -1 until breadth
 
-					features.map(f => (f, Array.ofDim[Double](breadth)))
-				}
+      val commonWords = (dictionary.view filter (_._2 > 5) map { case (o, _) => Lexica.WORDS(o)}).toSet
+      val rareWords = (dictionary.view filter (_._2 <= 5) map { case (o, _) => Lexica.WORDS(o)}).toSet
 
-			val featureCount = if (!useFeatures) -1 else featuresWeight.size
-			val featureInc = 1.0 / featureCount
-			val emittingInc = 2.5
+      val suffixes = (rareWords flatMap {
+        w => for (s <- 1 to 4 if w.length >= s) yield w.substring(w.length - s)
+      }).toSet
+      val prefixes = (rareWords flatMap {
+        w => for (s <- 1 to 4 if w.length >= s) yield w.substring(0, s)
+      }).toSet
 
-			val hmm =
-				if (!useFeatures)
-					HiddenMarkovModel(breadth, depth, T, E, UEPShared(Array.fill(breadth)(avoidInfinity(-log(breadth)))))
-				else
-					HiddenMarkovModel(breadth, depth, T, E, UEPFeatureBased(featuresWeight))
+      val weightFactory: () => Array[Double] = () => Array.ofDim[Double](breadth)
+      val features =
+        FTConjunction(
+          makeBigramTree(breadth, weightFactory) ::
+            makeTrigramTree(breadth, weightFactory) ::
+            makePrefixTree(prefixes, weightFactory) ::
+            makeSuffixTree(suffixes, weightFactory) ::
+            makeWordTree(commonWords, weightFactory) ::
+            Nil
+        )
+      //        List(FWord(WPNumber()), FWord(WPCapitalized()), FWord(WPContains('-'))) ++
+      //          (for (h_1 <- allTags) yield FTag1(h_1)) ++
+      //          //(for (h_1 <- allTags; h_2 <- allTags) yield FTag2(h_1, h_2)) ++
+      //          (for (w <- commonWords) yield FWord(WordPredicate.makeWord(w))) ++
+      //          (for (s <- suffixes) yield FWord(WordPredicate.makeSuffix(s))) ++
+      //          (for (p <- prefixes) yield FWord(WordPredicate.makePrefix(p)))
 
-			val decoder = FullDecoder.instantiate(configuration)
-			decoder.setHmm(hmm)
+      val featureInc = 1.0 // / featureCount
 
-			val iterationCount = configuration(ITERATION_COUNT)
-			for (i <- 1 to iterationCount) {
-				corpus.sequences.foreach { refSeq: Sequence with Annotation =>
+      val hmm = HMMDiscriminant(breadth, depth, features, dictionary)
 
-					val hypSeq = decoder.decode(refSeq)
+      val decoder = FullDecoder.instantiate(configuration)
+      decoder.setHmm(hmm)
 
-					if (refSeq.observables.length != hypSeq.observables.length || refSeq.states.length != hypSeq.states.length) {
-						throw new IllegalStateException("Observable length mismatch!")
-					}
+      val iterationCount = configuration(ITERATION_COUNT)
+      for (i <- 1 to iterationCount) {
 
-					var d = 0
-					var Td = T(d)
-					var previousHypState = 0
-					var previousRefState = 0
+        val count = sequences.length
+        var done = 0
+        sequences.foreach { refSeq: Sequence with Annotation =>
 
-					refSeq.observablesAndStates.zip(hypSeq.observablesAndStates).foreach {
-						case ((oRef, sRef), (oHyp, sHyp)) =>
-							if (oRef != oHyp) {
-								throw new IllegalStateException("Observable mismatch!")
-							}
+          printProgress(done, count)
 
-							if (sRef != sHyp) {
-								val Eo = E(oRef)
-								Eo(sRef) += emittingInc
-								Eo(sHyp) -= emittingInc
-							}
+          val hypSeq = decoder.decode(refSeq)
 
-							if (sRef != sHyp || previousRefState != previousHypState) {
-								Td(sRef)(previousRefState) += 1
-								Td(sHyp)(previousHypState) -= 1
+          if (refSeq.observables.length != hypSeq.observables.length || refSeq.states.length != hypSeq.states.length) {
+            throw new IllegalStateException("Observable length mismatch!")
+          }
 
-								if (useFeatures) {
-									val h_1_ref = if (d == 0) -1 else previousRefState % breadth
-									val h_1_hyp = if (d == 0) -1 else previousHypState % breadth
-									val h_2_ref = if (d <= 1) -1 else previousRefState / breadth % breadth
-									val h_2_hyp = if (d <= 1) -1 else previousHypState / breadth % breadth
-									val word = WordComponents(Lexica.WORDS(oRef))
+          var d = 0
+          var previousHypState = 0
+          var previousRefState = 0
 
-									featuresWeight.foreach {
-										case (f, weights) =>
-											if (f(h_2_ref, h_1_ref, word)) {
-												weights(sRef) += featureInc
-											}
-											if (f(h_2_hyp, h_1_hyp, word)) {
-												weights(sHyp) -= featureInc
-											}
-									}
-								}
-							}
+          refSeq.observablesAndStates.zip(hypSeq.observablesAndStates).foreach {
+            case ((oRef, sRef), (oHyp, sHyp)) =>
+              if (oRef != oHyp) {
+                throw new IllegalStateException("Observable mismatch!")
+              }
 
-							if (d < depth) {
-								d += 1
-								Td = T(d)
-							}
-							previousRefState = (previousRefState * breadth + sRef) % size
-							previousHypState = (previousHypState * breadth + sHyp) % size
-					}
-				}
-			}
+              if (sRef != sHyp || previousRefState != previousHypState) {
+                val h_1_ref = if (d == 0) -1 else previousRefState % breadth
+                val h_1_hyp = if (d == 0) -1 else previousHypState % breadth
+                val h_2_ref = if (d <= 1) -1 else previousRefState / breadth % breadth
+                val h_2_hyp = if (d <= 1) -1 else previousHypState / breadth % breadth
+                val word = WordComponents(Lexica.WORDS(oRef))
 
-			hmm
-		}
-	}
+                features.foreach(h_2_ref, h_1_ref, word)(weights => weights(sRef) += featureInc)
+                features.foreach(h_2_hyp, h_1_hyp, word)(weights => weights(sHyp) -= featureInc)
+              }
 
-	val SUFFIXES = List("'",
-		"er",
-		"ir",
-		"re",
-		"ie",
-		"is",
-		"es",
-		"aux",
-		"ion",
-		"ions",
-		"eur",
-		"eurs",
-		"euse",
-		"euses",
-		"se",
-		"ses",
-		"aire",
-		"aires",
-		"té",
-		"é",
-		"és",
-		"ée",
-		"ées",
-		"iste",
-		"istes",
-		"isme",
-		"ue",
-		"ant",
-		"ants",
-		"ent",
-		"ents",
-		"a",
-		"ez",
-		"ai",
-		"ais",
-		"ait",
-		"aient",
-		"ois",
-		"oit",
-		"oient",
-		"ent",
-		"èrent"
-	)
+              if (d < depth) {
+                d += 1
+              }
+              previousRefState = (previousRefState * breadth + sRef) % size
+              previousHypState = (previousHypState * breadth + sHyp) % size
+          }
+
+          done += 1
+        }
+
+        printProgress(done, count)
+      }
+
+      hmm
+    }
+  }
+
+  def printProgress(done: Int, count: Int): Unit = {
+    if (done < count) {
+      val doneSize = done * 100 / count
+      print(f"$done%5d/$count |" + "*" * doneSize + " " * (100 - doneSize) + "|\r")
+    } else print(f"$done%5d/$count |" + "*" * 100 + "|\n")
+  }
 }

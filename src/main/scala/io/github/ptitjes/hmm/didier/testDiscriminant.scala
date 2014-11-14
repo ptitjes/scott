@@ -1,7 +1,5 @@
 package io.github.ptitjes.hmm.didier
 
-import java.io.File
-
 import io.github.ptitjes.hmm._
 import io.github.ptitjes.hmm.analysis.Results._
 import io.github.ptitjes.hmm.analysis._
@@ -14,8 +12,7 @@ object testDiscriminant extends App {
 
 	val conf = Configuration()
 		.set(Trainer.ORDER, 2)
-		.set(DiscriminantTrainer.ITERATION_COUNT, 20)
-		.set(DiscriminantTrainer.FEATURES, true)
+		.set(DiscriminantTrainer.ITERATION_COUNT, 1)
 
 	val trainer = DiscriminantTrainer.instantiate(conf)
 	val decoder = FullDecoder.instantiate(conf)

@@ -2,6 +2,7 @@ package io.github.ptitjes.hmm.didier
 
 import java.io._
 
+import io.github.ptitjes.hmm.HiddenMarkovModel._
 import io.github.ptitjes.hmm._
 import io.github.ptitjes.hmm.Trainer._
 import io.github.ptitjes.hmm.didier.EmittingTraining.UNKNOWN_THRESHOLD
@@ -67,7 +68,7 @@ object RelFreqDiscountingTrainer extends Algorithm[Trainer] {
 				seq.reverse.toList
 			}
 
-			val T = MatrixTree[Double](breadth, depth)
+			val T = initializeMatrixTree[Double](breadth, depth)
 
 			for (d <- 0 to depth) {
 				for (i <- 0 until pow(breadth, d)) {
@@ -81,7 +82,7 @@ object RelFreqDiscountingTrainer extends Algorithm[Trainer] {
 
 			val (e, ue) = EmittingTraining.train(breadth, corpus, configuration(EmittingTraining.UNKNOWN_THRESHOLD))
 
-			HiddenMarkovModel(breadth, depth, T, e, UEPShared(ue))
+      HMMGenerative(breadth, depth, T, e, ue)
 		}
 
 		def runNgramCount(order: Int, corpus: Corpus[Sequence with Annotation]): mutable.Map[Seq[Int], NGramData] = {
