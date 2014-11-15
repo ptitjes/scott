@@ -31,6 +31,9 @@ object FullDecoder extends Algorithm[Decoder] {
 		var deltas: SwappableArray[Double] = null
 		var psis: PsiArray = null
 
+		var scores: Array[Array[Double]] = null
+		var wordOnlyScores: Array[Double] = null
+
 		def setHmm(hmm: HiddenMarkovModel): Unit = {
 			this.hmm = hmm
 			this.breadth = hmm.breadth
@@ -39,6 +42,9 @@ object FullDecoder extends Algorithm[Decoder] {
 			val maxStateCount = pow(breadth, depth)
 			deltas = new SwappableArray[Double](maxStateCount)
 			psis = new PsiArray(maxStateCount, 300)
+
+			scores = Array.ofDim[Double](breadth, pow(breadth, depth))
+			wordOnlyScores = Array.ofDim[Double](breadth)
 		}
 
 		def decode(sequence: Sequence): Sequence with Annotation = {
@@ -62,8 +68,6 @@ object FullDecoder extends Algorithm[Decoder] {
 			val targetTagsCount = breadth
 			val targetTags = makeRange(targetTagsCount)
 
-			val scores = Array.ofDim[Double](breadth, pow(breadth, depth))
-
 			sequence.observables.foreach { o =>
 				hmm match {
 					case HMMGenerative(_, _, t, e, ue) =>
@@ -80,14 +84,23 @@ object FullDecoder extends Algorithm[Decoder] {
 							}
 						}
 
-					case HMMDiscriminant(_, _, features, dictionary) =>
-						allSourceStates.foreach { sourceState =>
-							targetTags.foreach { targetTag =>
-								scores(targetTag)(sourceState) = 0
-							}
+					case HMMDiscriminant(_, _, wordOnlyFeatures, otherFeatures, dictionary) =>
+						targetTags.foreach { targetTag =>
+							wordOnlyScores(targetTag) = 0
 						}
 
 						val word = Word(o, Lexica.WORDS(o))
+
+						val h_wordOnly = History(word, null, null, null)
+						wordOnlyFeatures.foreach(h_wordOnly)(weights =>
+							targetTags.foreach { targetTag =>
+								wordOnlyScores(targetTag) += weights(targetTag)
+							})
+						allSourceStates.foreach { sourceState =>
+							targetTags.foreach { targetTag =>
+								scores(targetTag)(sourceState) = wordOnlyScores(targetTag)
+							}
+						}
 
 						allSourceStates.foreach { sourceState =>
 							val h = History(word, null, null,
@@ -96,8 +109,7 @@ object FullDecoder extends Algorithm[Decoder] {
 									if (d <= 1) -1 else sourceState / breadth % breadth
 								)
 							)
-
-							features.foreach(h)(weights =>
+							otherFeatures.foreach(h)(weights =>
 								targetTags.foreach { targetTag =>
 									scores(targetTag)(sourceState) += weights(targetTag)
 								})

@@ -29,7 +29,8 @@ case class HMMGenerative(breadth: Int, depth: Int,
 }
 
 case class HMMDiscriminant(breadth: Int, depth: Int,
-                           features: FeatureTree,
+                           wordOnlyFeatures: FeatureTree,
+                           otherFeatures: FeatureTree,
                            dictionary: Map[Int, Int]) extends HiddenMarkovModel {
 
 	def isUnknown(o: Int): Boolean = !dictionary.contains(o)

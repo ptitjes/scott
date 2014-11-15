@@ -54,11 +54,10 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 			}).toSet
 
 			val weightFactory: () => Array[Double] = () => Array.ofDim[Double](breadth)
-			val features =
+
+			val wordOnlyFeatures =
 				FTConjunction(
-					makeBigramTree(breadth, weightFactory) ::
-						makeTrigramTree(breadth, weightFactory) ::
-						makePrefixTree(prefixes, weightFactory) ::
+					makePrefixTree(prefixes, weightFactory) ::
 						makeSuffixTree(suffixes, weightFactory) ::
 						makeWordTree(commonWords, weightFactory) ::
 						FTGuard(PNumber(), FTLeaf(weightFactory())) ::
@@ -66,16 +65,17 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 						FTGuard(PContains('-'), FTLeaf(weightFactory())) ::
 						Nil
 				)
-			//        List(FWord(WPNumber()), FWord(WPCapitalized()), FWord(WPContains('-'))) ++
-			//          (for (h_1 <- allTags) yield FTag1(h_1)) ++
-			//          //(for (h_1 <- allTags; h_2 <- allTags) yield FTag2(h_1, h_2)) ++
-			//          (for (w <- commonWords) yield FWord(WordPredicate.makeWord(w))) ++
-			//          (for (s <- suffixes) yield FWord(WordPredicate.makeSuffix(s))) ++
-			//          (for (p <- prefixes) yield FWord(WordPredicate.makePrefix(p)))
+
+			val otherFeatures =
+				FTConjunction(
+					makeBigramTree(breadth, weightFactory) ::
+						makeTrigramTree(breadth, weightFactory) ::
+						Nil
+				)
 
 			val featureInc = 1.0 // / featureCount
 
-			val hmm = HMMDiscriminant(breadth, depth, features, dictionary)
+			val hmm = HMMDiscriminant(breadth, depth, wordOnlyFeatures, otherFeatures, dictionary)
 
 			val decoder = FullDecoder.instantiate(configuration)
 			decoder.setHmm(hmm)
@@ -120,8 +120,11 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 									)
 								)
 
-								features.foreach(h_ref)(weights => weights(sRef) += featureInc)
-								features.foreach(h_hyp)(weights => weights(sHyp) -= featureInc)
+								wordOnlyFeatures.foreach(h_ref)(weights => weights(sRef) += featureInc)
+								wordOnlyFeatures.foreach(h_hyp)(weights => weights(sHyp) -= featureInc)
+
+								otherFeatures.foreach(h_ref)(weights => weights(sRef) += featureInc)
+								otherFeatures.foreach(h_hyp)(weights => weights(sHyp) -= featureInc)
 							}
 
 							if (d < depth) {

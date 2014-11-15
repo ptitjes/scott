@@ -9,7 +9,7 @@ object testDiscriminant extends App {
 	val devCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"))
 
 	val conf = Configuration()
-		.set(Trainer.ORDER, 1)
+		.set(Trainer.ORDER, 2)
 		.set(DiscriminantTrainer.ITERATION_COUNT, 1)
 
 	val trainer = DiscriminantTrainer.instantiate(conf)
