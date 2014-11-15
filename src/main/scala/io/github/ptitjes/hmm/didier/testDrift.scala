@@ -52,5 +52,5 @@ object testDrift extends App {
 	val trainer = RelFreqTrainer.instantiate(conf)
 	val decoder = FullDecoder.instantiate(conf)
 
-	println(trainDecodeAndCheck(trainer, decoder, trainCorpus, test , true))
+	println(trainDecodeAndCheck(trainer, decoder, trainCorpus, test, true))
 }

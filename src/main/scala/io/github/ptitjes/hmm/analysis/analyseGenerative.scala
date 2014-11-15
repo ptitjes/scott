@@ -5,13 +5,13 @@ import io.github.ptitjes.hmm.analysis.ConfigurationSet._
 import io.github.ptitjes.hmm.analysis.LaTexReport._
 import io.github.ptitjes.hmm.didier.DiscriminantTrainer
 
-object test extends App {
+object analyseGenerative extends App {
 
-	implicit val runner: AnalysisRunner = new AnalysisRunner("report/results.json",
+	implicit val runner: AnalysisRunner = new AnalysisRunner("report/results-generative.json",
 		Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode")),
 		Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode")))
 
-	val report: LaTexReport = new LaTexReport("report/report.tex")
+	val report: LaTexReport = new LaTexReport("report/report-generative.tex")
 
 	val accuracy = YAxis("Accuracy", "\\%", _.accuracy * 100)
 	val unknownAccuracy = YAxis("Unknown Word Accuracy", "\\%", _.unknownAccuracy * 100)
@@ -73,13 +73,6 @@ object test extends App {
 	report << Graph("unknownUnknownAccuracy", "Impact du seuil de mot inconnu",
 		unknownThresholdAnalysis,
 		XAxis(didier.EmittingTraining.UNKNOWN_THRESHOLD), unknownAccuracy)
-
-	report << Graph("discriminant", "Impact du nombre d'itérations sur la méthode discriminant",
-		(Analysis.TRAINER as didier.DiscriminantTrainer) *
-			(Analysis.DECODER as didier.FullDecoder) *
-			(Trainer.ORDER as 1) *
-			(DiscriminantTrainer.ITERATION_COUNT from (1 to 40)),
-		XAxis(didier.DiscriminantTrainer.ITERATION_COUNT), accuracy)
 
 	report.generate
 }

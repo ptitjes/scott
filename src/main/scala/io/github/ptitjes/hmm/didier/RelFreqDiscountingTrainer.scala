@@ -82,7 +82,7 @@ object RelFreqDiscountingTrainer extends Algorithm[Trainer] {
 
 			val (e, ue) = EmittingTraining.train(breadth, corpus, configuration(EmittingTraining.UNKNOWN_THRESHOLD))
 
-      HMMGenerative(breadth, depth, T, e, ue)
+			HMMGenerative(breadth, depth, T, e, ue)
 		}
 
 		def runNgramCount(order: Int, corpus: Corpus[Sequence with Annotation]): mutable.Map[Seq[Int], NGramData] = {

@@ -96,6 +96,21 @@ object Results {
 			trainingElapsedTime, decodingElapsedTime, debug)
 	}
 
+	def decodeAndCheck(hmm: HiddenMarkovModel,
+	                   decoder: Decoder,
+	                   trainCorpus: Corpus[Sequence with Annotation],
+	                   testCorpus: Corpus[Sequence with Annotation],
+	                   debug: Boolean = false): Results = {
+
+		val (hypCorpus, decodingElapsedTime) = timed {
+			decoder.setHmm(hmm)
+			decoder.decode(testCorpus)
+		}
+
+		check(trainCorpus, testCorpus, hmm, hypCorpus,
+			0, decodingElapsedTime, debug)
+	}
+
 	def check(trainCorpus: Corpus[Sequence with Annotation],
 	          testCorpus: Corpus[Sequence with Annotation],
 	          hmm: HiddenMarkovModel,
