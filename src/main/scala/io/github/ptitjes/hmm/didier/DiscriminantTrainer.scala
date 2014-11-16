@@ -85,53 +85,37 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 
 				val count = sequences.length
 				var done = 0
+
 				sequences.foreach { refSeq: Sequence with Annotation =>
 
 					printProgress(done, count)
 
 					val hypSeq = decoder.decode(refSeq)
 
-					if (refSeq.observables.length != hypSeq.observables.length || refSeq.states.length != hypSeq.states.length) {
+					if (refSeq.observablesAndStates.length != hypSeq.observablesAndStates.length) {
 						throw new IllegalStateException("Observable length mismatch!")
 					}
 
-					var d = 0
-					var previousHypState = 0
-					var previousRefState = 0
+					val refIterator = refSeq.annotatedIterator(breadth, depth)
+					val hypIterator = hypSeq.annotatedIterator(breadth, depth)
+					while (refIterator.hasNext) {
+						val (oRef, sRef) = refIterator.next()
+						val (oHyp, sHyp) = hypIterator.next()
 
-					refSeq.observablesAndStates.zip(hypSeq.observablesAndStates).foreach {
-						case ((oRef, sRef), (oHyp, sHyp)) =>
-							if (oRef != oHyp) {
-								throw new IllegalStateException("Observable mismatch!")
-							}
+						if (oRef != oHyp) {
+							throw new IllegalStateException("Observable mismatch!")
+						}
 
-							if (sRef != sHyp || previousRefState != previousHypState) {
-								val word = Word(oRef, Lexica.WORDS(oRef))
-								val h_ref = History(word, null, null,
-									Array(
-										if (d == 0) -1 else previousRefState % breadth,
-										if (d <= 1) -1 else previousRefState / breadth % breadth
-									)
-								)
-								val h_hyp = History(word, null, null,
-									Array(
-										if (d == 0) -1 else previousHypState % breadth,
-										if (d <= 1) -1 else previousHypState / breadth % breadth
-									)
-								)
+						if (sRef != sHyp || refIterator.sourceState != hypIterator.sourceState) {
+							val h_ref = refIterator.history
+							val h_hyp = hypIterator.history
 
-								wordOnlyFeatures.foreach(h_ref)(weights => weights(sRef) += featureInc)
-								wordOnlyFeatures.foreach(h_hyp)(weights => weights(sHyp) -= featureInc)
+							wordOnlyFeatures.foreach(h_ref)(weights => weights(sRef) += featureInc)
+							wordOnlyFeatures.foreach(h_hyp)(weights => weights(sHyp) -= featureInc)
 
-								otherFeatures.foreach(h_ref)(weights => weights(sRef) += featureInc)
-								otherFeatures.foreach(h_hyp)(weights => weights(sHyp) -= featureInc)
-							}
-
-							if (d < depth) {
-								d += 1
-							}
-							previousRefState = (previousRefState * breadth + sRef) % size
-							previousHypState = (previousHypState * breadth + sHyp) % size
+							otherFeatures.foreach(h_ref)(weights => weights(sRef) += featureInc)
+							otherFeatures.foreach(h_hyp)(weights => weights(sHyp) -= featureInc)
+						}
 					}
 
 					done += 1

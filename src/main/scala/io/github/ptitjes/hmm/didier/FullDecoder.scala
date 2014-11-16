@@ -53,8 +53,6 @@ object FullDecoder extends Algorithm[Decoder] {
 			deltas.swap()
 			psis.forward()
 
-			var d = 0
-
 			var sourceTagsCount = 1
 			var sourceTagsFanning = 0
 
@@ -68,7 +66,11 @@ object FullDecoder extends Algorithm[Decoder] {
 			val targetTagsCount = breadth
 			val targetTags = makeRange(targetTagsCount)
 
-			sequence.observables.foreach { o =>
+			val iterator = sequence.iterator(breadth, depth)
+			while (iterator.hasNext) {
+				val o = iterator.next()
+				val d = iterator.currentDepth
+
 				hmm match {
 					case HMMGenerative(_, _, t, e, ue) =>
 						val Td = t(d)
@@ -103,12 +105,7 @@ object FullDecoder extends Algorithm[Decoder] {
 						}
 
 						allSourceStates.foreach { sourceState =>
-							val h = History(word, null, null,
-								Array(
-									if (d == 0) -1 else sourceState % breadth,
-									if (d <= 1) -1 else sourceState / breadth % breadth
-								)
-							)
+							val h = iterator.history(sourceState)
 							otherFeatures.foreach(h)(weights =>
 								targetTags.foreach { targetTag =>
 									scores(targetTag)(sourceState) += weights(targetTag)
@@ -132,15 +129,13 @@ object FullDecoder extends Algorithm[Decoder] {
 				}
 
 				if (d < depth) {
-					d += 1
-
-					if (d < depth) {
-						sharedTagsCount = pow(breadth, d)
+					if (d + 1 < depth) {
+						sharedTagsCount = pow(breadth, d + 1)
 					} else {
 						sourceTagsCount = breadth
-						sourceTagsFanning = pow(breadth, d - 1)
+						sourceTagsFanning = pow(breadth, d)
 
-						sharedTagsCount = pow(breadth, d - 1)
+						sharedTagsCount = pow(breadth, d)
 					}
 					sharedTags = makeRange(sharedTagsCount)
 

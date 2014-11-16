@@ -15,6 +15,6 @@ object testDiscriminant extends App {
 	val trainer = DiscriminantTrainer.instantiate(conf)
 	val decoder = FullDecoder.instantiate(conf)
 
-	trainDecodeAndCheck(trainer, decoder, trainCorpus, devCorpus, debug = true).display()
+	trainDecodeAndCheck(trainer, decoder, trainCorpus, devCorpus, debug = false).display()
 	println(conf)
 }

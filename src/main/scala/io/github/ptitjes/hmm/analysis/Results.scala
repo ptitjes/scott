@@ -124,7 +124,7 @@ object Results {
 		testCorpus.sequences.zip(hypCorpus.sequences).foreach {
 			case (refSeq, hypSeq) =>
 
-				if (refSeq.observables.length != hypSeq.observables.length || refSeq.states.length != hypSeq.states.length) {
+				if (refSeq.observablesAndStates.length != hypSeq.observablesAndStates.length) {
 					throw new IllegalStateException("Observable length mismatch!")
 				}
 

@@ -3,9 +3,9 @@ package io.github.ptitjes.hmm
 object Features {
 
 	case class History(word: Word,
-	                   previousWords: Array[Word],
-	                   nextWords: Array[Word],
-	                   previousTags: Array[Int]) {
+	                   previousWords: IndexedSeq[Word],
+	                   nextWords: IndexedSeq[Word],
+	                   previousTags: IndexedSeq[Int]) {
 
 		def wordAt(index: Int): Word =
 			if (index == 0) word
