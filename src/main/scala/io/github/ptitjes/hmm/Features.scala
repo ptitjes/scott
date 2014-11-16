@@ -32,7 +32,10 @@ object Features {
 
 	case class EWordCode(index: Int) extends Extractor[Int] {
 
-		def apply(h: History): Int = h.wordAt(index).code
+		def apply(h: History): Int = {
+			val word = h.wordAt(index)
+			if (word == null) -1 else word.code
+		}
 	}
 
 	case class EPreviousTag(index: Int) extends Extractor[Int] {
@@ -84,8 +87,8 @@ object Features {
 	//		makeCharTree(words, 0, s => (s.charAt(0), s.substring(1)),
 	//			i => FTGuard(PLength(0, i), FTLeaf(f())))
 
-	def makeWordTree(words: Set[Int], f: () => Array[Double]): FeatureTree =
-		FTDispatch(EWordCode(0), words.foldLeft(Map[Int, FeatureTree]())((m, w) => m + (w -> FTLeaf(f()))))
+	def makeWordTree(index: Int, words: Set[Int], f: () => Array[Double]): FeatureTree =
+		FTDispatch(EWordCode(index), words.foldLeft(Map[Int, FeatureTree]())((m, w) => m + (w -> FTLeaf(f()))))
 
 	def makeCharTree(suffixes: Set[String],
 	                 index: Int, ht: (String) => (Char, String),

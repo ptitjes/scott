@@ -4,6 +4,7 @@ import io.github.ptitjes.hmm.Features._
 import io.github.ptitjes.hmm.Trainer._
 import io.github.ptitjes.hmm.Utils._
 import io.github.ptitjes.hmm._
+import io.github.ptitjes.hmm.analysis.Analysis
 
 import scala.collection.mutable
 
@@ -41,6 +42,7 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 				}
 			}
 
+			val allWords = (dictionary.view map { case (w, _) => w.code}).toSet
 			val commonWords = (dictionary.view filter (_._2 > 5) map { case (w, _) => w.code}).toSet
 			val rareWords = (dictionary.view filter (_._2 <= 5) map { case (w, _) => w.string}).toSet
 
@@ -57,10 +59,14 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 				FTConjunction(
 					makePrefixTree(prefixes, weightFactory) ::
 						makeSuffixTree(suffixes, weightFactory) ::
-						makeWordTree(commonWords, weightFactory) ::
-						FTGuard(PNumber(), FTLeaf(weightFactory())) ::
-						FTGuard(PCapitalized(), FTLeaf(weightFactory())) ::
-						FTGuard(PContains('-'), FTLeaf(weightFactory())) ::
+						makeWordTree(0, commonWords, weightFactory) ::
+						makeWordTree(-1, allWords, weightFactory) ::
+						makeWordTree(-2, allWords, weightFactory) ::
+						makeWordTree(1, allWords, weightFactory) ::
+						makeWordTree(2, allWords, weightFactory) ::
+						//						FTGuard(PNumber(), FTLeaf(weightFactory())) ::
+						//						FTGuard(PCapitalized(), FTLeaf(weightFactory())) ::
+						//						FTGuard(PContains('-'), FTLeaf(weightFactory())) ::
 						Nil
 				)
 
@@ -75,7 +81,7 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 
 			val hmm = HMMDiscriminant(breadth, depth, wordOnlyFeatures, otherFeatures, dictionary)
 
-			val decoder = FullDecoder.instantiate(configuration)
+			val decoder = configuration(Analysis.DECODER).instantiate(configuration)
 			decoder.setHmm(hmm)
 
 			val iterationCount = configuration(ITERATION_COUNT)

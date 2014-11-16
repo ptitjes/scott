@@ -6,13 +6,15 @@ import scala.annotation.tailrec
 import scala.collection.GenSeq
 import scala.reflect.ClassTag
 
-object FullDecoder extends Algorithm[Decoder] {
+object BeamDecoder extends Algorithm[Decoder] {
 
 	def name: String = "Full"
 
-	override def parameters: Set[Parameter[_]] = Set(MULTI_THREADED)
+	override def parameters: Set[Parameter[_]] = Set(BEAM, MULTI_THREADED)
 
 	object MULTI_THREADED extends BooleanParameter("MultiThreaded", c => c(Trainer.ORDER) >= 3)
+
+	object BEAM extends IntParameter("Beam", 3)
 
 	def instantiate(configuration: Configuration): Decoder = new Instance(configuration)
 
@@ -30,6 +32,9 @@ object FullDecoder extends Algorithm[Decoder] {
 		var deltas: SwappableArray[Double] = null
 		var psis: PsiArray = null
 
+		var beamSize: Double = 1
+		var beam: Array[Boolean] = null
+
 		var scores: Array[Array[Double]] = null
 		var wordOnlyScores: Array[Double] = null
 
@@ -42,11 +47,17 @@ object FullDecoder extends Algorithm[Decoder] {
 			deltas = new SwappableArray[Double](maxStateCount)
 			psis = new PsiArray(maxStateCount, 300)
 
-			scores = Array.ofDim[Double](breadth, pow(breadth, depth))
+			beam = Array.ofDim(maxStateCount)
+			beamSize = 1.0 / (1 + configuration(BEAM))
+
+			scores = Array.ofDim[Double](breadth, maxStateCount)
 			wordOnlyScores = Array.ofDim[Double](breadth)
 		}
 
 		def decode(sequence: Sequence): Sequence with Annotation = {
+			for (i <- 0 until pow(breadth, depth))
+				beam(i) = true
+
 			deltas(0) = 0
 			psis(0) = -1
 			deltas.swap()
@@ -59,8 +70,8 @@ object FullDecoder extends Algorithm[Decoder] {
 			val sharedTagsFanning = breadth
 			var sharedTags = makeRange(sharedTagsCount)
 
-			var allSourceStatesCount = sourceTagsCount * sharedTagsCount
-			var allSourceStates = makeRange(allSourceStatesCount)
+			var allStatesCount = sourceTagsCount * sharedTagsCount
+			var allStates = makeRange(allStatesCount)
 
 			val targetTagsCount = breadth
 			val targetTags = makeRange(targetTagsCount)
@@ -80,8 +91,10 @@ object FullDecoder extends Algorithm[Decoder] {
 							val Tj = Td(targetTag)
 							val Ej = E(targetTag)
 
-							allSourceStates.foreach { sourceState =>
-								targetScores(sourceState) = Tj(sourceState) + Ej
+							allStates.foreach { sourceState =>
+								if (beam(sourceState)) {
+									targetScores(sourceState) = Tj(sourceState) + Ej
+								}
 							}
 						}
 
@@ -95,26 +108,32 @@ object FullDecoder extends Algorithm[Decoder] {
 							targetTags.foreach { targetTag =>
 								wordOnlyScores(targetTag) += weights(targetTag)
 							})
-						allSourceStates.foreach { sourceState =>
-							targetTags.foreach { targetTag =>
-								scores(targetTag)(sourceState) = wordOnlyScores(targetTag)
+						allStates.foreach { sourceState =>
+							if (beam(sourceState)) {
+								targetTags.foreach { targetTag =>
+									scores(targetTag)(sourceState) = wordOnlyScores(targetTag)
+								}
 							}
 						}
 
-						allSourceStates.foreach { sourceState =>
-							val h = iterator.history(sourceState)
-							otherFeatures.foreach(h)(weights =>
-								targetTags.foreach { targetTag =>
-									scores(targetTag)(sourceState) += weights(targetTag)
-								})
+						allStates.foreach { sourceState =>
+							if (beam(sourceState)) {
+								val h = iterator.history(sourceState)
+								otherFeatures.foreach(h)(weights =>
+									targetTags.foreach { targetTag =>
+										scores(targetTag)(sourceState) += weights(targetTag)
+									})
+							}
 						}
 				}
 
+				var beamMax = -1.0e307
+				var beamMin = 1.0e307
 				sharedTags.foreach { sharedTag =>
 					targetTags.foreach { targetTag =>
 						val targetScores = scores(targetTag)
 
-						val (max, argMax) = maxArgMax(sourceTagsCount,
+						val (max, argMax) = maxArgMax(sourceTagsCount, beam,
 							sourceTag => sourceTag * sourceTagsFanning + sharedTag,
 							sourceState => deltas(sourceState) + targetScores(sourceState)
 						)
@@ -122,6 +141,9 @@ object FullDecoder extends Algorithm[Decoder] {
 						val targetState = sharedTag * sharedTagsFanning + targetTag
 						deltas(targetState) = max
 						psis(targetState) = argMax
+
+						if (max > beamMax) beamMax = max
+						if (max < beamMin) beamMin = max
 					}
 				}
 
@@ -136,12 +158,18 @@ object FullDecoder extends Algorithm[Decoder] {
 					}
 					sharedTags = makeRange(sharedTagsCount)
 
-					allSourceStatesCount = sourceTagsCount * sharedTagsCount
-					allSourceStates = makeRange(allSourceStatesCount)
+					allStatesCount = sourceTagsCount * sharedTagsCount
+					allStates = makeRange(allStatesCount)
 				}
 
 				deltas.swap()
 				psis.forward()
+
+				beamMin = if (beamMin.isNegInfinity) -1.0e307 else beamMin
+				beamMin = beamMax - math.pow(math.abs(beamMax - beamMin), beamSize)
+				allStates.foreach { sourceState =>
+					beam(sourceState) = deltas(sourceState) >= beamMin
+				}
 			}
 
 			@tailrec def reachBack(state: Int, tail: List[Int]): List[Int] = {
@@ -152,7 +180,7 @@ object FullDecoder extends Algorithm[Decoder] {
 				else reachBack(previous, (state % breadth) :: tail)
 			}
 
-			val (_, argMax) = maxArgMax(sharedTagsCount * targetTagsCount, t => t, state => deltas(state))
+			val (_, argMax) = maxArgMax(sharedTagsCount * targetTagsCount, beam, t => t, state => deltas(state))
 			val states = reachBack(argMax, Nil)
 
 			psis.rewind()
@@ -164,18 +192,21 @@ object FullDecoder extends Algorithm[Decoder] {
 			if (multiThreaded) (0 until count).par else 0 until count
 		}
 
-		@inline def maxArgMax(count: Int, arg: Int => Int, f: Int => Double): (Double, Int) = {
+		@inline def maxArgMax(count: Int, beam: Array[Boolean],
+		                      arg: Int => Int, f: Int => Double): (Double, Int) = {
 			var max = Double.NegativeInfinity
 			var argMax: Int = -1
 
 			var i = 0
 			while (i < count) {
 				val a = arg(i)
-				val delta = f(a)
+				if (beam(a)) {
+					val delta = f(a)
 
-				if (delta > max) {
-					max = delta
-					argMax = a
+					if (delta > max) {
+						max = delta
+						argMax = a
+					}
 				}
 				i += 1
 			}

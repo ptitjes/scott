@@ -2,7 +2,8 @@ package io.github.ptitjes.hmm.analysis
 
 import io.github.ptitjes.hmm.Corpora._
 import io.github.ptitjes.hmm.Utils._
-import io.github.ptitjes.hmm.{HiddenMarkovModel, Lexica, Trainer, Decoder}
+import io.github.ptitjes.hmm._
+import io.github.ptitjes.hmm.didier.{BeamDecoder, RelFreqTrainer}
 
 case class Results(globalCounts: ErrorCount,
                    perCategoryCounts: Array[ErrorCount],
@@ -76,6 +77,16 @@ class ErrorCount {
 }
 
 object Results {
+
+	def trainDecodeAndCheck(conf: Configuration,
+	                        trainCorpus: Corpus[Sequence with Annotation],
+	                        testCorpus: Corpus[Sequence with Annotation],
+	                        debug: Boolean): Results = {
+
+		val trainer = conf(Analysis.TRAINER).instantiate(conf)
+		val decoder = conf(Analysis.DECODER).instantiate(conf)
+		trainDecodeAndCheck(trainer, decoder, trainCorpus, testCorpus, debug)
+	}
 
 	def trainDecodeAndCheck(trainer: Trainer,
 	                        decoder: Decoder,

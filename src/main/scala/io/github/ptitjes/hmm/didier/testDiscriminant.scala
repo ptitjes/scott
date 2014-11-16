@@ -1,6 +1,7 @@
 package io.github.ptitjes.hmm.didier
 
 import io.github.ptitjes.hmm._
+import io.github.ptitjes.hmm.analysis.Analysis
 import io.github.ptitjes.hmm.analysis.Results._
 
 object testDiscriminant extends App {
@@ -9,12 +10,12 @@ object testDiscriminant extends App {
 	val devCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"), Lexica.WORDS)
 
 	val conf = Configuration()
+		.set(Analysis.TRAINER, DiscriminantTrainer)
 		.set(Trainer.ORDER, 2)
-		.set(DiscriminantTrainer.ITERATION_COUNT, 1)
+		.set(DiscriminantTrainer.ITERATION_COUNT, 15)
+		.set(Analysis.DECODER, BeamDecoder)
+		.set(BeamDecoder.BEAM, 5)
 
-	val trainer = DiscriminantTrainer.instantiate(conf)
-	val decoder = FullDecoder.instantiate(conf)
-
-	trainDecodeAndCheck(trainer, decoder, trainCorpus, devCorpus, debug = false).display()
+	trainDecodeAndCheck(conf, trainCorpus, devCorpus, debug = false).display()
 	println(conf)
 }

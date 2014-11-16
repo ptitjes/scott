@@ -15,9 +15,10 @@ object testRelFreq extends App {
 	val conf = Configuration()
 		.set(Trainer.ORDER, 2)
 		.set(EmittingTraining.UNKNOWN_THRESHOLD, 18)
+		.set(BeamDecoder.BEAM, 200)
 
 	val trainer = RelFreqTrainer.instantiate(conf)
-	val decoder = FullDecoder.instantiate(conf)
+	val decoder = BeamDecoder.instantiate(conf)
 
 	//trainDecodeAndCheck(trainer, decoder, trainCorpus, trainCorpus).display()
 	trainDecodeAndCheck(trainer, decoder, trainCorpus, devCorpus, debug = false).display()

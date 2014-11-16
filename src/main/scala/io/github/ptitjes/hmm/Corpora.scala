@@ -147,6 +147,7 @@ object Corpora {
 
 			def makeHistoryTag(i: Int) =
 				if (_currentDepth < i) -1
+				else if (sourceState == -1) -1
 				else {
 					var t = sourceState
 					for (j <- 1 until i) t /= breadth
