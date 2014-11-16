@@ -14,8 +14,8 @@ object testRelFreq extends App {
 	val testCorpus = Corpora.annotatedFrom(new File(PATH_TO_TEST), Lexica.WORDS)
 
 	val conf = Configuration()
-		.set(Analysis.TRAINER, RelFreqDiscountingTrainer)
-		.set(Trainer.ORDER, 4)
+		.set(Analysis.TRAINER, RelFreqTrainer)
+		.set(Trainer.ORDER, 2)
 		.set(EmittingTraining.UNKNOWN_THRESHOLD, 18)
 		.set(Analysis.DECODER, BeamDecoder)
 		.set(BeamDecoder.BEAM, 300)
