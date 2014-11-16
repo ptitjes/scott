@@ -62,27 +62,23 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 				FTConjunction(
 					makePrefixTree(prefixes, weightFactory) ::
 						makeSuffixTree(suffixes, weightFactory) ::
-						makeWordTree(0, commonWords, weightFactory) ::
-						makeWordTree(-1, allWords, weightFactory) ::
-						makeWordTree(-2, allWords, weightFactory) ::
-						makeWordTree(1, allWords, weightFactory) ::
-						makeWordTree(2, allWords, weightFactory) ::
 						//						FTGuard(PNumber(), FTLeaf(weightFactory())) ::
 						//						FTGuard(PCapitalized(), FTLeaf(weightFactory())) ::
 						//						FTGuard(PContains('-'), FTLeaf(weightFactory())) ::
-						Nil
+						makeWordTree(0, commonWords, weightFactory) :: Nil ++
+						(1 to depth).map(d => makeWordTree(-d, allWords, weightFactory)) ++
+						(1 to depth).map(d => makeWordTree(d, allWords, weightFactory))
 				)
 
 			val otherFeatures =
 				FTConjunction(
-					makeBigramTree(breadth, weightFactory) ::
-						makeTrigramTree(breadth, weightFactory) ::
-						Nil
+					(1 to depth).map(d => makeNgramTree(d, breadth, weightFactory))
 				)
 
 			val featureInc = 1.0 // / featureCount
 
-			val hmm = HMMDiscriminant(breadth, depth, wordOnlyFeatures, otherFeatures, dictionary)
+			val hmm = HMMDiscriminant(breadth, depth,
+				wordOnlyFeatures, otherFeatures, dictionary.map { case (w, c) => (w.code, c)})
 
 			val decoder = configuration(DECODER).instantiate(configuration)
 			decoder.setHmm(hmm)

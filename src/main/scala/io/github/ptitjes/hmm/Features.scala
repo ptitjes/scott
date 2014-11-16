@@ -46,7 +46,10 @@ object Features {
 	sealed trait FeatureTree {
 		def foreach(h: History)(f: Array[Double] => Unit): Unit = this match {
 			case FTConjunction(children) => children.foreach(c => c.foreach(h)(f))
-			case FTDispatch(extract, children) =>
+			case FTDispatchChar(extract, children) =>
+				val key = extract(h)
+				if (children.contains(key)) children(key).foreach(h)(f)
+			case FTDispatchInt(extract, children) =>
 				val key = extract(h)
 				if (children.contains(key)) children(key).foreach(h)(f)
 			case FTGuard(pred, child) => if (pred(h)) child.foreach(h)(f)
@@ -57,25 +60,25 @@ object Features {
 
 	case object FTNull extends FeatureTree
 
-	case class FTConjunction(children: List[FeatureTree]) extends FeatureTree
+	case class FTConjunction(children: Seq[FeatureTree]) extends FeatureTree
 
-	case class FTDispatch[T](extract: Extractor[T], children: Map[T, FeatureTree]) extends FeatureTree
+	case class FTDispatchChar(extract: Extractor[Char], children: Map[Char, FeatureTree]) extends FeatureTree
+
+	case class FTDispatchInt(extract: Extractor[Int], children: Map[Int, FeatureTree]) extends FeatureTree
 
 	case class FTGuard(pred: Predicate, child: FeatureTree) extends FeatureTree
 
 	case class FTLeaf(weights: Array[Double]) extends FeatureTree
 
-	def makeBigramTree(breadth: Int, f: () => Array[Double]): FeatureTree =
-		FTDispatch(
-			EPreviousTag(1),
-			(-1 until breadth).foldLeft(Map[Int, FeatureTree]())((m, i) => m + (i -> FTLeaf(f())))
-		)
-
-	def makeTrigramTree(breadth: Int, f: () => Array[Double]): FeatureTree =
-		FTDispatch(
-			EPreviousTag(2),
-			(-1 until breadth).foldLeft(Map[Int, FeatureTree]())((m, i) => m + (i -> makeBigramTree(breadth, f)))
-		)
+	def makeNgramTree(depth: Int, breadth: Int, f: () => Array[Double]): FeatureTree =
+		if (depth == 0) FTLeaf(f())
+		else
+			FTDispatchInt(
+				EPreviousTag(1),
+				(-1 until breadth).foldLeft(Map[Int, FeatureTree]()) {
+					(m, i) => m + (i -> makeNgramTree(depth - 1, breadth, f))
+				}
+			)
 
 	def makePrefixTree(prefixes: Set[String], f: () => Array[Double]): FeatureTree =
 		makeCharTree(prefixes, 0, s => (s.charAt(0), s.substring(1)), i => FTLeaf(f()))
@@ -88,7 +91,7 @@ object Features {
 	//			i => FTGuard(PLength(0, i), FTLeaf(f())))
 
 	def makeWordTree(index: Int, words: Set[Int], f: () => Array[Double]): FeatureTree =
-		FTDispatch(EWordCode(index), words.foldLeft(Map[Int, FeatureTree]())((m, w) => m + (w -> FTLeaf(f()))))
+		FTDispatchInt(EWordCode(index), words.foldLeft(Map[Int, FeatureTree]())((m, w) => m + (w -> FTLeaf(f()))))
 
 	def makeCharTree(suffixes: Set[String],
 	                 index: Int, ht: (String) => (Char, String),
@@ -99,7 +102,7 @@ object Features {
 			} else {
 				FTConjunction(
 					leaf(index) ::
-						FTDispatch(
+						FTDispatchChar(
 							ECharAt(index),
 							crunchChars(suffixes - "", ht).map {
 								case (char, strings) => (char, makeCharTree(strings, index + 1, ht, leaf))
@@ -108,7 +111,7 @@ object Features {
 				)
 			}
 		} else {
-			FTDispatch(
+			FTDispatchChar(
 				ECharAt(index),
 				crunchChars(suffixes, ht).map {
 					case (char, strings) => (char, makeCharTree(strings, index + 1, ht, leaf))

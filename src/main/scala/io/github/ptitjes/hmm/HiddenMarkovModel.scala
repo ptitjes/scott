@@ -5,6 +5,8 @@ import java.io._
 import io.github.ptitjes.hmm.Utils._
 import io.github.ptitjes.hmm.Corpora._
 import io.github.ptitjes.hmm.Features._
+import io.github.ptitjes.hmm.analysis.{Results, ResultPool}
+import org.json4s.JsonAST.{JField, JArray}
 import org.json4s._
 import org.json4s.native.Serialization
 import org.json4s.native.Serialization._
@@ -32,9 +34,9 @@ case class HMMGenerative(breadth: Int, depth: Int,
 case class HMMDiscriminant(breadth: Int, depth: Int,
                            wordOnlyFeatures: FeatureTree,
                            otherFeatures: FeatureTree,
-                           dictionary: Map[Word, Int]) extends HiddenMarkovModel {
+                           dictionary: Map[Int, Int]) extends HiddenMarkovModel {
 
-	def isUnknown(o: Word): Boolean = !dictionary.contains(o)
+	def isUnknown(o: Word): Boolean = !dictionary.contains(o.code)
 }
 
 object HiddenMarkovModel {
@@ -49,7 +51,13 @@ object HiddenMarkovModel {
 	}
 
 	implicit val formats = Serialization.formats(
-		ShortTypeHints(List(classOf[HMMGenerative], classOf[HMMDiscriminant])))
+		ShortTypeHints(List(
+			classOf[HMMGenerative], classOf[HMMDiscriminant],
+			classOf[PCapitalized], classOf[PNumber], classOf[PContains], classOf[PLength],
+			classOf[ECharAt], classOf[EWordCode], classOf[EPreviousTag],
+			classOf[FTConjunction], classOf[FTDispatchInt], classOf[FTDispatchChar], classOf[FTGuard], classOf[FTLeaf]
+		))) +
+		new CharKeySerializer + new CharacterKeySerializer
 
 	def fromFile(file: File): HiddenMarkovModel = {
 		using(new FileReader(file)) {
@@ -68,5 +76,19 @@ object HiddenMarkovModel {
 			}
 		}
 	}
+
+	class CharKeySerializer extends CustomKeySerializer[Char](format => ( {
+		case key => key.charAt(0)
+	}, {
+		case key: Char => key.toString
+	}
+		))
+
+	class CharacterKeySerializer extends CustomKeySerializer[Object](format => ( {
+		case key => new Character(key.charAt(0))
+	}, {
+		case key: Character => key.toString
+	}
+		))
 
 }
