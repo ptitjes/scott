@@ -68,11 +68,22 @@ object Analysis {
 
 	object CORPUS_RATIO extends IntParameter("Corpus Ratio", 100)
 
-	object TRAINER extends Parameter[Algorithm[Trainer]]() {
+	object TRAINER extends TrainerParameter("", c => didier.RelFreqTrainer)
 
-		def name = ""
+	object DECODER extends DecoderParameter("", c => didier.FullDecoder)
 
-		def default = c => didier.RelFreqTrainer
+	def completeConfiguration(configuration: Configuration): Configuration = {
+
+		val ta = configuration(TRAINER)
+		val da = configuration(DECODER)
+
+		(List(CORPUS_RATIO) ++ ta.parameters ++ da.parameters).foldLeft(configuration) {
+			case (c, param) => if (c.parameters.contains(param)) c else c.set(param, param.default(c))
+		}
+	}
+
+	case class TrainerParameter(name: String, default: Configuration => Algorithm[Trainer])
+		extends Parameter[Algorithm[Trainer]]() {
 
 		def formatValue(value: Algorithm[Trainer]): String = value.name
 
@@ -84,11 +95,8 @@ object Analysis {
 		def toJson(value: Algorithm[Trainer]): JValue = JString(objectToName(value))
 	}
 
-	object DECODER extends Parameter[Algorithm[Decoder]]() {
-
-		def name = ""
-
-		def default = c => didier.FullDecoder
+	case class DecoderParameter(name: String, default: Configuration => Algorithm[Decoder])
+		extends Parameter[Algorithm[Decoder]]() {
 
 		def formatValue(value: Algorithm[Decoder]): String = value.name
 
@@ -100,13 +108,4 @@ object Analysis {
 		def toJson(value: Algorithm[Decoder]): JValue = JString(objectToName(value))
 	}
 
-	def completeConfiguration(configuration: Configuration): Configuration = {
-
-		val ta = configuration(TRAINER)
-		val da = configuration(DECODER)
-
-		(List(CORPUS_RATIO) ++ ta.parameters ++ da.parameters).foldLeft(configuration) {
-			case (c, param) => if (c.parameters.contains(param)) c else c.set(param, param.default(c))
-		}
-	}
 }

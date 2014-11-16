@@ -12,6 +12,7 @@ object testDiscriminant extends App {
 	val conf = Configuration()
 		.set(Analysis.TRAINER, DiscriminantTrainer)
 		.set(Trainer.ORDER, 2)
+		//		.set(DiscriminantTrainer.DECODER, FullDecoder)
 		.set(DiscriminantTrainer.ITERATION_COUNT, 15)
 		.set(Analysis.DECODER, BeamDecoder)
 		.set(BeamDecoder.BEAM, 5)
