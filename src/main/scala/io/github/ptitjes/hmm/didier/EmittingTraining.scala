@@ -20,12 +20,12 @@ object EmittingTraining {
 			s.observablesAndStates.foreach { case (word, cat) =>
 
 				// Emission counts
-				if (!perWordCategoryCounts.contains(word)) {
-					perWordCounts += word -> 0
-					perWordCategoryCounts += word -> Array.ofDim(breadth)
+				if (!perWordCategoryCounts.contains(word.code)) {
+					perWordCounts += word.code -> 0
+					perWordCategoryCounts += word.code -> Array.ofDim(breadth)
 				}
-				perWordCounts(word) += 1
-				perWordCategoryCounts(word)(cat) += 1
+				perWordCounts(word.code) += 1
+				perWordCategoryCounts(word.code)(cat) += 1
 				allWordCategoryCounts(cat) += 1
 			}
 		}

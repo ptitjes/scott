@@ -5,8 +5,8 @@ import io.github.ptitjes.hmm.analysis.Results._
 
 object testDiscriminant extends App {
 
-	val trainCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"))
-	val devCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"))
+	val trainCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"), Lexica.WORDS)
+	val devCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"), Lexica.WORDS)
 
 	val conf = Configuration()
 		.set(Trainer.ORDER, 2)

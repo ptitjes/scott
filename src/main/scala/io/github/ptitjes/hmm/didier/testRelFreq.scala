@@ -7,9 +7,10 @@ import io.github.ptitjes.hmm.analysis.Results._
 
 object testRelFreq extends App {
 
-	val trainCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"))
-	val devCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"))
-	val testCorpus = Corpora.annotatedFrom(new File("/home/didier/Documents/Work/Master/Docs/Inférence Statistique/Alexis Nasr/Code HMM/ftb.test.encode"))
+	val trainCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"), Lexica.WORDS)
+	val devCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"), Lexica.WORDS)
+	private val PATH_TO_TEST = "/home/didier/Documents/Work/Master/Docs/Inférence Statistique/Alexis Nasr/Code HMM/ftb.test.encode"
+	val testCorpus = Corpora.annotatedFrom(new File(PATH_TO_TEST), Lexica.WORDS)
 
 	val conf = Configuration()
 		.set(Trainer.ORDER, 2)

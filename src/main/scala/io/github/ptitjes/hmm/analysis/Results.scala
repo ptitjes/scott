@@ -153,11 +153,11 @@ object Results {
 
 						if (debug) {
 							print(if (error) ">" else " ")
-							print(f"$oRef%6d")
+							print(f"${oRef.code}%6d")
 							print(if (hmm.isUnknown(oRef)) " U" else "  ")
 							print(f"\t$sRef%2d ${Lexica.CATEGORIES(sRef)}%-5s")
 							print(f"\t$sHyp%2d ${Lexica.CATEGORIES(sHyp)}%-5s\t")
-							println(Lexica.WORDS(oRef))
+							println(oRef.string)
 						}
 				}
 				if (debug) println()

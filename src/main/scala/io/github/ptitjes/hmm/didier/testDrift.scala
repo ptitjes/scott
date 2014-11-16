@@ -32,16 +32,16 @@ object testDrift extends App {
 				(13499, 0),
 				(10163, 7),
 				(8, 10)
-			)
+			).map { case (c, t) => (Word(c, Lexica.WORDS(c)), t)}
 		)
 	))
 
 	val trainCorpus = timed("Open train corpus") {
-		Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"))
+		Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"), Lexica.WORDS)
 	}
 
 	val devCorpus = timed("Open dev corpus") {
-		Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"))
+		Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"), Lexica.WORDS)
 	}
 
 	//val test = devCorpus

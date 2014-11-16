@@ -28,9 +28,7 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 			val depth = configuration(ORDER)
 			val useAveraging = configuration(AVERAGING)
 
-			val size = pow(breadth, depth)
-
-			val dictionary: mutable.Map[Int, Int] = mutable.Map()
+			val dictionary: mutable.Map[Word, Int] = mutable.Map()
 
 			val sequences = corpus.sequences
 
@@ -43,8 +41,8 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 				}
 			}
 
-			val commonWords = (dictionary.view filter (_._2 > 5) map { case (o, _) => o}).toSet
-			val rareWords = (dictionary.view filter (_._2 <= 5) map { case (o, _) => Lexica.WORDS(o)}).toSet
+			val commonWords = (dictionary.view filter (_._2 > 5) map { case (w, _) => w.code}).toSet
+			val rareWords = (dictionary.view filter (_._2 <= 5) map { case (w, _) => w.string}).toSet
 
 			val suffixes = (rareWords flatMap {
 				w => for (s <- 1 to 4 if w.length >= s) yield w.substring(w.length - s)

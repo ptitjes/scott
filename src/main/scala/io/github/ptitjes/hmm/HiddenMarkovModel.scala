@@ -3,6 +3,7 @@ package io.github.ptitjes.hmm
 import java.io._
 
 import io.github.ptitjes.hmm.Utils._
+import io.github.ptitjes.hmm.Corpora._
 import io.github.ptitjes.hmm.Features._
 import org.json4s._
 import org.json4s.native.Serialization
@@ -17,7 +18,7 @@ sealed trait HiddenMarkovModel {
 
 	def depth: Int
 
-	def isUnknown(o: Int): Boolean
+	def isUnknown(o: Word): Boolean
 }
 
 case class HMMGenerative(breadth: Int, depth: Int,
@@ -25,15 +26,15 @@ case class HMMGenerative(breadth: Int, depth: Int,
                          E: Map[Int, Array[Double]],
                          UE: Array[Double]) extends HiddenMarkovModel {
 
-	def isUnknown(o: Int): Boolean = !E.contains(o)
+	def isUnknown(o: Word): Boolean = !E.contains(o.code)
 }
 
 case class HMMDiscriminant(breadth: Int, depth: Int,
                            wordOnlyFeatures: FeatureTree,
                            otherFeatures: FeatureTree,
-                           dictionary: Map[Int, Int]) extends HiddenMarkovModel {
+                           dictionary: Map[Word, Int]) extends HiddenMarkovModel {
 
-	def isUnknown(o: Int): Boolean = !dictionary.contains(o)
+	def isUnknown(o: Word): Boolean = !dictionary.contains(o)
 }
 
 object HiddenMarkovModel {

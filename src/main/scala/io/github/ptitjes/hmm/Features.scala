@@ -2,18 +2,7 @@ package io.github.ptitjes.hmm
 
 object Features {
 
-	case class History(word: Word,
-	                   previousWords: IndexedSeq[Word],
-	                   nextWords: IndexedSeq[Word],
-	                   previousTags: IndexedSeq[Int]) {
-
-		def wordAt(index: Int): Word =
-			if (index == 0) word
-			else if (index > 0) nextWords(index - 1)
-			else previousWords(-index - 1)
-	}
-
-	case class Word(code: Int, string: String)
+	import Corpora._
 
 	sealed trait Predicate extends (History => Boolean) {
 

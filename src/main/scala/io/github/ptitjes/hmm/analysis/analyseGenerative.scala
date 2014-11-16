@@ -8,8 +8,8 @@ import io.github.ptitjes.hmm.didier.DiscriminantTrainer
 object analyseGenerative extends App {
 
 	implicit val runner: AnalysisRunner = new AnalysisRunner("report/results-generative.json",
-		Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode")),
-		Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode")))
+		Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"), Lexica.WORDS),
+		Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"), Lexica.WORDS))
 
 	val report: LaTexReport = new LaTexReport("report/report-generative.tex")
 
