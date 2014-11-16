@@ -86,12 +86,12 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 			val iterationCount = configuration(ITERATION_COUNT)
 			for (i <- 1 to iterationCount) {
 
-				val count = sequences.length
+				val progress = new ProgressBar(f"Iteration $i%2d/$iterationCount%2d", sequences.length)
 				var done = 0
 
 				sequences.foreach { refSeq: Sequence with Annotation =>
 
-					printProgress(done, count)
+					progress.update(done)
 
 					val hypSeq = decoder.decode(refSeq)
 
@@ -124,7 +124,7 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 					done += 1
 				}
 
-				printProgress(done, count)
+				progress.update(done)
 			}
 
 			hmm

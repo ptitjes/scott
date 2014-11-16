@@ -3,6 +3,7 @@ package io.github.ptitjes.hmm.didier
 import java.io.File
 
 import io.github.ptitjes.hmm._
+import io.github.ptitjes.hmm.analysis.Analysis
 import io.github.ptitjes.hmm.analysis.Results._
 
 object testRelFreq extends App {
@@ -13,15 +14,13 @@ object testRelFreq extends App {
 	val testCorpus = Corpora.annotatedFrom(new File(PATH_TO_TEST), Lexica.WORDS)
 
 	val conf = Configuration()
-		.set(Trainer.ORDER, 2)
+		.set(Analysis.TRAINER, RelFreqDiscountingTrainer)
+		.set(Trainer.ORDER, 4)
 		.set(EmittingTraining.UNKNOWN_THRESHOLD, 18)
-		.set(BeamDecoder.BEAM, 200)
+		.set(Analysis.DECODER, BeamDecoder)
+		.set(BeamDecoder.BEAM, 300)
 
-	val trainer = RelFreqTrainer.instantiate(conf)
-	val decoder = BeamDecoder.instantiate(conf)
-
-	//trainDecodeAndCheck(trainer, decoder, trainCorpus, trainCorpus).display()
-	trainDecodeAndCheck(trainer, decoder, trainCorpus, devCorpus, debug = false).display()
-	trainDecodeAndCheck(trainer, decoder, trainCorpus, testCorpus, debug = false).display()
-	trainDecodeAndCheck(trainer, decoder, Corpora.merge(trainCorpus, devCorpus), testCorpus, debug = false).display()
+	trainDecodeAndCheck(conf, trainCorpus, devCorpus, debug = false).display()
+	trainDecodeAndCheck(conf, trainCorpus, testCorpus, debug = false).display()
+	trainDecodeAndCheck(conf, Corpora.merge(trainCorpus, devCorpus), testCorpus, debug = false).display()
 }

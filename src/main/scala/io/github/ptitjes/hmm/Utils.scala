@@ -48,4 +48,34 @@ object Utils {
 		} finally {
 			param.close()
 		}
+
+	def prettyTime(time: Long): String = {
+		val inSeconds = time / 1000
+		val s = inSeconds % 60
+		val m = inSeconds / 60 % 60
+		val h = inSeconds / 3600
+
+		f"$h%02d:$m%02d:$s%02d"
+	}
+
+	class ProgressBar(name: String, count: Int) {
+
+		val start = System.currentTimeMillis()
+
+		def update(done: Int): Unit = {
+			if (done < count) {
+				val time = System.currentTimeMillis() - start
+
+				val remainingTime =
+					if (done < count / 10) "??"
+					else prettyTime(time * count / done - time + 1000)
+
+				val doneSize = done * 100 / count
+				print(f"$name: $done%5d/$count |" + "=" * doneSize + " " * (100 - doneSize) +
+					"| Remaining: " + remainingTime + "\r")
+			} else
+				print(f"$name: $done%5d/$count |" + "=" * 100 + "|                    \n")
+		}
+	}
+
 }
