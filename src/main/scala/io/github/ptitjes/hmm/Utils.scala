@@ -58,6 +58,16 @@ object Utils {
 		f"$h%02d:$m%02d:$s%02d"
 	}
 
+	def prettyTimeMs(time: Long): String = {
+		val inSeconds = time / 1000
+		val ms = time % 1000
+		val s = inSeconds % 60
+		val m = inSeconds / 60 % 60
+		val h = inSeconds / 3600
+
+		f"$h%02d:$m%02d:$s%02d.$ms%03d"
+	}
+
 	class ProgressBar(name: String, count: Int) {
 		var done = 0
 

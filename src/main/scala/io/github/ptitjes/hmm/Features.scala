@@ -56,6 +56,23 @@ object Features {
 			case FTLeaf(weights) => f(weights)
 			case FTNull =>
 		}
+
+		def addAveraged(other: FeatureTree, divider: Int): Unit = {
+			def aux(d: FeatureTree, s: FeatureTree): Unit = (d, s) match {
+				case (FTConjunction(children1), FTConjunction(children2)) =>
+					children1.zip(children2).foreach { case (c1, c2) => aux(c1, c2)}
+				case (FTDispatchChar(_, children1), FTDispatchChar(_, children2)) =>
+					children1.zip(children2).foreach { case ((_, c1), (_, c2)) => aux(c1, c2)}
+				case (FTDispatchInt(_, children1), FTDispatchInt(_, children2)) =>
+					children1.zip(children2).foreach { case ((_, c1), (_, c2)) => aux(c1, c2)}
+				case (FTGuard(_, c1), FTGuard(_, c2)) => aux(c1, c2)
+				case (FTLeaf(w1), FTLeaf(w2)) =>
+					for (i <- 0 until w1.length) w1(i) += w2(i) / divider
+				case (FTNull, FTNull) =>
+				case _ => throw new IllegalArgumentException()
+			}
+			aux(this, other)
+		}
 	}
 
 	case object FTNull extends FeatureTree
@@ -85,10 +102,6 @@ object Features {
 
 	def makeSuffixTree(suffixes: Set[String], f: () => Array[Double]): FeatureTree =
 		makeCharTree(suffixes, 0, s => (s.last, s.substring(0, s.length - 1)), i => FTLeaf(f()))
-
-	//	def makeWordTree(words: Set[String], f: () => Array[Double]): FeatureTree =
-	//		makeCharTree(words, 0, s => (s.charAt(0), s.substring(1)),
-	//			i => FTGuard(PLength(0, i), FTLeaf(f())))
 
 	def makeWordTree(index: Int, words: Set[Int], f: () => Array[Double]): FeatureTree =
 		FTDispatchInt(EWordCode(index), words.foldLeft(Map[Int, FeatureTree]())((m, w) => m + (w -> FTLeaf(f()))))

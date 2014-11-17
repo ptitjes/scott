@@ -19,7 +19,7 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 
 	object ITERATION_COUNT extends IntParameter("Iterations", 1)
 
-	object AVERAGING extends BooleanParameter("Averaging", true)
+	object AVERAGING extends BooleanParameter("Averaging", false)
 
 	def instantiate(configuration: Configuration): Trainer = new Instance(configuration)
 
@@ -46,8 +46,8 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 			}
 
 			val allWords = (dictionary.view map { case (w, _) => w.code}).toSet
-			val commonWords = (dictionary.view filter (_._2 > 5) map { case (w, _) => w.code}).toSet
-			val rareWords = (dictionary.view filter (_._2 <= 5) map { case (w, _) => w.string}).toSet
+			val commonWords = (dictionary.view /*filter (_._2 > 5)*/ map { case (w, _) => w.code}).toSet
+			val rareWords = (dictionary.view /*filter (_._2 <= 5)*/ map { case (w, _) => w.string}).toSet
 
 			val suffixes = (rareWords flatMap {
 				w => for (s <- 1 to 4 if w.length >= s) yield w.substring(w.length - s)
@@ -62,7 +62,7 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 				FTConjunction(
 					makePrefixTree(prefixes, weightFactory) ::
 						makeSuffixTree(suffixes, weightFactory) ::
-						//						FTGuard(PNumber(), FTLeaf(weightFactory())) ::
+						FTGuard(PNumber(), FTLeaf(weightFactory())) ::
 						//						FTGuard(PCapitalized(), FTLeaf(weightFactory())) ::
 						//						FTGuard(PContains('-'), FTLeaf(weightFactory())) ::
 						makeWordTree(0, commonWords, weightFactory) :: Nil ++
@@ -75,7 +75,22 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 					(1 to depth).map(d => makeNgramTree(d, breadth, weightFactory))
 				)
 
-			val featureInc = 1.0 // / featureCount
+			val wordOnlyFeaturesAvg =
+				FTConjunction(
+					makePrefixTree(prefixes, weightFactory) ::
+						makeSuffixTree(suffixes, weightFactory) ::
+						FTGuard(PNumber(), FTLeaf(weightFactory())) ::
+						//						FTGuard(PCapitalized(), FTLeaf(weightFactory())) ::
+						//						FTGuard(PContains('-'), FTLeaf(weightFactory())) ::
+						makeWordTree(0, commonWords, weightFactory) :: Nil ++
+						(1 to depth).map(d => makeWordTree(-d, allWords, weightFactory)) ++
+						(1 to depth).map(d => makeWordTree(d, allWords, weightFactory))
+				)
+
+			val otherFeaturesAvg =
+				FTConjunction(
+					(1 to depth).map(d => makeNgramTree(d, breadth, weightFactory))
+				)
 
 			val hmm = HMMDiscriminant(breadth, depth,
 				wordOnlyFeatures, otherFeatures, dictionary.map { case (w, c) => (w.code, c)})
@@ -83,6 +98,7 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 			val decoder = configuration(DECODER).instantiate(configuration)
 			decoder.setHmm(hmm)
 
+			val sequencesCount = sequences.size
 			val iterationCount = configuration(ITERATION_COUNT)
 			for (i <- 1 to iterationCount) {
 
@@ -111,19 +127,26 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 							val h_ref = refIterator.history
 							val h_hyp = hypIterator.history
 
-							wordOnlyFeatures.foreach(h_ref)(weights => weights(sRef) += featureInc)
-							wordOnlyFeatures.foreach(h_hyp)(weights => weights(sHyp) -= featureInc)
+							wordOnlyFeatures.foreach(h_ref)(weights => weights(sRef) += 1.0)
+							wordOnlyFeatures.foreach(h_hyp)(weights => weights(sHyp) -= 1.0)
 
-							otherFeatures.foreach(h_ref)(weights => weights(sRef) += featureInc)
-							otherFeatures.foreach(h_hyp)(weights => weights(sHyp) -= featureInc)
+							otherFeatures.foreach(h_ref)(weights => weights(sRef) += 1.0)
+							otherFeatures.foreach(h_hyp)(weights => weights(sHyp) -= 1.0)
 						}
 					}
 
 					progress.increment()
 				}
+
+				if (useAveraging) {
+					wordOnlyFeaturesAvg.addAveraged(wordOnlyFeatures, iterationCount)
+					otherFeaturesAvg.addAveraged(otherFeatures, iterationCount)
+				}
 			}
 
-			hmm
+			if (!useAveraging) hmm
+			else HMMDiscriminant(breadth, depth,
+				wordOnlyFeaturesAvg, otherFeaturesAvg, dictionary.map { case (w, c) => (w.code, c)})
 		}
 	}
 

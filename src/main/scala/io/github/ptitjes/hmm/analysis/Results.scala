@@ -1,5 +1,7 @@
 package io.github.ptitjes.hmm.analysis
 
+import java.io.PrintWriter
+
 import io.github.ptitjes.hmm.Corpora._
 import io.github.ptitjes.hmm.Utils._
 import io.github.ptitjes.hmm._
@@ -34,11 +36,24 @@ case class Results(globalCounts: ErrorCount,
 		println()
 	}
 
+	def printTo(out: PrintWriter): Unit = {
+		out.println(this)
+		for (i <- 0 until perCategoryCounts.length)
+			out.println(f"\tCategory: ${
+				Lexica.CATEGORIES.padded(i)
+			} ${
+				perCategoryCounts(i)
+			}; Of Total; ${
+				categoryErrorRatio(i) * 100
+			}%6.2f%%")
+		out.println()
+	}
+
 	override def toString: String = globalCounts +
 		s"; TrainingTime: ${
-			trainingElapsedTime
+			prettyTimeMs(trainingElapsedTime)
 		} ms; DecodingTime: ${
-			decodingElapsedTime
+			prettyTimeMs(decodingElapsedTime)
 		} ms."
 }
 
@@ -103,13 +118,11 @@ object Results {
 			decoder.decode(testCorpus)
 		}
 
-		check(trainCorpus, testCorpus, hmm, hypCorpus,
-			trainingElapsedTime, decodingElapsedTime, debug)
+		check(hmm, testCorpus, hypCorpus, trainingElapsedTime, decodingElapsedTime, debug)
 	}
 
 	def decodeAndCheck(hmm: HiddenMarkovModel,
 	                   decoder: Decoder,
-	                   trainCorpus: Corpus[Sequence with Annotation],
 	                   testCorpus: Corpus[Sequence with Annotation],
 	                   debug: Boolean = false): Results = {
 
@@ -118,21 +131,29 @@ object Results {
 			decoder.decode(testCorpus)
 		}
 
-		check(trainCorpus, testCorpus, hmm, hypCorpus,
-			0, decodingElapsedTime, debug)
+		check(hmm, testCorpus, hypCorpus, 0, decodingElapsedTime, debug)
 	}
 
-	def check(trainCorpus: Corpus[Sequence with Annotation],
-	          testCorpus: Corpus[Sequence with Annotation],
-	          hmm: HiddenMarkovModel,
+	def check(hmm: HiddenMarkovModel,
+	          refCorpus: Corpus[Sequence with Annotation],
 	          hypCorpus: Corpus[Sequence with Annotation],
 	          trainingElapsedTime: Long, decodingElapsedTime: Long,
 	          debug: Boolean = false): Results = {
 
-		val globalCounts = new ErrorCount
-		val perCategoryCounts = Array.fill(stateCount(trainCorpus))(new ErrorCount)
+		check(hmm, refCorpus, hypCorpus,
+			trainingElapsedTime, decodingElapsedTime, debug, new PrintWriter(System.out))
+	}
 
-		testCorpus.sequences.zip(hypCorpus.sequences).foreach {
+	def check(hmm: HiddenMarkovModel,
+	          refCorpus: Corpus[Sequence with Annotation],
+	          hypCorpus: Corpus[Sequence with Annotation],
+	          trainingElapsedTime: Long, decodingElapsedTime: Long,
+	          debug: Boolean, out: PrintWriter): Results = {
+
+		val globalCounts = new ErrorCount
+		val perCategoryCounts = Array.fill(stateCount(refCorpus))(new ErrorCount)
+
+		refCorpus.sequences.zip(hypCorpus.sequences).foreach {
 			case (refSeq, hypSeq) =>
 
 				if (refSeq.observablesAndStates.length != hypSeq.observablesAndStates.length) {
@@ -163,17 +184,20 @@ object Results {
 						}
 
 						if (debug) {
-							print(if (error) ">" else " ")
-							print(f"${oRef.code}%6d")
-							print(if (hmm.isUnknown(oRef)) " U" else "  ")
-							print(f"\t$sRef%2d ${Lexica.CATEGORIES(sRef)}%-5s")
-							print(f"\t$sHyp%2d ${Lexica.CATEGORIES(sHyp)}%-5s\t")
-							println(oRef.string)
+							out.print(if (error) ">" else " ")
+							out.print(f"${oRef.code}%6d")
+							out.print(if (hmm.isUnknown(oRef)) " U" else "  ")
+							out.print(f"\t$sRef%2d ${Lexica.CATEGORIES(sRef)}%-5s")
+							out.print(f"\t$sHyp%2d ${Lexica.CATEGORIES(sHyp)}%-5s\t")
+							out.println(oRef.string)
 						}
 				}
-				if (debug) println()
+				if (debug) out.println()
 		}
 
-		Results(globalCounts, perCategoryCounts, trainingElapsedTime, decodingElapsedTime)
+		val results = Results(globalCounts, perCategoryCounts, trainingElapsedTime, decodingElapsedTime)
+		if (debug) results.printTo(out)
+
+		results
 	}
 }

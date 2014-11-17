@@ -74,4 +74,6 @@ case class Configuration(parameters: Map[Parameter[_], Any] = Map()) {
 		parameters.keys.toList.sortBy(_.name).map {
 			p => (if (p.name != "") p.name + " " else "") + p.formatValue(this)
 		}.mkString("; ")
+
+	def toFilename = toString.replace(";", "").replace(" ", "-")
 }
