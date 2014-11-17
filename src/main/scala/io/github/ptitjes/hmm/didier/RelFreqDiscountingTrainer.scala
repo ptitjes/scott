@@ -15,8 +15,9 @@ object RelFreqDiscountingTrainer extends Algorithm[Trainer] {
 	val PATH_TO_SRILM = "/home/didier/Documents/Work/Master/DM/InfStat/srilm/bin/i686-m64"
 
 	val WORK_DIRECTORY = "temp"
-	val SENTENCES_FILENAME = "srilm-sentences.txt"
-	val LM_FILENAME = "srilm-interpolated.lm"
+	val TEMP_FILENAME_PREFIX = "srilm-"
+	val SENTENCES_FILENAME_SUFFIX = "-sentences.txt"
+	val LM_FILENAME_SUFFIX = "-interpolated.lm"
 
 	def name: String = "Freq-WB"
 
@@ -90,10 +91,11 @@ object RelFreqDiscountingTrainer extends Algorithm[Trainer] {
 			val workDirectory = new File(WORK_DIRECTORY)
 			if (!workDirectory.exists()) workDirectory.mkdirs()
 
-			val sentencesFile = new File(workDirectory, SENTENCES_FILENAME)
-			val lmFile = new File(workDirectory, LM_FILENAME)
+			val sentencesFile = File.createTempFile(TEMP_FILENAME_PREFIX, SENTENCES_FILENAME_SUFFIX, workDirectory)
+			val lmFile = File.createTempFile(TEMP_FILENAME_PREFIX, LM_FILENAME_SUFFIX, workDirectory)
 
-			if (sentencesFile.exists()) sentencesFile.delete()
+			sentencesFile.deleteOnExit()
+			lmFile.deleteOnExit()
 
 			using(new FileWriter(sentencesFile)) {
 				fileWriter => using(new PrintWriter(fileWriter)) {
@@ -109,8 +111,8 @@ object RelFreqDiscountingTrainer extends Algorithm[Trainer] {
 			val builder = new ProcessBuilder(PATH_TO_SRILM + "/ngram-count",
 				"-order", order.toString,
 				"-interpolate", "-wbdiscount",
-				"-text", SENTENCES_FILENAME,
-				"-lm", LM_FILENAME
+				"-text", sentencesFile.getName,
+				"-lm", lmFile.getName
 			)
 			builder.directory(workDirectory)
 			builder.redirectOutput(ProcessBuilder.Redirect.INHERIT)
