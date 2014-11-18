@@ -1,9 +1,11 @@
-package io.github.ptitjes.hmm.analysis
+package io.github.ptitjes.hmm.scripts
 
 import io.github.ptitjes.hmm._
 import io.github.ptitjes.hmm.analysis.ConfigurationSet._
 import io.github.ptitjes.hmm.analysis.LaTexReport._
-import io.github.ptitjes.hmm.didier.DiscriminantTrainer
+import io.github.ptitjes.hmm.analysis.{Analysis, AnalysisRunner, LaTexReport}
+import io.github.ptitjes.hmm.decoders.FullDecoder
+import io.github.ptitjes.hmm.trainers.{EmittingTraining, RelFreqDiscountingTrainer, RelFreqTrainer}
 
 object analyseGenerative extends App {
 
@@ -17,12 +19,12 @@ object analyseGenerative extends App {
 	val unknownAccuracy = YAxis("Unknown Word Accuracy", "\\%", _.unknownAccuracy * 100)
 
 	val `all freq trainers + full decoder` =
-		(Analysis.TRAINER forAll didier.RelFreqTrainer and didier.RelFreqDiscountingTrainer) *
-			(Analysis.DECODER as didier.FullDecoder)
+		(Analysis.TRAINER forAll RelFreqTrainer and RelFreqDiscountingTrainer) *
+			(Analysis.DECODER as FullDecoder)
 
 	val `discounting freq trainer + full decoder` =
-		(Analysis.TRAINER as didier.RelFreqDiscountingTrainer) *
-			(Analysis.DECODER as didier.FullDecoder)
+		(Analysis.TRAINER as trainers.RelFreqDiscountingTrainer) *
+			(Analysis.DECODER as decoders.FullDecoder)
 
 	report << Graph("corpusRatioFull", "Impact de la quantité de corpus d'apprentissage",
 		`all freq trainers + full decoder` *
@@ -44,35 +46,35 @@ object analyseGenerative extends App {
 	report << Graph("interpolatedOrderAnalysis", "Impact de l'ordre (avec interpolation)",
 		`discounting freq trainer + full decoder` *
 			(Trainer.ORDER from (1 to 4)) *
-			(didier.RelFreqDiscountingTrainer.MULTIPLIER from (1 to 5)),
+			(trainers.RelFreqDiscountingTrainer.MULTIPLIER from (1 to 5)),
 		XAxis(Trainer.ORDER), accuracy)
 
 	report << Graph("interpolatedOrderAnalysisZoom", "Impact de l'ordre (avec interpolation)",
 		`discounting freq trainer + full decoder` *
 			(Trainer.ORDER from (2 to 4)) *
-			(didier.RelFreqDiscountingTrainer.MULTIPLIER from (2 to 10)),
+			(trainers.RelFreqDiscountingTrainer.MULTIPLIER from (2 to 10)),
 		XAxis(Trainer.ORDER), accuracy)
 
 	report << Graph("interpolatedOrderAnalysisZoomOrder3", "Relativisation de l'interpolation",
 		`discounting freq trainer + full decoder` *
 			(Trainer.ORDER from (2 to 4)) *
-			(didier.RelFreqDiscountingTrainer.MULTIPLIER from (3 to 10)),
-		XAxis(didier.RelFreqDiscountingTrainer.MULTIPLIER), accuracy)
+			(trainers.RelFreqDiscountingTrainer.MULTIPLIER from (3 to 10)),
+		XAxis(trainers.RelFreqDiscountingTrainer.MULTIPLIER), accuracy)
 
 	val unknownThresholdAnalysis =
-		(((Analysis.TRAINER as didier.RelFreqDiscountingTrainer) *
-			(didier.RelFreqDiscountingTrainer.MULTIPLIER as 8) * (Trainer.ORDER from (2 to 3))) +
-			((Analysis.TRAINER as didier.RelFreqTrainer) * (Trainer.ORDER as 2))) *
-			(Analysis.DECODER as didier.FullDecoder) *
-			(didier.EmittingTraining.UNKNOWN_THRESHOLD from (1 to 20))
+		(((Analysis.TRAINER as trainers.RelFreqDiscountingTrainer) *
+			(trainers.RelFreqDiscountingTrainer.MULTIPLIER as 8) * (Trainer.ORDER from (2 to 3))) +
+			((Analysis.TRAINER as trainers.RelFreqTrainer) * (Trainer.ORDER as 2))) *
+			(Analysis.DECODER as decoders.FullDecoder) *
+			(EmittingTraining.UNKNOWN_THRESHOLD from (1 to 20))
 
 	report << Graph("unknownGlobalAccuracy", "Impact du seuil de mot inconnu",
 		unknownThresholdAnalysis,
-		XAxis(didier.EmittingTraining.UNKNOWN_THRESHOLD), accuracy)
+		XAxis(trainers.EmittingTraining.UNKNOWN_THRESHOLD), accuracy)
 
 	report << Graph("unknownUnknownAccuracy", "Impact du seuil de mot inconnu",
 		unknownThresholdAnalysis,
-		XAxis(didier.EmittingTraining.UNKNOWN_THRESHOLD), unknownAccuracy)
+		XAxis(trainers.EmittingTraining.UNKNOWN_THRESHOLD), unknownAccuracy)
 
 	report.generate
 }

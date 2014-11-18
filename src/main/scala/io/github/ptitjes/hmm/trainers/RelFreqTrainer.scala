@@ -1,8 +1,8 @@
-package io.github.ptitjes.hmm.didier
+package io.github.ptitjes.hmm.trainers
 
+import io.github.ptitjes.hmm.HiddenMarkovModel._
 import io.github.ptitjes.hmm.Trainer._
 import io.github.ptitjes.hmm._
-import io.github.ptitjes.hmm.HiddenMarkovModel._
 
 object RelFreqTrainer extends Algorithm[Trainer] {
 

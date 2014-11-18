@@ -5,7 +5,7 @@ import java.io.PrintWriter
 import io.github.ptitjes.hmm.Corpora._
 import io.github.ptitjes.hmm.Utils._
 import io.github.ptitjes.hmm._
-import io.github.ptitjes.hmm.didier.{BeamDecoder, RelFreqTrainer}
+import io.github.ptitjes.hmm.decoders.BeamDecoder
 
 case class Results(globalCounts: ErrorCount,
                    perCategoryCounts: Array[ErrorCount],

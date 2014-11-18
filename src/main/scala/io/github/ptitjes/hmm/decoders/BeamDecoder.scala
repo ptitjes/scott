@@ -1,4 +1,4 @@
-package io.github.ptitjes.hmm.didier
+package io.github.ptitjes.hmm.decoders
 
 import io.github.ptitjes.hmm._
 

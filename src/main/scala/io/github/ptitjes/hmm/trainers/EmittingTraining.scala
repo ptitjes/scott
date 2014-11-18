@@ -1,4 +1,4 @@
-package io.github.ptitjes.hmm.didier
+package io.github.ptitjes.hmm.trainers
 
 import io.github.ptitjes.hmm.Corpora._
 import io.github.ptitjes.hmm.IntParameter

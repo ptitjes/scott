@@ -6,6 +6,8 @@ import io.github.ptitjes.hmm.Corpora._
 import io.github.ptitjes.hmm._
 import io.github.ptitjes.hmm.analysis.ResultPool._
 import io.github.ptitjes.hmm.analysis.Results._
+import io.github.ptitjes.hmm.decoders.FullDecoder
+import io.github.ptitjes.hmm.trainers.RelFreqTrainer
 import org.json4s._
 
 import scala.collection._
@@ -68,9 +70,9 @@ object Analysis {
 
 	object CORPUS_RATIO extends IntParameter("Corpus Ratio", 100)
 
-	object TRAINER extends TrainerParameter("", c => didier.RelFreqTrainer)
+	object TRAINER extends TrainerParameter("", c => RelFreqTrainer)
 
-	object DECODER extends DecoderParameter("", c => didier.FullDecoder)
+	object DECODER extends DecoderParameter("", c => FullDecoder)
 
 	def completeConfiguration(configuration: Configuration): Configuration = {
 

@@ -1,4 +1,4 @@
-package io.github.ptitjes.hmm.didier
+package io.github.ptitjes.hmm.trainers
 
 import io.github.ptitjes.hmm.Features._
 import io.github.ptitjes.hmm.Trainer._
@@ -8,7 +8,6 @@ import io.github.ptitjes.hmm.analysis.Analysis
 import io.github.ptitjes.hmm.analysis.Analysis.DecoderParameter
 
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
 
 object DiscriminantTrainer extends Algorithm[Trainer] {
 

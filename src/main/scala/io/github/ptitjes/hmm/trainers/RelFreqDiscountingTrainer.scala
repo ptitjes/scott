@@ -1,14 +1,13 @@
-package io.github.ptitjes.hmm.didier
+package io.github.ptitjes.hmm.trainers
 
 import java.io._
 
 import io.github.ptitjes.hmm.HiddenMarkovModel._
-import io.github.ptitjes.hmm._
 import io.github.ptitjes.hmm.Trainer._
-import io.github.ptitjes.hmm.didier.EmittingTraining.UNKNOWN_THRESHOLD
+import io.github.ptitjes.hmm._
 
+import scala.collection.mutable
 import scala.io.Source
-import scala.collection.{mutable => mutable}
 
 object RelFreqDiscountingTrainer extends Algorithm[Trainer] {
 
@@ -21,7 +20,9 @@ object RelFreqDiscountingTrainer extends Algorithm[Trainer] {
 
 	def name: String = "Freq-WB"
 
-	override def parameters: Set[Parameter[_]] = Set(ORDER, UNKNOWN_THRESHOLD, MULTIPLIER)
+	override def parameters: Set[Parameter[_]] = Set(
+		ORDER, EmittingTraining.UNKNOWN_THRESHOLD, MULTIPLIER
+	)
 
 	object MULTIPLIER extends IntParameter("Multiplier", 8)
 

@@ -1,14 +1,15 @@
-package io.github.ptitjes.hmm.didier
+package io.github.ptitjes.hmm.scripts
 
-import java.io.{PrintWriter, FileWriter, File}
+import java.io.File
 
 import io.github.ptitjes.hmm.HiddenMarkovModel._
 import io.github.ptitjes.hmm.Utils._
 import io.github.ptitjes.hmm._
 import io.github.ptitjes.hmm.analysis.Analysis
 import io.github.ptitjes.hmm.analysis.Results._
+import io.github.ptitjes.hmm.decoders.FullDecoder
 
-object testLoadAndCheck extends App {
+object loadAndCheck extends App {
 
 	val trainCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"), Lexica.WORDS)
 	val devCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"), Lexica.WORDS)

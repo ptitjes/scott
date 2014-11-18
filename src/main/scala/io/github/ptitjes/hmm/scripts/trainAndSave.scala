@@ -1,4 +1,4 @@
-package io.github.ptitjes.hmm.didier
+package io.github.ptitjes.hmm.scripts
 
 import java.io.{File, FileWriter, PrintWriter}
 
@@ -7,8 +7,10 @@ import io.github.ptitjes.hmm.Utils._
 import io.github.ptitjes.hmm._
 import io.github.ptitjes.hmm.analysis.Analysis
 import io.github.ptitjes.hmm.analysis.Results._
+import io.github.ptitjes.hmm.decoders.FullDecoder
+import io.github.ptitjes.hmm.trainers.DiscriminantTrainer
 
-object testTrainAndSave extends App {
+object trainAndSave extends App {
 
 	val trainCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"), Lexica.WORDS)
 	val devCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"), Lexica.WORDS)
