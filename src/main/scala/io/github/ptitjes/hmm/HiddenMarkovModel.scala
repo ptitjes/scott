@@ -32,8 +32,8 @@ case class HMMGenerative(breadth: Int, depth: Int,
 }
 
 case class HMMDiscriminant(breadth: Int, depth: Int,
-                           wordOnlyFeatures: FeatureTree,
-                           otherFeatures: FeatureTree,
+                           wordOnlyFeatures: FeatureTree[Array[Double]],
+                           otherFeatures: FeatureTree[Array[Double]],
                            dictionary: Map[Int, Int]) extends HiddenMarkovModel {
 
 	def isUnknown(o: Word): Boolean = !dictionary.contains(o.code)
@@ -53,11 +53,14 @@ object HiddenMarkovModel {
 	implicit val formats = Serialization.formats(
 		ShortTypeHints(List(
 			classOf[HMMGenerative], classOf[HMMDiscriminant],
-			classOf[PCapitalized], classOf[PNumber], classOf[PContains], classOf[PLength],
+			classOf[PUppercased], classOf[PNumber], classOf[PContains], classOf[PLength],
 			classOf[ECharAt], classOf[EWordCode], classOf[EPreviousTag],
-			classOf[FTConjunction], classOf[FTDispatchInt], classOf[FTDispatchChar], classOf[FTGuard], classOf[FTLeaf]
+			classOf[FTConjunction[Array[Double]]], classOf[FTDispatchInt[Array[Double]]],
+			classOf[FTDispatchChar[Array[Double]]], classOf[FTGuard[Array[Double]]],
+			classOf[FTLeaf[Array[Double]]]
 		))) +
-		new CharKeySerializer + new CharacterKeySerializer
+		new CharKeySerializer + new CharacterKeySerializer +
+		new CharSerializer + new CharacterSerializer
 
 	def fromFile(file: File): HiddenMarkovModel = {
 		using(new FileReader(file)) {
@@ -88,6 +91,20 @@ object HiddenMarkovModel {
 		case key => new Character(key.charAt(0))
 	}, {
 		case key: Character => key.toString
+	}
+		))
+
+	class CharSerializer extends CustomSerializer[Char](format => ( {
+		case JString(v) => v.charAt(0)
+	}, {
+		case v: Char => JString(v.toString)
+	}
+		))
+
+	class CharacterSerializer extends CustomSerializer[Object](format => ( {
+		case JString(v) => new Character(v.charAt(0))
+	}, {
+		case v: Character => JString(v.toString)
 	}
 		))
 

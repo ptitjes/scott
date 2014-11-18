@@ -8,7 +8,7 @@ import scala.reflect.ClassTag
 
 object BeamDecoder extends Algorithm[Decoder] {
 
-	def name: String = "Full"
+	def name: String = "Beam"
 
 	override def parameters: Set[Parameter[_]] = Set(BEAM, MULTI_THREADED)
 
@@ -104,7 +104,7 @@ object BeamDecoder extends Algorithm[Decoder] {
 						}
 
 						val h_wordOnly = iterator.history(-1)
-						wordOnlyFeatures.foreach(h_wordOnly)(weights =>
+						wordOnlyFeatures.foreachMatching(h_wordOnly)(weights =>
 							targetTags.foreach { targetTag =>
 								wordOnlyScores(targetTag) += weights(targetTag)
 							})
@@ -119,7 +119,7 @@ object BeamDecoder extends Algorithm[Decoder] {
 						allStates.foreach { sourceState =>
 							if (beam(sourceState)) {
 								val h = iterator.history(sourceState)
-								otherFeatures.foreach(h)(weights =>
+								otherFeatures.foreachMatching(h)(weights =>
 									targetTags.foreach { targetTag =>
 										scores(targetTag)(sourceState) += weights(targetTag)
 									})

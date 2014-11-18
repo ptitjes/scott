@@ -91,7 +91,7 @@ object FullDecoder extends Algorithm[Decoder] {
 						}
 
 						val h_wordOnly = iterator.history(-1)
-						wordOnlyFeatures.foreach(h_wordOnly)(weights =>
+						wordOnlyFeatures.foreachMatching(h_wordOnly)(weights =>
 							targetTags.foreach { targetTag =>
 								wordOnlyScores(targetTag) += weights(targetTag)
 							})
@@ -103,7 +103,7 @@ object FullDecoder extends Algorithm[Decoder] {
 
 						allSourceStates.foreach { sourceState =>
 							val h = iterator.history(sourceState)
-							otherFeatures.foreach(h)(weights =>
+							otherFeatures.foreachMatching(h)(weights =>
 								targetTags.foreach { targetTag =>
 									scores(targetTag)(sourceState) += weights(targetTag)
 								})

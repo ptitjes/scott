@@ -21,9 +21,9 @@ object testTrainAndSave extends App {
 		//		.set(DiscriminantTrainer.DECODER, FullDecoder)
 		.set(DiscriminantTrainer.ITERATION_COUNT, 40)
 		.set(DiscriminantTrainer.AVERAGING, true)
-		//		.set(Analysis.DECODER, FullDecoder)
-		.set(Analysis.DECODER, BeamDecoder)
-		.set(BeamDecoder.BEAM, 5)
+		.set(Analysis.DECODER, FullDecoder)
+	//		.set(Analysis.DECODER, BeamDecoder)
+	//		.set(BeamDecoder.BEAM, 5)
 
 	println(conf)
 

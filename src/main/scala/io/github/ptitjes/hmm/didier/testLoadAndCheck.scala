@@ -15,18 +15,18 @@ object testLoadAndCheck extends App {
 	private val PATH_TO_TEST = "/home/didier/Documents/Work/Master/Docs/Inférence Statistique/Alexis Nasr/Code HMM/ftb.test.encode"
 	val testCorpus = Corpora.annotatedFrom(new File(PATH_TO_TEST), Lexica.WORDS)
 
-	val hmmFilename = "Full-Disc-Averaging-Yes-Iterations-40-Order-2"
+	val hmmFilename = "selected-hmms/Disc-Full-Averaging-Complete-Iterations-40-Order-2.json"
 
 	val conf = Configuration()
-		.set(Analysis.DECODER, FullDecoder)
-	//		.set(Analysis.DECODER, BeamDecoder)
-	//		.set(BeamDecoder.BEAM, 5)
+				.set(Analysis.DECODER, FullDecoder)
+//		.set(Analysis.DECODER, BeamDecoder)
+//		.set(BeamDecoder.BEAM, 5)
 
 	val (hmm, loadTime) = timed {
-		fromFile(new File("temp/" + hmmFilename + ".json"))
+		fromFile(new File(hmmFilename))
 	}
 
 	val decoder = conf(Analysis.DECODER).instantiate(conf)
 
-	decodeAndCheck(hmm, decoder, testCorpus, false).display()
+	decodeAndCheck(hmm, decoder, trainCorpus, false).display()
 }

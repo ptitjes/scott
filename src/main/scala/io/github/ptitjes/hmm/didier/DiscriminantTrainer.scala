@@ -8,6 +8,7 @@ import io.github.ptitjes.hmm.analysis.Analysis
 import io.github.ptitjes.hmm.analysis.Analysis.DecoderParameter
 
 import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 object DiscriminantTrainer extends Algorithm[Trainer] {
 
@@ -56,15 +57,16 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 				w => for (s <- 1 to 4 if w.length >= s) yield w.substring(0, s)
 			}).toSet
 
-			val weightFactory: () => Array[Double] = () => Array.ofDim[Double](breadth)
+			val weightFactory: () => (Array[Double], Array[Double]) =
+				() => (Array.ofDim[Double](breadth), Array.ofDim[Double](breadth))
 
 			val wordOnlyFeatures =
 				FTConjunction(
 					makePrefixTree(prefixes, weightFactory) ::
 						makeSuffixTree(suffixes, weightFactory) ::
 						FTGuard(PNumber(), FTLeaf(weightFactory())) ::
-						//						FTGuard(PCapitalized(), FTLeaf(weightFactory())) ::
-						//						FTGuard(PContains('-'), FTLeaf(weightFactory())) ::
+						FTGuard(PUppercased(), FTLeaf(weightFactory())) ::
+						FTGuard(PContains('-'), FTLeaf(weightFactory())) ::
 						makeWordTree(0, commonWords, weightFactory) :: Nil ++
 						(1 to depth).map(d => makeWordTree(-d, allWords, weightFactory)) ++
 						(1 to depth).map(d => makeWordTree(d, allWords, weightFactory))
@@ -75,31 +77,16 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 					(1 to depth).map(d => makeNgramTree(d, breadth, weightFactory))
 				)
 
-			val wordOnlyFeaturesAvg =
-				FTConjunction(
-					makePrefixTree(prefixes, weightFactory) ::
-						makeSuffixTree(suffixes, weightFactory) ::
-						FTGuard(PNumber(), FTLeaf(weightFactory())) ::
-						//						FTGuard(PCapitalized(), FTLeaf(weightFactory())) ::
-						//						FTGuard(PContains('-'), FTLeaf(weightFactory())) ::
-						makeWordTree(0, commonWords, weightFactory) :: Nil ++
-						(1 to depth).map(d => makeWordTree(-d, allWords, weightFactory)) ++
-						(1 to depth).map(d => makeWordTree(d, allWords, weightFactory))
-				)
-
-			val otherFeaturesAvg =
-				FTConjunction(
-					(1 to depth).map(d => makeNgramTree(d, breadth, weightFactory))
-				)
-
 			val hmm = HMMDiscriminant(breadth, depth,
-				wordOnlyFeatures, otherFeatures, dictionary.map { case (w, c) => (w.code, c)})
+				wordOnlyFeatures.map { case (weights, averagedWeights) => weights},
+				otherFeatures.map { case (weights, averagedWeights) => weights},
+				dictionary.map { case (word, count) => (word.code, count)})
 
 			val decoder = configuration(DECODER).instantiate(configuration)
 			decoder.setHmm(hmm)
 
-			val sequencesCount = sequences.size
 			val iterationCount = configuration(ITERATION_COUNT)
+
 			for (i <- 1 to iterationCount) {
 
 				val progress = new ProgressBar(f"Iteration $i%2d/$iterationCount%2d", sequences.length)
@@ -127,26 +114,53 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 							val h_ref = refIterator.history
 							val h_hyp = hypIterator.history
 
-							wordOnlyFeatures.foreach(h_ref)(weights => weights(sRef) += 1.0)
-							wordOnlyFeatures.foreach(h_hyp)(weights => weights(sHyp) -= 1.0)
+							wordOnlyFeatures.foreachMatching(h_ref) {
+								case (weights, _) => weights(sRef) += 1.0
+							}
+							wordOnlyFeatures.foreachMatching(h_hyp) {
+								case (weights, _) => weights(sHyp) -= 1.0
+							}
 
-							otherFeatures.foreach(h_ref)(weights => weights(sRef) += 1.0)
-							otherFeatures.foreach(h_hyp)(weights => weights(sHyp) -= 1.0)
+							otherFeatures.foreachMatching(h_ref) {
+								case (weights, _) => weights(sRef) += 1.0
+							}
+							otherFeatures.foreachMatching(h_hyp) {
+								case (weights, _) => weights(sHyp) -= 1.0
+							}
+						}
+					}
+
+					if (useAveraging) {
+						wordOnlyFeatures.foreach {
+							case (weights, averagedWeights) =>
+								for (i <- 0 until breadth) averagedWeights(i) += weights(i)
+						}
+						otherFeatures.foreach {
+							case (weights, averagedWeights) =>
+								for (i <- 0 until breadth) averagedWeights(i) += weights(i)
 						}
 					}
 
 					progress.increment()
 				}
+			}
 
-				if (useAveraging) {
-					wordOnlyFeaturesAvg.addAveraged(wordOnlyFeatures, iterationCount)
-					otherFeaturesAvg.addAveraged(otherFeatures, iterationCount)
+			if (useAveraging) {
+				wordOnlyFeatures.foreach {
+					case (weights, averagedWeights) =>
+						for (i <- 0 until breadth) averagedWeights(i) /= iterationCount * sequences.size
+				}
+				otherFeatures.foreach {
+					case (weights, averagedWeights) =>
+						for (i <- 0 until breadth) averagedWeights(i) /= iterationCount * sequences.size
 				}
 			}
 
 			if (!useAveraging) hmm
 			else HMMDiscriminant(breadth, depth,
-				wordOnlyFeaturesAvg, otherFeaturesAvg, dictionary.map { case (w, c) => (w.code, c)})
+				wordOnlyFeatures.map { case (weights, averagedWeights) => averagedWeights},
+				otherFeatures.map { case (weights, averagedWeights) => averagedWeights},
+				dictionary.map { case (word, count) => (word.code, count)})
 		}
 	}
 
