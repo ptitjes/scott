@@ -6,7 +6,7 @@ import scala.annotation.tailrec
 import scala.collection.GenSeq
 import scala.reflect.ClassTag
 
-object FullDecoder extends Algorithm[Decoder] {
+object FullDecoder extends Decoder.Factory {
 
 	def name: String = "Full"
 
@@ -14,37 +14,24 @@ object FullDecoder extends Algorithm[Decoder] {
 
 	object MULTI_THREADED extends BooleanParameter("MultiThreaded", c => c(Trainer.ORDER) >= 3)
 
-	def instantiate(configuration: Configuration): Decoder = new Instance(configuration)
+	def instantiate(hmm: HiddenMarkovModel, configuration: Configuration): Decoder = new Instance(hmm, configuration)
 
-	private class Instance(configuration: Configuration) extends Decoder {
+	private class Instance(hmm: HiddenMarkovModel, configuration: Configuration) extends Decoder {
 
 		import io.github.ptitjes.hmm.Corpora._
 		import io.github.ptitjes.hmm.Utils._
 
 		val multiThreaded = configuration(MULTI_THREADED)
 
-		var hmm: HiddenMarkovModel = null
-		var breadth = 0
-		var depth = 0
+		val breadth = hmm.breadth
+		val depth = hmm.depth
+		val maxStateCount = pow(breadth, depth)
 
-		var deltas: SwappableArray[Double] = null
-		var psis: PsiArray = null
+		val deltas = new SwappableArray[Double](maxStateCount)
+		val psis = new PsiArray(maxStateCount, 300)
 
-		var scores: Array[Array[Double]] = null
-		var wordOnlyScores: Array[Double] = null
-
-		def setHmm(hmm: HiddenMarkovModel): Unit = {
-			this.hmm = hmm
-			this.breadth = hmm.breadth
-			this.depth = hmm.depth
-
-			val maxStateCount = pow(breadth, depth)
-			deltas = new SwappableArray[Double](maxStateCount)
-			psis = new PsiArray(maxStateCount, 300)
-
-			scores = Array.ofDim[Double](breadth, pow(breadth, depth))
-			wordOnlyScores = Array.ofDim[Double](breadth)
-		}
+		val scores = Array.ofDim[Double](breadth, maxStateCount)
+		val wordOnlyScores = Array.ofDim[Double](breadth)
 
 		def decode(sequence: Sequence): Sequence with Annotation = {
 			deltas(0) = 0

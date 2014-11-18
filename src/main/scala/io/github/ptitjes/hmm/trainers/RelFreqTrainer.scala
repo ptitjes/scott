@@ -4,7 +4,7 @@ import io.github.ptitjes.hmm.HiddenMarkovModel._
 import io.github.ptitjes.hmm.Trainer._
 import io.github.ptitjes.hmm._
 
-object RelFreqTrainer extends Algorithm[Trainer] {
+object RelFreqTrainer extends Trainer.Factory {
 
 	def name: String = "Freq"
 

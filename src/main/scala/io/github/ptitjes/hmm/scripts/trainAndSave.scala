@@ -18,40 +18,32 @@ object trainAndSave extends App {
 	val testCorpus = Corpora.annotatedFrom(new File(PATH_TO_TEST), Lexica.WORDS)
 
 	val conf = Configuration()
-		.set(Analysis.TRAINER, DiscriminantTrainer)
+		.set(Configuration.TRAINER, DiscriminantTrainer)
 		.set(Trainer.ORDER, 2)
 		//		.set(DiscriminantTrainer.DECODER, FullDecoder)
 		.set(DiscriminantTrainer.ITERATION_COUNT, 40)
 		.set(DiscriminantTrainer.AVERAGING, true)
-		.set(Analysis.DECODER, FullDecoder)
-	//		.set(Analysis.DECODER, BeamDecoder)
+		.set(Configuration.DECODER, FullDecoder)
+	//		.set(Configuration.DECODER, BeamDecoder)
 	//		.set(BeamDecoder.BEAM, 5)
 
 	println(conf)
 
+	val trainer = conf(Configuration.TRAINER).instantiate(conf)
 	val (hmm, trainingElapsedTime) = timed {
-		val trainer = conf(Analysis.TRAINER).instantiate(conf)
 		trainer.train(trainCorpus)
 	}
 
+	val decoder = conf(Configuration.DECODER).instantiate(hmm, conf)
 	val (hypCorpus, decodingElapsedTime) = timed {
-		val decoder = conf(Analysis.DECODER).instantiate(conf)
-		decoder.setHmm(hmm)
 		decoder.decode(devCorpus)
 	}
 
 	toFile(hmm, new File("temp/" + conf.toFilename + ".json"))
 
-	val results = using(new FileWriter(new File("temp/" + conf.toFilename + ".check"))) {
-		fileOutput => using(new PrintWriter(fileOutput)) {
-			out =>
-				out.println(conf)
-				out.println()
-
-				check(hmm, devCorpus, hypCorpus,
-					trainingElapsedTime, decodingElapsedTime, true, out)
-		}
-	}
+	val results = check(conf, hmm, devCorpus, hypCorpus,
+		trainingElapsedTime, decodingElapsedTime,
+		new File("temp/" + conf.toFilename + ".check"))
 
 	results.display()
 }

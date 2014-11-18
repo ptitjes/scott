@@ -19,24 +19,24 @@ object analyseGenerative extends App {
 	val unknownAccuracy = YAxis("Unknown Word Accuracy", "\\%", _.unknownAccuracy * 100)
 
 	val `all freq trainers + full decoder` =
-		(Analysis.TRAINER forAll RelFreqTrainer and RelFreqDiscountingTrainer) *
-			(Analysis.DECODER as FullDecoder)
+		(Configuration.TRAINER forAll RelFreqTrainer and RelFreqDiscountingTrainer) *
+			(Configuration.DECODER as FullDecoder)
 
 	val `discounting freq trainer + full decoder` =
-		(Analysis.TRAINER as trainers.RelFreqDiscountingTrainer) *
-			(Analysis.DECODER as decoders.FullDecoder)
+		(Configuration.TRAINER as trainers.RelFreqDiscountingTrainer) *
+			(Configuration.DECODER as decoders.FullDecoder)
 
 	report << Graph("corpusRatioFull", "Impact de la quantité de corpus d'apprentissage",
 		`all freq trainers + full decoder` *
 			(Trainer.ORDER from (1 to 3)) *
-			(Analysis.CORPUS_RATIO from (10 to 100 by 10)),
-		XAxis(Analysis.CORPUS_RATIO), accuracy)
+			(Configuration.CORPUS_RATIO from (10 to 100 by 10)),
+		XAxis(Configuration.CORPUS_RATIO), accuracy)
 
 	report << Graph("corpusRatioZoom", "Impact de la quantité de corpus d'apprentissage",
 		`all freq trainers + full decoder` *
 			(Trainer.ORDER from (1 to 3)) *
-			(Analysis.CORPUS_RATIO from (50 to 100 by 10)),
-		XAxis(Analysis.CORPUS_RATIO), accuracy)
+			(Configuration.CORPUS_RATIO from (50 to 100 by 10)),
+		XAxis(Configuration.CORPUS_RATIO), accuracy)
 
 	report << Graph("orderAnalysis", "Impact de l'ordre",
 		`all freq trainers + full decoder` *
@@ -62,10 +62,10 @@ object analyseGenerative extends App {
 		XAxis(trainers.RelFreqDiscountingTrainer.MULTIPLIER), accuracy)
 
 	val unknownThresholdAnalysis =
-		(((Analysis.TRAINER as trainers.RelFreqDiscountingTrainer) *
+		(((Configuration.TRAINER as trainers.RelFreqDiscountingTrainer) *
 			(trainers.RelFreqDiscountingTrainer.MULTIPLIER as 8) * (Trainer.ORDER from (2 to 3))) +
-			((Analysis.TRAINER as trainers.RelFreqTrainer) * (Trainer.ORDER as 2))) *
-			(Analysis.DECODER as decoders.FullDecoder) *
+			((Configuration.TRAINER as trainers.RelFreqTrainer) * (Trainer.ORDER as 2))) *
+			(Configuration.DECODER as decoders.FullDecoder) *
 			(EmittingTraining.UNKNOWN_THRESHOLD from (1 to 20))
 
 	report << Graph("unknownGlobalAccuracy", "Impact du seuil de mot inconnu",

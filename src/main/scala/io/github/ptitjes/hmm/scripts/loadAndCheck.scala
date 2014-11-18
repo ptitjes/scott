@@ -19,15 +19,19 @@ object loadAndCheck extends App {
 	val hmmFilename = "selected-hmms/Disc-Full-Averaging-Complete-Iterations-40-Order-2.json"
 
 	val conf = Configuration()
-				.set(Analysis.DECODER, FullDecoder)
-//		.set(Analysis.DECODER, BeamDecoder)
-//		.set(BeamDecoder.BEAM, 5)
+		.set(Configuration.DECODER, FullDecoder)
+	//		.set(Configuration.DECODER, BeamDecoder)
+	//		.set(BeamDecoder.BEAM, 5)
 
 	val (hmm, loadTime) = timed {
 		fromFile(new File(hmmFilename))
 	}
 
-	val decoder = conf(Analysis.DECODER).instantiate(conf)
+	val decoder = conf(Configuration.DECODER).instantiate(hmm, conf)
+	val (hypCorpus, decodingElapsedTime) = timed {
+		decoder.decode(devCorpus)
+	}
 
-	decodeAndCheck(hmm, decoder, trainCorpus, false).display()
+	val results = check(hmm, devCorpus, hypCorpus, loadTime, decodingElapsedTime)
+	results.display()
 }

@@ -19,8 +19,8 @@ object analyseDiscriminant extends App {
 	val unknownAccuracy = YAxis("Unknown Word Accuracy", "\\%", _.unknownAccuracy * 100)
 
 	val `disc trainer + full decoder` =
-		(Analysis.TRAINER as trainers.DiscriminantTrainer) *
-			(Analysis.DECODER as FullDecoder)
+		(Configuration.TRAINER as trainers.DiscriminantTrainer) *
+			(Configuration.DECODER as FullDecoder)
 
 	report << Graph("discriminant", "Impact du nombre d'itérations sur la méthode discriminant",
 		`disc trainer + full decoder` *

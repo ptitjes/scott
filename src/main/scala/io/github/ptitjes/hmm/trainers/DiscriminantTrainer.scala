@@ -4,18 +4,16 @@ import io.github.ptitjes.hmm.Features._
 import io.github.ptitjes.hmm.Trainer._
 import io.github.ptitjes.hmm.Utils._
 import io.github.ptitjes.hmm._
-import io.github.ptitjes.hmm.analysis.Analysis
-import io.github.ptitjes.hmm.analysis.Analysis.DecoderParameter
 
 import scala.collection.mutable
 
-object DiscriminantTrainer extends Algorithm[Trainer] {
+object DiscriminantTrainer extends Trainer.Factory {
 
 	def name: String = "Disc"
 
 	override def parameters: Set[Parameter[_]] = Set(ORDER, ITERATION_COUNT, AVERAGING)
 
-	object DECODER extends DecoderParameter("", c => c(Analysis.DECODER))
+	object DECODER extends DecoderParameter("", c => c(Configuration.DECODER))
 
 	object ITERATION_COUNT extends IntParameter("Iterations", 1)
 
@@ -81,8 +79,7 @@ object DiscriminantTrainer extends Algorithm[Trainer] {
 				otherFeatures.map { case (weights, averagedWeights) => weights},
 				dictionary.map { case (word, count) => (word.code, count)})
 
-			val decoder = configuration(DECODER).instantiate(configuration)
-			decoder.setHmm(hmm)
+			val decoder = configuration(DECODER).instantiate(hmm, configuration)
 
 			val iterationCount = configuration(ITERATION_COUNT)
 

@@ -25,7 +25,7 @@ case class ResultPool(results: Map[Configuration, Results] = Map[Configuration, 
 
 		for (row <- configurations(rows))
 		yield (row, columns.map { c =>
-			val conf = Analysis.completeConfiguration(c.set(rows, row))
+			val conf = Configuration.complete(c.set(rows, row))
 			f(results(conf))
 		})
 	}

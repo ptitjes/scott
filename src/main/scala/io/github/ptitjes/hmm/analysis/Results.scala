@@ -1,6 +1,6 @@
 package io.github.ptitjes.hmm.analysis
 
-import java.io.PrintWriter
+import java.io.{File, FileWriter, PrintWriter}
 
 import io.github.ptitjes.hmm.Corpora._
 import io.github.ptitjes.hmm.Utils._
@@ -93,47 +93,6 @@ class ErrorCount {
 
 object Results {
 
-	def trainDecodeAndCheck(conf: Configuration,
-	                        trainCorpus: Corpus[Sequence with Annotation],
-	                        testCorpus: Corpus[Sequence with Annotation],
-	                        debug: Boolean): Results = {
-
-		val trainer = conf(Analysis.TRAINER).instantiate(conf)
-		val decoder = conf(Analysis.DECODER).instantiate(conf)
-		trainDecodeAndCheck(trainer, decoder, trainCorpus, testCorpus, debug)
-	}
-
-	def trainDecodeAndCheck(trainer: Trainer,
-	                        decoder: Decoder,
-	                        trainCorpus: Corpus[Sequence with Annotation],
-	                        testCorpus: Corpus[Sequence with Annotation],
-	                        debug: Boolean = false): Results = {
-
-		val (hmm, trainingElapsedTime) = timed {
-			trainer.train(trainCorpus)
-		}
-
-		val (hypCorpus, decodingElapsedTime) = timed {
-			decoder.setHmm(hmm)
-			decoder.decode(testCorpus)
-		}
-
-		check(hmm, testCorpus, hypCorpus, trainingElapsedTime, decodingElapsedTime, debug)
-	}
-
-	def decodeAndCheck(hmm: HiddenMarkovModel,
-	                   decoder: Decoder,
-	                   testCorpus: Corpus[Sequence with Annotation],
-	                   debug: Boolean = false): Results = {
-
-		val (hypCorpus, decodingElapsedTime) = timed {
-			decoder.setHmm(hmm)
-			decoder.decode(testCorpus)
-		}
-
-		check(hmm, testCorpus, hypCorpus, 0, decodingElapsedTime, debug)
-	}
-
 	def check(hmm: HiddenMarkovModel,
 	          refCorpus: Corpus[Sequence with Annotation],
 	          hypCorpus: Corpus[Sequence with Annotation],
@@ -142,6 +101,25 @@ object Results {
 
 		check(hmm, refCorpus, hypCorpus,
 			trainingElapsedTime, decodingElapsedTime, debug, new PrintWriter(System.out))
+	}
+
+	def check(conf: Configuration,
+	          hmm: HiddenMarkovModel,
+	          refCorpus: Corpus[Sequence with Annotation],
+	          hypCorpus: Corpus[Sequence with Annotation],
+	          trainingElapsedTime: Long, decodingElapsedTime: Long,
+	          checkFile: File): Results = {
+
+		using(new FileWriter(checkFile)) {
+			fileOutput => using(new PrintWriter(fileOutput)) {
+				out =>
+					out.println(conf)
+					out.println()
+
+					check(hmm, refCorpus, hypCorpus,
+						trainingElapsedTime, decodingElapsedTime, true, out)
+			}
+		}
 	}
 
 	def check(hmm: HiddenMarkovModel,

@@ -5,8 +5,6 @@ import io.github.ptitjes.hmm.Utils.ProgressBar
 
 trait Decoder {
 
-	def setHmm(hmm: HiddenMarkovModel): Unit
-
 	def decode(corpus: Corpus[Sequence]): Corpus[Sequence with Annotation] = {
 		val progress = new ProgressBar(f"Decoding", corpus.sequences.length)
 		progress.set(0)
@@ -19,4 +17,18 @@ trait Decoder {
 	}
 
 	def decode(sequence: Sequence): Sequence with Annotation
+
+}
+
+object Decoder {
+
+	trait Factory {
+
+		def name: String
+
+		def parameters: Set[Parameter[_]] = Set()
+
+		def instantiate(hmm: HiddenMarkovModel, configuration: Configuration): Decoder
+	}
+
 }

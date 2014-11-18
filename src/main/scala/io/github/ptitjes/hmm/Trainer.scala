@@ -11,4 +11,13 @@ object Trainer {
 
 	object ORDER extends IntParameter("Order", 3)
 
+	trait Factory {
+
+		def name: String
+
+		def parameters: Set[Parameter[_]] = Set()
+
+		def instantiate(configuration: Configuration): Trainer
+	}
+
 }
