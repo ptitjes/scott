@@ -18,15 +18,15 @@ object trainAndSave extends App {
 	val testCorpus = Corpora.annotatedFrom(new File(PATH_TO_TEST), Lexica.WORDS)
 
 	val conf = Configuration()
-		.set(Configuration.TRAINER, RelFreqTrainer)
-		//.set(Configuration.TRAINER, DiscriminantTrainer)
-		.set(Trainer.ORDER, 2)
+		//		.set(Configuration.TRAINER, RelFreqTrainer)
+		.set(Configuration.TRAINER, DiscriminantTrainer)
+		.set(Trainer.ORDER, 3)
 		//		.set(DiscriminantTrainer.DECODER, FullDecoder)
-		//		.set(DiscriminantTrainer.ITERATION_COUNT, 40)
-		//		.set(DiscriminantTrainer.AVERAGING, true)
+		.set(DiscriminantTrainer.ITERATION_COUNT, 5)
+		.set(DiscriminantTrainer.AVERAGING, DiscriminantTrainer.NO_AVERAGING)
 		.set(Configuration.DECODER, FullDecoder)
-	//		.set(Configuration.DECODER, BeamDecoder)
-	//		.set(BeamDecoder.BEAM, 5)
+	//			.set(Configuration.DECODER, BeamDecoder)
+	//			.set(BeamDecoder.BEAM, 5)
 
 	println(conf)
 

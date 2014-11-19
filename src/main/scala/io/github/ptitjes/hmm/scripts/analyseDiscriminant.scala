@@ -9,7 +9,7 @@ import io.github.ptitjes.hmm.trainers.DiscriminantTrainer
 
 object analyseDiscriminant extends App {
 
-	implicit val runner: AnalysisRunner = new AnalysisRunner("report/results-discriminant.json",
+	implicit val runner: AnalysisRunner = new AnalysisRunner("results/results-discriminant.json",
 		Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"), Lexica.WORDS),
 		Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"), Lexica.WORDS))
 
@@ -22,16 +22,23 @@ object analyseDiscriminant extends App {
 		(Configuration.TRAINER as trainers.DiscriminantTrainer) *
 			(Configuration.DECODER as FullDecoder)
 
+	val all = `disc trainer + full decoder` *
+		(Trainer.ORDER from (1 to 2)) *
+		(DiscriminantTrainer.AVERAGING forAll
+			DiscriminantTrainer.NO_AVERAGING and
+			DiscriminantTrainer.PARTIAL_AVERAGING and
+			DiscriminantTrainer.COMPLETE_AVERAGING)
+
+	val maxIterations = 75
+
+	runner.resultsFor(all * (DiscriminantTrainer.ITERATION_COUNT as maxIterations))
+
 	report << Graph("discriminant", "Impact du nombre d'itérations sur la méthode discriminant",
-		`disc trainer + full decoder` *
-			(Trainer.ORDER from (1 to 2)) *
-			(DiscriminantTrainer.ITERATION_COUNT forAll 1 and 5 and 10 and 15 and 20),
+		all * (DiscriminantTrainer.ITERATION_COUNT from (1 to maxIterations)),
 		XAxis(trainers.DiscriminantTrainer.ITERATION_COUNT), accuracy)
 
 	report << Graph("discriminant", "Impact du nombre d'itérations sur la méthode discriminant",
-		`disc trainer + full decoder` *
-			(Trainer.ORDER from (1 to 2)) *
-			(DiscriminantTrainer.ITERATION_COUNT forAll 1 and 5 and 10 and 15 and 20),
+		all * (DiscriminantTrainer.ITERATION_COUNT from (1 to maxIterations)),
 		XAxis(trainers.DiscriminantTrainer.ITERATION_COUNT), unknownAccuracy)
 
 	report.generate

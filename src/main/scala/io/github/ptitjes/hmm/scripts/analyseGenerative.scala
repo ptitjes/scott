@@ -9,7 +9,7 @@ import io.github.ptitjes.hmm.trainers.{EmittingTraining, RelFreqDiscountingTrain
 
 object analyseGenerative extends App {
 
-	implicit val runner: AnalysisRunner = new AnalysisRunner("report/results-generative.json",
+	implicit val runner: AnalysisRunner = new AnalysisRunner("results/results-generative.json",
 		Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"), Lexica.WORDS),
 		Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"), Lexica.WORDS))
 

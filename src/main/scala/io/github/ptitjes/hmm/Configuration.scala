@@ -22,9 +22,12 @@ case class Configuration(parameters: Map[Parameter[_], Any] = Map()) {
 		else parameter.default(this)
 
 	override def toString =
-		parameters.keys.toList.sortBy(_.name).map {
-			p => (if (p.name != "") p.name + " " else "") + p.formatValue(this)
-		}.mkString("; ")
+		Configuration.TRAINER.formatValue(this) + " " +
+			Configuration.DECODER.formatValue(this) + " " +
+			(parameters.keySet -(Configuration.TRAINER, Configuration.DECODER)).toList
+				.sortBy(_.name).map {
+				p => (if (p.name != "") p.name + " " else "") + p.formatValue(this)
+			}.mkString("; ")
 
 	def toFilename = toString.replace(";", "").replace(" ", "-")
 }

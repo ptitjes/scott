@@ -1,5 +1,6 @@
 package io.github.ptitjes.hmm.trainers
 
+import io.github.ptitjes.hmm.Corpora._
 import io.github.ptitjes.hmm.Features._
 import io.github.ptitjes.hmm.Trainer._
 import io.github.ptitjes.hmm.Utils._
@@ -31,14 +32,13 @@ object DiscriminantTrainer extends Trainer.Factory {
 
 	def instantiate(configuration: Configuration): Trainer = new Instance(configuration)
 
-	class Instance(configuration: Configuration) extends Trainer {
+	class Instance(configuration: Configuration) extends Trainer with IterativeTrainer {
 
-		import io.github.ptitjes.hmm.Corpora._
+		val depth = configuration(ORDER)
+		val useAveraging = configuration(AVERAGING)
 
-		def train(corpus: Corpus[Sequence with Annotation]): HiddenMarkovModel = {
+		def train(corpus: Corpus[Sequence with Annotation], callback: IterationCallback): Unit = {
 			val breadth = stateCount(corpus)
-			val depth = configuration(ORDER)
-			val useAveraging = configuration(AVERAGING)
 
 			val dictionary: mutable.Map[Word, Int] = mutable.Map()
 
@@ -97,48 +97,63 @@ object DiscriminantTrainer extends Trainer.Factory {
 
 			for (i <- 1 to iterationCount) {
 
-				val progress = new ProgressBar(f"Iteration $i%2d/$iterationCount%2d", sequences.length)
-				progress.set(0)
+				val (_, elapsedTime) = timed {
+					val progress = new ProgressBar(f"Iteration $i%2d/$iterationCount%2d", sequences.length)
+					progress.set(0)
 
-				sequences.foreach { refSeq: Sequence with Annotation =>
+					sequences.foreach { refSeq: Sequence with Annotation =>
 
-					val hypSeq = decoder.decode(refSeq)
+						val hypSeq = decoder.decode(refSeq)
 
-					if (refSeq.observablesAndStates.length != hypSeq.observablesAndStates.length) {
-						throw new IllegalStateException("Observable length mismatch!")
-					}
-
-					val refIterator = refSeq.annotatedIterator(breadth, depth)
-					val hypIterator = hypSeq.annotatedIterator(breadth, depth)
-					while (refIterator.hasNext) {
-						val (oRef, sRef) = refIterator.next()
-						val (oHyp, sHyp) = hypIterator.next()
-
-						if (oRef != oHyp) {
-							throw new IllegalStateException("Observable mismatch!")
+						if (refSeq.observablesAndStates.length != hypSeq.observablesAndStates.length) {
+							throw new IllegalStateException("Observable length mismatch!")
 						}
 
-						if (sRef != sHyp || refIterator.sourceState != hypIterator.sourceState) {
-							val h_ref = refIterator.history
-							val h_hyp = hypIterator.history
+						val refIterator = refSeq.annotatedIterator(breadth, depth)
+						val hypIterator = hypSeq.annotatedIterator(breadth, depth)
+						while (refIterator.hasNext) {
+							val (oRef, sRef) = refIterator.next()
+							val (oHyp, sHyp) = hypIterator.next()
 
-							wordOnlyFeatures.foreachMatching(h_ref) {
-								case (weights, _) => weights(sRef) += 1.0
-							}
-							wordOnlyFeatures.foreachMatching(h_hyp) {
-								case (weights, _) => weights(sHyp) -= 1.0
+							if (oRef != oHyp) {
+								throw new IllegalStateException("Observable mismatch!")
 							}
 
-							otherFeatures.foreachMatching(h_ref) {
-								case (weights, _) => weights(sRef) += 1.0
-							}
-							otherFeatures.foreachMatching(h_hyp) {
-								case (weights, _) => weights(sHyp) -= 1.0
+							if (sRef != sHyp || refIterator.sourceState != hypIterator.sourceState) {
+								val h_ref = refIterator.history
+								val h_hyp = hypIterator.history
+
+								wordOnlyFeatures.foreachMatching(h_ref) {
+									case (weights, _) => weights(sRef) += 1.0
+								}
+								wordOnlyFeatures.foreachMatching(h_hyp) {
+									case (weights, _) => weights(sHyp) -= 1.0
+								}
+
+								otherFeatures.foreachMatching(h_ref) {
+									case (weights, _) => weights(sRef) += 1.0
+								}
+								otherFeatures.foreachMatching(h_hyp) {
+									case (weights, _) => weights(sHyp) -= 1.0
+								}
 							}
 						}
+
+						if (useAveraging == COMPLETE_AVERAGING) {
+							wordOnlyFeatures.foreach {
+								case (weights, averagedWeights) =>
+									for (i <- 0 until breadth) averagedWeights(i) += weights(i) / averagingDivider
+							}
+							otherFeatures.foreach {
+								case (weights, averagedWeights) =>
+									for (i <- 0 until breadth) averagedWeights(i) += weights(i) / averagingDivider
+							}
+						}
+
+						progress.increment()
 					}
 
-					if (useAveraging == COMPLETE_AVERAGING) {
+					if (useAveraging == PARTIAL_AVERAGING) {
 						wordOnlyFeatures.foreach {
 							case (weights, averagedWeights) =>
 								for (i <- 0 until breadth) averagedWeights(i) += weights(i) / averagingDivider
@@ -148,27 +163,17 @@ object DiscriminantTrainer extends Trainer.Factory {
 								for (i <- 0 until breadth) averagedWeights(i) += weights(i) / averagingDivider
 						}
 					}
-
-					progress.increment()
 				}
 
-				if (useAveraging == PARTIAL_AVERAGING) {
-					wordOnlyFeatures.foreach {
-						case (weights, averagedWeights) =>
-							for (i <- 0 until breadth) averagedWeights(i) += weights(i) / averagingDivider
-					}
-					otherFeatures.foreach {
-						case (weights, averagedWeights) =>
-							for (i <- 0 until breadth) averagedWeights(i) += weights(i) / averagingDivider
-					}
-				}
+				callback.iterationDone(configuration.set(ITERATION_COUNT, i),
+					if (useAveraging == NO_AVERAGING) hmm
+					else HMMDiscriminant(breadth, depth,
+						wordOnlyFeatures.map { case (weights, averagedWeights) => averagedWeights},
+						otherFeatures.map { case (weights, averagedWeights) => averagedWeights},
+						dictionary.map { case (word, count) => (word.code, count)}),
+					elapsedTime
+				)
 			}
-
-			if (useAveraging == NO_AVERAGING) hmm
-			else HMMDiscriminant(breadth, depth,
-				wordOnlyFeatures.map { case (weights, averagedWeights) => averagedWeights},
-				otherFeatures.map { case (weights, averagedWeights) => averagedWeights},
-				dictionary.map { case (word, count) => (word.code, count)})
 		}
 	}
 

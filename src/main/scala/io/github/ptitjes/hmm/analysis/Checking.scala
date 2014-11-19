@@ -13,8 +13,12 @@ object Checking {
 	          hypCorpus: Corpus[Sequence with Annotation],
 	          trainingElapsedTime: Long, decodingElapsedTime: Long): Results = {
 
-		check(hmm, refCorpus, hypCorpus,
+		val results = check(hmm, refCorpus, hypCorpus,
 			trainingElapsedTime, decodingElapsedTime, None)
+
+		results.copy(
+			top50KnownMostFrequent = null, top50UnknownMostFrequent = null,
+			top50Known = null, top50Unknown = null)
 	}
 
 	def check(conf: Configuration,
@@ -24,7 +28,7 @@ object Checking {
 	          trainingElapsedTime: Long, decodingElapsedTime: Long,
 	          checkFile: File): Results = {
 
-		using(new FileWriter(checkFile)) {
+		val results = using(new FileWriter(checkFile)) {
 			fileOutput => using(new PrintWriter(fileOutput)) {
 				out =>
 					out.println(conf)
@@ -34,6 +38,9 @@ object Checking {
 						trainingElapsedTime, decodingElapsedTime, Some(out))
 			}
 		}
+		results.copy(
+			top50KnownMostFrequent = null, top50UnknownMostFrequent = null,
+			top50Known = null, top50Unknown = null)
 	}
 
 	def check(hmm: HiddenMarkovModel,

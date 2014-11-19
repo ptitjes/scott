@@ -29,9 +29,7 @@ case class Results(globalCounts: ErrorCount,
 	def categoryErrorRatio(i: Int) = perCategoryCounts(i).errors.toDouble / globalCounts.errors
 
 	def display(): Unit = {
-		val out = new PrintWriter(System.out)
-		printTo(out)
-		out.flush()
+		println(this)
 	}
 
 	def printTo(out: PrintWriter): Unit = {
