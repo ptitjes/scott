@@ -17,7 +17,17 @@ object DiscriminantTrainer extends Trainer.Factory {
 
 	object ITERATION_COUNT extends IntParameter("Iterations", 1)
 
-	object AVERAGING extends BooleanParameter("Averaging", false)
+	val NO_AVERAGING = 0
+	val PARTIAL_AVERAGING = 1
+	val COMPLETE_AVERAGING = 2
+
+	object AVERAGING extends IntParameter("Averaging", 0) {
+		override def formatValue(value: Int): String = value match {
+			case NO_AVERAGING => "No"
+			case PARTIAL_AVERAGING => "Partial"
+			case COMPLETE_AVERAGING => "Complete"
+		}
+	}
 
 	def instantiate(configuration: Configuration): Trainer = new Instance(configuration)
 
@@ -82,6 +92,8 @@ object DiscriminantTrainer extends Trainer.Factory {
 			val decoder = configuration(DECODER).instantiate(hmm, configuration)
 
 			val iterationCount = configuration(ITERATION_COUNT)
+			val averagingDivider = iterationCount *
+				(if (useAveraging == COMPLETE_AVERAGING) sequences.size else 1)
 
 			for (i <- 1 to iterationCount) {
 
@@ -126,33 +138,33 @@ object DiscriminantTrainer extends Trainer.Factory {
 						}
 					}
 
-					if (useAveraging) {
+					if (useAveraging == COMPLETE_AVERAGING) {
 						wordOnlyFeatures.foreach {
 							case (weights, averagedWeights) =>
-								for (i <- 0 until breadth) averagedWeights(i) += weights(i)
+								for (i <- 0 until breadth) averagedWeights(i) += weights(i) / averagingDivider
 						}
 						otherFeatures.foreach {
 							case (weights, averagedWeights) =>
-								for (i <- 0 until breadth) averagedWeights(i) += weights(i)
+								for (i <- 0 until breadth) averagedWeights(i) += weights(i) / averagingDivider
 						}
 					}
 
 					progress.increment()
 				}
+
+				if (useAveraging == PARTIAL_AVERAGING) {
+					wordOnlyFeatures.foreach {
+						case (weights, averagedWeights) =>
+							for (i <- 0 until breadth) averagedWeights(i) += weights(i) / averagingDivider
+					}
+					otherFeatures.foreach {
+						case (weights, averagedWeights) =>
+							for (i <- 0 until breadth) averagedWeights(i) += weights(i) / averagingDivider
+					}
+				}
 			}
 
-			if (useAveraging) {
-				wordOnlyFeatures.foreach {
-					case (weights, averagedWeights) =>
-						for (i <- 0 until breadth) averagedWeights(i) /= iterationCount * sequences.size
-				}
-				otherFeatures.foreach {
-					case (weights, averagedWeights) =>
-						for (i <- 0 until breadth) averagedWeights(i) /= iterationCount * sequences.size
-				}
-			}
-
-			if (!useAveraging) hmm
+			if (useAveraging == NO_AVERAGING) hmm
 			else HMMDiscriminant(breadth, depth,
 				wordOnlyFeatures.map { case (weights, averagedWeights) => averagedWeights},
 				otherFeatures.map { case (weights, averagedWeights) => averagedWeights},

@@ -91,6 +91,20 @@ case class IntParameter(name: String, default: Configuration => Int) extends Par
 	def toJson(value: Int): JValue = JInt(value)
 }
 
+case class StringParameter(name: String, default: Configuration => String) extends Parameter[String] {
+
+	def this(name: String, default: String) = this(name, conf => default)
+
+	def formatValue(value: String): String = value
+
+	def fromJson(value: JValue): String = value match {
+		case JString(v) => v
+		case _ => throw new IllegalArgumentException
+	}
+
+	def toJson(value: String): JValue = JString(value)
+}
+
 case class TrainerParameter(name: String, default: Configuration => Trainer.Factory)
 	extends Parameter[Trainer.Factory]() {
 

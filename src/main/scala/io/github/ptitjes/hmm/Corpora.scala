@@ -25,8 +25,6 @@ object Corpora {
 			Corpus(sequences.map(f))
 	}
 
-	case class Word(code: Int, string: String)
-
 	trait Sequence {
 		def observables: IndexedSeq[Word]
 
@@ -287,6 +285,6 @@ object Corpora {
 	def nonAnnotatedfrom(url: java.net.URL, lexicon: Lexica.Lexicon): Corpus[Sequence] =
 		nonAnnotatedfrom(Source.fromURL(url), lexicon)
 
-	def merge[T <: Sequence](c1: Corpus[T], c2: Corpus[T]): Corpus[T] =
-		Corpus(c1.sequences ++ c2.sequences)
+	def merge[T <: Sequence](corpora: Corpus[T]*): Corpus[T] =
+		Corpus(corpora.foldLeft(Seq[T]())(_ ++ _.sequences))
 }

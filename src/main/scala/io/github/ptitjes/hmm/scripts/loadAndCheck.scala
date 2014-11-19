@@ -5,7 +5,7 @@ import java.io.File
 import io.github.ptitjes.hmm.HiddenMarkovModel._
 import io.github.ptitjes.hmm.Utils._
 import io.github.ptitjes.hmm._
-import io.github.ptitjes.hmm.analysis.Analysis
+import io.github.ptitjes.hmm.analysis.{Checking, Analysis}
 import io.github.ptitjes.hmm.analysis.Results._
 import io.github.ptitjes.hmm.decoders.FullDecoder
 
@@ -16,7 +16,8 @@ object loadAndCheck extends App {
 	private val PATH_TO_TEST = "/home/didier/Documents/Work/Master/Docs/Inférence Statistique/Alexis Nasr/Code HMM/ftb.test.encode"
 	val testCorpus = Corpora.annotatedFrom(new File(PATH_TO_TEST), Lexica.WORDS)
 
-	val hmmFilename = "selected-hmms/Disc-Full-Averaging-Complete-Iterations-40-Order-2.json"
+	val confName = "Disc-Full-Averaging-Complete-Iterations-40-Order-2"
+	val hmmFilename = "selected-hmms/" + confName + ".json"
 
 	val conf = Configuration()
 		.set(Configuration.DECODER, FullDecoder)
@@ -32,6 +33,7 @@ object loadAndCheck extends App {
 		decoder.decode(devCorpus)
 	}
 
-	val results = check(hmm, devCorpus, hypCorpus, loadTime, decodingElapsedTime)
+	val results = Checking.check(conf, hmm, devCorpus, hypCorpus, loadTime, decodingElapsedTime,
+		new File("temp/" + confName + ".check"))
 	results.display()
 }

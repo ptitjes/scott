@@ -5,10 +5,10 @@ import java.io.{File, FileWriter, PrintWriter}
 import io.github.ptitjes.hmm.HiddenMarkovModel._
 import io.github.ptitjes.hmm.Utils._
 import io.github.ptitjes.hmm._
-import io.github.ptitjes.hmm.analysis.Analysis
+import io.github.ptitjes.hmm.analysis.{Checking, Analysis}
 import io.github.ptitjes.hmm.analysis.Results._
 import io.github.ptitjes.hmm.decoders.FullDecoder
-import io.github.ptitjes.hmm.trainers.DiscriminantTrainer
+import io.github.ptitjes.hmm.trainers.{RelFreqTrainer, DiscriminantTrainer}
 
 object trainAndSave extends App {
 
@@ -18,11 +18,12 @@ object trainAndSave extends App {
 	val testCorpus = Corpora.annotatedFrom(new File(PATH_TO_TEST), Lexica.WORDS)
 
 	val conf = Configuration()
-		.set(Configuration.TRAINER, DiscriminantTrainer)
+		.set(Configuration.TRAINER, RelFreqTrainer)
+		//.set(Configuration.TRAINER, DiscriminantTrainer)
 		.set(Trainer.ORDER, 2)
 		//		.set(DiscriminantTrainer.DECODER, FullDecoder)
-		.set(DiscriminantTrainer.ITERATION_COUNT, 40)
-		.set(DiscriminantTrainer.AVERAGING, true)
+		//		.set(DiscriminantTrainer.ITERATION_COUNT, 40)
+		//		.set(DiscriminantTrainer.AVERAGING, true)
 		.set(Configuration.DECODER, FullDecoder)
 	//		.set(Configuration.DECODER, BeamDecoder)
 	//		.set(BeamDecoder.BEAM, 5)
@@ -41,7 +42,7 @@ object trainAndSave extends App {
 
 	toFile(hmm, new File("temp/" + conf.toFilename + ".json"))
 
-	val results = check(conf, hmm, devCorpus, hypCorpus,
+	val results = Checking.check(conf, hmm, devCorpus, hypCorpus,
 		trainingElapsedTime, decodingElapsedTime,
 		new File("temp/" + conf.toFilename + ".check"))
 

@@ -41,8 +41,8 @@ class AnalysisRunner(cacheFilename: String,
 					decoder.decode(testCorpus)
 				}
 
-				val results = check(hmm, testCorpus, hypCorpus,
-					trainingElapsedTime, decodingElapsedTime, debug = false)
+				val results = Checking.check(hmm, testCorpus, hypCorpus,
+					trainingElapsedTime, decodingElapsedTime)
 
 				println("\t" + results)
 

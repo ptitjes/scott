@@ -32,6 +32,8 @@ object Lexica {
 	case class Lexicon(elements: IndexedSeq[String], maxLength: Int) {
 
 		def apply(i: Int) = elements(i)
+		def get(i: Int) = Word(i, elements(i))
+		def words = (0 until elements.length).map(i => get(i))
 
 		def padded(i: Int) = {
 			val element = elements(i)
@@ -54,3 +56,5 @@ object Lexica {
 	def from(url: java.net.URL): Lexicon = from(Source.fromURL(url))
 
 }
+
+case class Word(code: Int, string: String)

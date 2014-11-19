@@ -9,6 +9,11 @@ import io.github.ptitjes.hmm.decoders.BeamDecoder
 
 case class Results(globalCounts: ErrorCount,
                    perCategoryCounts: Array[ErrorCount],
+                   confusionMatrix: Array[Array[Int]],
+                   top50KnownMostFrequent: List[(Word, ErrorCount, Array[Array[Int]])],
+                   top50UnknownMostFrequent: List[(Word, ErrorCount, Array[Array[Int]])],
+                   top50Known: List[(Word, ErrorCount, Array[Array[Int]])],
+                   top50Unknown: List[(Word, ErrorCount, Array[Array[Int]])],
                    trainingElapsedTime: Long, decodingElapsedTime: Long) {
 
 	def errorRate = globalCounts.errorRate
@@ -24,20 +29,14 @@ case class Results(globalCounts: ErrorCount,
 	def categoryErrorRatio(i: Int) = perCategoryCounts(i).errors.toDouble / globalCounts.errors
 
 	def display(): Unit = {
-		println(this)
-		for (i <- 0 until perCategoryCounts.length)
-			println(f"\tCategory: ${
-				Lexica.CATEGORIES.padded(i)
-			} ${
-				perCategoryCounts(i)
-			}; Of Total; ${
-				categoryErrorRatio(i) * 100
-			}%6.2f%%")
-		println()
+		val out = new PrintWriter(System.out)
+		printTo(out)
+		out.flush()
 	}
 
 	def printTo(out: PrintWriter): Unit = {
 		out.println(this)
+
 		for (i <- 0 until perCategoryCounts.length)
 			out.println(f"\tCategory: ${
 				Lexica.CATEGORIES.padded(i)
@@ -46,6 +45,49 @@ case class Results(globalCounts: ErrorCount,
 			}; Of Total; ${
 				categoryErrorRatio(i) * 100
 			}%6.2f%%")
+		out.println()
+
+		out.println("Confusion matrix")
+		out.print(" " * 5)
+		for (j <- 0 until confusionMatrix.length) {
+			out.print(s"\t${Lexica.CATEGORIES.padded(j)}")
+		}
+		out.println()
+		for (i <- 0 until confusionMatrix.length) {
+			out.print(s"${Lexica.CATEGORIES.padded(i)}")
+			for (j <- 0 until confusionMatrix(i).length) {
+				out.print(f"\t${confusionMatrix(i)(j)}%5d")
+			}
+			out.println()
+		}
+		out.println()
+
+		out.println("Top 50 of most frequent known words")
+		top50KnownMostFrequent
+			.foreach { case (w, errorCounts, confusion) =>
+			out.println(f"${w.string}%-20s ${errorCounts.toString}")
+		}
+		out.println()
+
+		out.println("Top 50 of most frequent unknown words")
+		top50UnknownMostFrequent
+			.foreach { case (w, errorCounts, confusion) =>
+			out.println(f"${w.string}%-20s ${errorCounts.toString}")
+		}
+		out.println()
+
+		out.println("Top 50 of erroneous known words")
+		top50Known
+			.foreach { case (w, errorCounts, confusion) =>
+			out.println(f"${w.string}%-20s ${errorCounts.toString}")
+		}
+		out.println()
+
+		out.println("Top 50 of erroneous unknown words")
+		top50Unknown
+			.foreach { case (w, errorCounts, confusion) =>
+			out.println(f"${w.string}%-20s ${errorCounts.toString}")
+		}
 		out.println()
 	}
 
@@ -93,89 +135,4 @@ class ErrorCount {
 
 object Results {
 
-	def check(hmm: HiddenMarkovModel,
-	          refCorpus: Corpus[Sequence with Annotation],
-	          hypCorpus: Corpus[Sequence with Annotation],
-	          trainingElapsedTime: Long, decodingElapsedTime: Long,
-	          debug: Boolean = false): Results = {
-
-		check(hmm, refCorpus, hypCorpus,
-			trainingElapsedTime, decodingElapsedTime, debug, new PrintWriter(System.out))
-	}
-
-	def check(conf: Configuration,
-	          hmm: HiddenMarkovModel,
-	          refCorpus: Corpus[Sequence with Annotation],
-	          hypCorpus: Corpus[Sequence with Annotation],
-	          trainingElapsedTime: Long, decodingElapsedTime: Long,
-	          checkFile: File): Results = {
-
-		using(new FileWriter(checkFile)) {
-			fileOutput => using(new PrintWriter(fileOutput)) {
-				out =>
-					out.println(conf)
-					out.println()
-
-					check(hmm, refCorpus, hypCorpus,
-						trainingElapsedTime, decodingElapsedTime, true, out)
-			}
-		}
-	}
-
-	def check(hmm: HiddenMarkovModel,
-	          refCorpus: Corpus[Sequence with Annotation],
-	          hypCorpus: Corpus[Sequence with Annotation],
-	          trainingElapsedTime: Long, decodingElapsedTime: Long,
-	          debug: Boolean, out: PrintWriter): Results = {
-
-		val globalCounts = new ErrorCount
-		val perCategoryCounts = Array.fill(stateCount(refCorpus))(new ErrorCount)
-
-		refCorpus.sequences.zip(hypCorpus.sequences).foreach {
-			case (refSeq, hypSeq) =>
-
-				if (refSeq.observablesAndStates.length != hypSeq.observablesAndStates.length) {
-					throw new IllegalStateException("Observable length mismatch!")
-				}
-
-				refSeq.observablesAndStates.zip(hypSeq.observablesAndStates).foreach {
-					case ((oRef, sRef), (oHyp, sHyp)) =>
-						if (oRef != oHyp) {
-							throw new IllegalStateException("Observable mismatch!")
-						}
-						val error = sRef != sHyp
-
-						globalCounts.total += 1
-						perCategoryCounts(sRef).total += 1
-						if (error) {
-							globalCounts.errors += 1
-							perCategoryCounts(sRef).errors += 1
-						}
-
-						if (hmm.isUnknown(oRef)) {
-							globalCounts.unknownTotal += 1
-							perCategoryCounts(sRef).unknownTotal += 1
-							if (error) {
-								globalCounts.unknownErrors += 1
-								perCategoryCounts(sRef).unknownErrors += 1
-							}
-						}
-
-						if (debug) {
-							out.print(if (error) ">" else " ")
-							out.print(f"${oRef.code}%6d")
-							out.print(if (hmm.isUnknown(oRef)) " U" else "  ")
-							out.print(f"\t$sRef%2d ${Lexica.CATEGORIES(sRef)}%-5s")
-							out.print(f"\t$sHyp%2d ${Lexica.CATEGORIES(sHyp)}%-5s\t")
-							out.println(oRef.string)
-						}
-				}
-				if (debug) out.println()
-		}
-
-		val results = Results(globalCounts, perCategoryCounts, trainingElapsedTime, decodingElapsedTime)
-		if (debug) results.printTo(out)
-
-		results
-	}
 }
