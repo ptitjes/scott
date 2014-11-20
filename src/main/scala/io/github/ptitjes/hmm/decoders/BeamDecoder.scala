@@ -6,7 +6,7 @@ import io.github.ptitjes.hmm._
 import io.github.ptitjes.hmm.utils.BoundedPriorityQueue
 
 import scala.annotation.tailrec
-import scala.collection.GenSeq
+import scala.collection._
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
@@ -45,6 +45,8 @@ object BeamDecoder extends Decoder.Factory {
 		val scores = Array.ofDim[Double](breadth, maxStateCount)
 		val wordOnlyScores = Array.ofDim[Double](breadth)
 
+		val allTags = BitSet() ++ (0 until breadth)
+
 		def decode(sequence: Sequence): Sequence with Annotation = {
 			beam.clear()
 			beam(0) = true
@@ -71,12 +73,19 @@ object BeamDecoder extends Decoder.Factory {
 				val word = iterator.next()
 				val d = iterator.currentDepth
 
+				val tags = hmm match {
+					case HMMGenerative(_, _, _, _, _, dictionary) =>
+						if (dictionary.contains(word.code)) dictionary(word.code) else allTags
+					case HMMDiscriminant(_, _, _, _, dictionary) =>
+						if (dictionary.contains(word.code)) dictionary(word.code) else allTags
+				}
+
 				hmm match {
-					case HMMGenerative(_, _, t, e, ue) =>
+					case HMMGenerative(_, _, t, e, ue, _) =>
 						val Td = t(d)
 						val E = if (!hmm.isUnknown(word)) e(word.code) else ue
 
-						targetTags.foreach { targetTag =>
+						tags.foreach { targetTag =>
 							val targetScores = scores(targetTag)
 							val Tj = Td(targetTag)
 							val Ej = E(targetTag)
@@ -86,30 +95,30 @@ object BeamDecoder extends Decoder.Factory {
 							}
 						}
 
-					case HMMDiscriminant(_, _, wordOnlyFeatures, otherFeatures, dictionary) =>
-						targetTags.foreach { targetTag =>
+					case HMMDiscriminant(_, _, wordOnlyFeatures, otherFeatures, _) =>
+						tags.foreach { targetTag =>
 							wordOnlyScores(targetTag) = 0
 						}
-
 						val h_wordOnly = iterator.history(-1)
 						wordOnlyFeatures.foreachMatching(h_wordOnly)(weights =>
-							weights.foreach { case (tag, weight) => wordOnlyScores(tag) += weight}
+							weights.foreach { case (tag, weight) => if (tags(tag)) wordOnlyScores(tag) += weight}
 						)
+
 						beam.foreach { sourceState =>
-							targetTags.foreach { targetTag =>
+							tags.foreach { targetTag =>
 								scores(targetTag)(sourceState) = wordOnlyScores(targetTag)
 							}
 
 							val h = iterator.history(sourceState)
 							otherFeatures.foreachMatching(h)(weights =>
-								weights.foreach { case (tag, weight) => scores(tag)(sourceState) += weight}
+								weights.foreach { case (tag, weight) => if (tags(tag)) scores(tag)(sourceState) += weight}
 							)
 						}
 				}
 
 				beamMaxElements.clear()
 				sharedTags.foreach { sharedTag =>
-					targetTags.foreach { targetTag =>
+					tags.foreach { targetTag =>
 						val targetScores = scores(targetTag)
 
 						val (max, argMax) = maxArgMax(sourceTagsCount, beam,

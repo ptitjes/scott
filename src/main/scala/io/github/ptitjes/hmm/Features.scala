@@ -1,5 +1,7 @@
 package io.github.ptitjes.hmm
 
+import scala.collection._
+
 object Features {
 
 	import Corpora._

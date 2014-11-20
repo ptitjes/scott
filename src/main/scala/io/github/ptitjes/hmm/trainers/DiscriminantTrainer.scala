@@ -6,6 +6,7 @@ import io.github.ptitjes.hmm.Trainer._
 import io.github.ptitjes.hmm.Utils._
 import io.github.ptitjes.hmm._
 
+import scala.collection._
 import scala.collection.mutable
 
 object DiscriminantTrainer extends Trainer.Factory {
@@ -128,7 +129,7 @@ object DiscriminantTrainer extends Trainer.Factory {
 			val hmm = HMMDiscriminant(breadth, depth,
 				wordOnlyFeatures.map { case (weights, averagedWeights) => weights},
 				otherFeatures.map { case (weights, averagedWeights) => weights},
-				dictionary.map { case (word, tags) => (word.code, tags)})
+				dictionary.map { case (word, tags) => (word.code, BitSet() ++ tags)})
 
 			val decoder = configuration(DECODER).instantiate(hmm, configuration)
 
@@ -207,7 +208,7 @@ object DiscriminantTrainer extends Trainer.Factory {
 							otherFeatures.map { case (weights, averagedWeights) =>
 								averagedWeights.map(w => w / averagingDivider)
 							},
-							dictionary.map { case (word, tags) => (word.code, tags)}
+							dictionary.map { case (word, tags) => (word.code, BitSet() ++ tags)}
 						)
 					},
 					elapsedTime

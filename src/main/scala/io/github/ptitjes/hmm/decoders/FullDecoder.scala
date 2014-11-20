@@ -5,7 +5,7 @@ import io.github.ptitjes.hmm.Utils._
 import io.github.ptitjes.hmm._
 
 import scala.annotation.tailrec
-import scala.collection.GenSeq
+import scala.collection._
 import scala.reflect.ClassTag
 
 object FullDecoder extends Decoder.Factory {
@@ -57,7 +57,7 @@ object FullDecoder extends Decoder.Factory {
 				val d = iterator.currentDepth
 
 				hmm match {
-					case HMMGenerative(_, _, t, e, ue) =>
+					case HMMGenerative(_, _, t, e, ue, _) =>
 						val Td = t(d)
 						val E = if (!hmm.isUnknown(word)) e(word.code) else ue
 
@@ -71,22 +71,20 @@ object FullDecoder extends Decoder.Factory {
 							}
 						}
 
-					case HMMDiscriminant(_, _, wordOnlyFeatures, otherFeatures, dictionary) =>
+					case HMMDiscriminant(_, _, wordOnlyFeatures, otherFeatures, _) =>
 						targetTags.foreach { targetTag =>
 							wordOnlyScores(targetTag) = 0
 						}
-
 						val h_wordOnly = iterator.history(-1)
 						wordOnlyFeatures.foreachMatching(h_wordOnly)(weights =>
 							weights.foreach { case (tag, weight) => wordOnlyScores(tag) += weight}
 						)
+
 						allStates.foreach { sourceState =>
 							targetTags.foreach { targetTag =>
 								scores(targetTag)(sourceState) = wordOnlyScores(targetTag)
 							}
-						}
 
-						allStates.foreach { sourceState =>
 							val h = iterator.history(sourceState)
 							otherFeatures.foreachMatching(h)(weights =>
 								weights.foreach { case (tag, weight) => scores(tag)(sourceState) += weight}

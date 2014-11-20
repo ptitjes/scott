@@ -3,6 +3,8 @@ package io.github.ptitjes.hmm
 import io.github.ptitjes.hmm.Corpora._
 import io.github.ptitjes.hmm.Utils.ProgressBar
 
+import scala.collection._
+
 trait Decoder {
 
 	def decode(corpus: Corpus[Sequence]): Corpus[Sequence with Annotation] = {

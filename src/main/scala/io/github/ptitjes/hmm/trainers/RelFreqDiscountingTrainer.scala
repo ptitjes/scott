@@ -82,9 +82,10 @@ object RelFreqDiscountingTrainer extends Trainer.Factory {
 				}
 			}
 
-			val (e, ue) = EmittingTraining.train(breadth, corpus, configuration(EmittingTraining.UNKNOWN_THRESHOLD))
+			val (e, ue, dict) = EmittingTraining.train(breadth, corpus,
+				configuration(EmittingTraining.UNKNOWN_THRESHOLD))
 
-			HMMGenerative(breadth, depth, T, e, ue)
+			HMMGenerative(breadth, depth, T, e, ue, dict)
 		}
 
 		def runNgramCount(order: Int, corpus: Corpus[Sequence with Annotation]): mutable.Map[Seq[Int], NGramData] = {
@@ -103,7 +104,7 @@ object RelFreqDiscountingTrainer extends Trainer.Factory {
 					out =>
 						for (i <- 1 to configuration(MULTIPLIER)) {
 							corpus.sequences.foreach {
-								s => out.println(s.observablesAndStates.map { case (o, c) => c}.mkString(" "))
+								s => out.println(s.observablesAndStates.map { case (o, t) => t}.mkString(" "))
 							}
 						}
 				}

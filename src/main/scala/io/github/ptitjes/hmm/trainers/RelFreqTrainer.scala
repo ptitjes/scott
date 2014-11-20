@@ -32,15 +32,15 @@ object RelFreqTrainer extends Trainer.Factory {
 				var d = 0
 				var previousState = 0
 
-				s.observablesAndStates.foreach { case (word, cat) =>
+				s.observablesAndStates.foreach { case (word, tag) =>
 
-					perCategoryCounts(d)(cat)(previousState) += 1
+					perCategoryCounts(d)(tag)(previousState) += 1
 					allCategoryCounts(d)(0)(previousState) += 1
 
 					if (d < depth) {
 						d += 1
 					}
-					previousState = (previousState * breadth + cat) % size
+					previousState = (previousState * breadth + tag) % size
 				}
 			}
 
@@ -54,9 +54,10 @@ object RelFreqTrainer extends Trainer.Factory {
 				}
 			}
 
-			val (e, ue) = EmittingTraining.train(breadth, corpus, configuration(EmittingTraining.UNKNOWN_THRESHOLD))
+			val (e, ue, dict) = EmittingTraining.train(breadth, corpus,
+				configuration(EmittingTraining.UNKNOWN_THRESHOLD))
 
-			HMMGenerative(breadth, depth, T, e, ue)
+			HMMGenerative(breadth, depth, T, e, ue, dict)
 		}
 	}
 

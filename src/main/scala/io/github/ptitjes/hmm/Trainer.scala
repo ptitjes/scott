@@ -2,6 +2,8 @@ package io.github.ptitjes.hmm
 
 import io.github.ptitjes.hmm.Corpora._
 
+import scala.collection._
+
 trait Trainer {
 
 	def train(corpus: Corpus[Sequence with Annotation]): HiddenMarkovModel

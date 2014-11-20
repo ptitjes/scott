@@ -1,23 +1,31 @@
 package io.github.ptitjes.hmm.trainers
 
 import io.github.ptitjes.hmm.Corpora._
-import io.github.ptitjes.hmm.IntParameter
+import io.github.ptitjes.hmm.{Word, IntParameter}
 import io.github.ptitjes.hmm.Utils._
 
+import scala.collection._
 import scala.collection.mutable
 
 object EmittingTraining {
 
 	object UNKNOWN_THRESHOLD extends IntParameter("Unknown Word Threshold", 18)
 
-	def train(breadth: Int, corpus: Corpus[Sequence with Annotation], threshold: Int): (mutable.Map[Int, Array[Double]], Array[Double]) = {
+	def train(breadth: Int, corpus: Corpus[Sequence with Annotation], threshold: Int)
+	: (mutable.Map[Int, Array[Double]], Array[Double], Map[Int, BitSet]) = {
+
+		val dictionary: mutable.Map[Word, Set[Int]] = mutable.Map()
 		val allWordCategoryCounts = Array.ofDim[Int](breadth)
 		val perWordCategoryCounts: mutable.Map[Int, Array[Int]] = mutable.Map()
 		val perWordCounts: mutable.Map[Int, Int] = mutable.Map()
 		val unknownWordCategoryCounts: Array[Int] = Array.ofDim(breadth)
 
 		corpus.sequences.foreach { s: Sequence with Annotation =>
-			s.observablesAndStates.foreach { case (word, cat) =>
+			s.observablesAndStates.foreach { case (word, tag) =>
+				if (!dictionary.contains(word))
+					dictionary(word) = Set(tag)
+				else
+					dictionary(word) += tag
 
 				// Emission counts
 				if (!perWordCategoryCounts.contains(word.code)) {
@@ -25,8 +33,8 @@ object EmittingTraining {
 					perWordCategoryCounts += word.code -> Array.ofDim(breadth)
 				}
 				perWordCounts(word.code) += 1
-				perWordCategoryCounts(word.code)(cat) += 1
-				allWordCategoryCounts(cat) += 1
+				perWordCategoryCounts(word.code)(tag) += 1
+				allWordCategoryCounts(tag) += 1
 			}
 		}
 
@@ -63,6 +71,6 @@ object EmittingTraining {
 				UE(j) = avoidInfinity(-log(breadth))
 			}
 		}
-		(E, UE)
+		(E, UE, dictionary.map { case (word, tags) => (word.code, BitSet() ++ tags)})
 	}
 }
