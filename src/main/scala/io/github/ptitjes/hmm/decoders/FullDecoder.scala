@@ -1,5 +1,7 @@
 package io.github.ptitjes.hmm.decoders
 
+import io.github.ptitjes.hmm.Corpora._
+import io.github.ptitjes.hmm.Utils._
 import io.github.ptitjes.hmm._
 
 import scala.annotation.tailrec
@@ -17,9 +19,6 @@ object FullDecoder extends Decoder.Factory {
 	def instantiate(hmm: HiddenMarkovModel, configuration: Configuration): Decoder = new Instance(hmm, configuration)
 
 	private class Instance(hmm: HiddenMarkovModel, configuration: Configuration) extends Decoder {
-
-		import io.github.ptitjes.hmm.Corpora._
-		import io.github.ptitjes.hmm.Utils._
 
 		val multiThreaded = configuration(MULTI_THREADED)
 
@@ -46,8 +45,8 @@ object FullDecoder extends Decoder.Factory {
 			val sharedTagsFanning = breadth
 			var sharedTags = makeRange(sharedTagsCount)
 
-			var allSourceStatesCount = sourceTagsCount * sharedTagsCount
-			var allSourceStates = makeRange(allSourceStatesCount)
+			var allStatesCount = sourceTagsCount * sharedTagsCount
+			var allStates = makeRange(allStatesCount)
 
 			val targetTagsCount = breadth
 			val targetTags = makeRange(targetTagsCount)
@@ -67,7 +66,7 @@ object FullDecoder extends Decoder.Factory {
 							val Tj = Td(targetTag)
 							val Ej = E(targetTag)
 
-							allSourceStates.foreach { sourceState =>
+							allStates.foreach { sourceState =>
 								targetScores(sourceState) = Tj(sourceState) + Ej
 							}
 						}
@@ -81,13 +80,13 @@ object FullDecoder extends Decoder.Factory {
 						wordOnlyFeatures.foreachMatching(h_wordOnly)(weights =>
 							weights.foreach { case (tag, weight) => wordOnlyScores(tag) += weight}
 						)
-						allSourceStates.foreach { sourceState =>
+						allStates.foreach { sourceState =>
 							targetTags.foreach { targetTag =>
 								scores(targetTag)(sourceState) = wordOnlyScores(targetTag)
 							}
 						}
 
-						allSourceStates.foreach { sourceState =>
+						allStates.foreach { sourceState =>
 							val h = iterator.history(sourceState)
 							otherFeatures.foreachMatching(h)(weights =>
 								weights.foreach { case (tag, weight) => scores(tag)(sourceState) += weight}
@@ -121,8 +120,8 @@ object FullDecoder extends Decoder.Factory {
 					}
 					sharedTags = makeRange(sharedTagsCount)
 
-					allSourceStatesCount = sourceTagsCount * sharedTagsCount
-					allSourceStates = makeRange(allSourceStatesCount)
+					allStatesCount = sourceTagsCount * sharedTagsCount
+					allStates = makeRange(allStatesCount)
 				}
 
 				deltas.swap()

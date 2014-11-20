@@ -1,9 +1,13 @@
 package io.github.ptitjes.hmm.decoders
 
+import io.github.ptitjes.hmm.Corpora._
+import io.github.ptitjes.hmm.Utils._
 import io.github.ptitjes.hmm._
+import io.github.ptitjes.hmm.utils.BoundedPriorityQueue
 
 import scala.annotation.tailrec
 import scala.collection.GenSeq
+import scala.collection.mutable
 import scala.reflect.ClassTag
 
 object BeamDecoder extends Decoder.Factory {
@@ -20,9 +24,6 @@ object BeamDecoder extends Decoder.Factory {
 
 	private class Instance(hmm: HiddenMarkovModel, configuration: Configuration) extends Decoder {
 
-		import io.github.ptitjes.hmm.Corpora._
-		import io.github.ptitjes.hmm.Utils._
-
 		val multiThreaded = configuration(MULTI_THREADED)
 
 		val breadth = hmm.breadth
@@ -32,16 +33,21 @@ object BeamDecoder extends Decoder.Factory {
 		val deltas = new SwappableArray[Double](maxStateCount)
 		val psis = new PsiArray(maxStateCount, 300)
 
-		val beamSize = 1.0 / (1 + configuration(BEAM))
-		val beam = Array.ofDim[Boolean](maxStateCount)
+		val beamWidth = configuration(BEAM)
+		val beamMaxElements = BoundedPriorityQueue[(Double, Int)](beamWidth)(
+			new Ordering[(Double, Int)] {
+				def compare(x: (Double, Int), y: (Double, Int)): Int =
+					scala.math.Ordering.Double.compare(y._1, x._1)
+			}
+		)
+		val beam = new mutable.BitSet(maxStateCount)
 
 		val scores = Array.ofDim[Double](breadth, maxStateCount)
 		val wordOnlyScores = Array.ofDim[Double](breadth)
 
 		def decode(sequence: Sequence): Sequence with Annotation = {
-			for (i <- 0 until pow(breadth, depth))
-				beam(i) = true
-
+			beam.clear()
+			beam(0) = true
 			deltas(0) = 0
 			psis(0) = -1
 			deltas.swap()
@@ -75,10 +81,8 @@ object BeamDecoder extends Decoder.Factory {
 							val Tj = Td(targetTag)
 							val Ej = E(targetTag)
 
-							allStates.foreach { sourceState =>
-								if (beam(sourceState)) {
-									targetScores(sourceState) = Tj(sourceState) + Ej
-								}
+							beam.foreach { sourceState =>
+								targetScores(sourceState) = Tj(sourceState) + Ej
 							}
 						}
 
@@ -89,30 +93,21 @@ object BeamDecoder extends Decoder.Factory {
 
 						val h_wordOnly = iterator.history(-1)
 						wordOnlyFeatures.foreachMatching(h_wordOnly)(weights =>
+							weights.foreach { case (tag, weight) => wordOnlyScores(tag) += weight}
+						)
+						beam.foreach { sourceState =>
 							targetTags.foreach { targetTag =>
-								wordOnlyScores(targetTag) += weights(targetTag)
-							})
-						allStates.foreach { sourceState =>
-							if (beam(sourceState)) {
-								targetTags.foreach { targetTag =>
-									scores(targetTag)(sourceState) = wordOnlyScores(targetTag)
-								}
+								scores(targetTag)(sourceState) = wordOnlyScores(targetTag)
 							}
-						}
 
-						allStates.foreach { sourceState =>
-							if (beam(sourceState)) {
-								val h = iterator.history(sourceState)
-								otherFeatures.foreachMatching(h)(weights =>
-									targetTags.foreach { targetTag =>
-										scores(targetTag)(sourceState) += weights(targetTag)
-									})
-							}
+							val h = iterator.history(sourceState)
+							otherFeatures.foreachMatching(h)(weights =>
+								weights.foreach { case (tag, weight) => scores(tag)(sourceState) += weight}
+							)
 						}
 				}
 
-				var beamMax = -1.0e307
-				var beamMin = 1.0e307
+				beamMaxElements.clear()
 				sharedTags.foreach { sharedTag =>
 					targetTags.foreach { targetTag =>
 						val targetScores = scores(targetTag)
@@ -126,8 +121,7 @@ object BeamDecoder extends Decoder.Factory {
 						deltas(targetState) = max
 						psis(targetState) = argMax
 
-						if (max > beamMax) beamMax = max
-						if (max < beamMin) beamMin = max
+						beamMaxElements += ((max, targetState))
 					}
 				}
 
@@ -149,10 +143,9 @@ object BeamDecoder extends Decoder.Factory {
 				deltas.swap()
 				psis.forward()
 
-				beamMin = if (beamMin.isNegInfinity) -1.0e307 else beamMin
-				beamMin = beamMax - math.pow(math.abs(beamMax - beamMin), beamSize)
-				allStates.foreach { sourceState =>
-					beam(sourceState) = deltas(sourceState) >= beamMin
+				beam.clear()
+				beamMaxElements.foreach {
+					case (_, sourceState) => beam(sourceState) = true
 				}
 			}
 
@@ -176,7 +169,7 @@ object BeamDecoder extends Decoder.Factory {
 			if (multiThreaded) (0 until count).par else 0 until count
 		}
 
-		@inline def maxArgMax(count: Int, beam: Array[Boolean],
+		@inline def maxArgMax(count: Int, beam: mutable.BitSet,
 		                      arg: Int => Int, f: Int => Double): (Double, Int) = {
 			var max = Double.NegativeInfinity
 			var argMax: Int = -1
@@ -187,7 +180,7 @@ object BeamDecoder extends Decoder.Factory {
 				if (beam(a)) {
 					val delta = f(a)
 
-					if (delta > max) {
+					if (delta >= max) {
 						max = delta
 						argMax = a
 					}
