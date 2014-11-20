@@ -32,7 +32,9 @@ object Lexica {
 	case class Lexicon(elements: IndexedSeq[String], maxLength: Int) {
 
 		def apply(i: Int) = elements(i)
+
 		def get(i: Int) = Word(i, elements(i))
+
 		def words = (0 until elements.length).map(i => get(i))
 
 		def padded(i: Int) = {
@@ -41,12 +43,15 @@ object Lexica {
 		}
 	}
 
+	def normalizeWord(string: String) =
+		string.replace("'_", "'").replace("_-_", "-").replace("_,_", "-").replace('_', ' ')
+
 	def from(source: Source): Lexicon = {
 		var maxLength = 0
 		val elements = ArrayBuffer[String]()
 		source.getLines().foreach { s =>
 			if (s.length > maxLength) maxLength = s.length
-			elements += s
+			elements += normalizeWord(s)
 		}
 		Lexicon(elements, maxLength)
 	}

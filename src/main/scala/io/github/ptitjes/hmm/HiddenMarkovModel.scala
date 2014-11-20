@@ -32,9 +32,9 @@ case class HMMGenerative(breadth: Int, depth: Int,
 }
 
 case class HMMDiscriminant(breadth: Int, depth: Int,
-                           wordOnlyFeatures: FeatureTree[Array[Double]],
-                           otherFeatures: FeatureTree[Array[Double]],
-                           dictionary: Map[Int, Int]) extends HiddenMarkovModel {
+                           wordOnlyFeatures: FeatureTree[Weights],
+                           otherFeatures: FeatureTree[Weights],
+                           dictionary: Map[Int, Set[Int]]) extends HiddenMarkovModel {
 
 	def isUnknown(o: Word): Boolean = !dictionary.contains(o.code)
 }

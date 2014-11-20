@@ -219,17 +219,13 @@ object Corpora {
 				else observablesAndStates(i)._1
 
 			def makeHistoryTag(i: Int) =
-				if (_currentDepth < i) -1
-				else {
-					var t = _sourceState
-					for (j <- 1 until i) t /= breadth
-					t % breadth
-				}
+				if (i < 0 || i >= observablesAndStates.length) -1
+				else observablesAndStates(i)._2
 
 			History(makeWord(_index),
 				(1 to depth).map(i => makeWord(_index - i)),
 				(1 to depth).map(i => makeWord(_index + i)),
-				(1 to depth).map(i => makeHistoryTag(i))
+				(1 to depth).map(i => makeHistoryTag(_index - i))
 			)
 		}
 	}
@@ -247,7 +243,8 @@ object Corpora {
 				val split = s.split(' ')
 				val observable = split(0).toInt
 				val tag = split(1).toInt
-				elements += ((Word(observable, lexicon(observable)), tag))
+				val word = Word(observable, lexicon(observable))
+				elements += ((word, tag))
 			}
 		}
 

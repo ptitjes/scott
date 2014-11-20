@@ -79,9 +79,8 @@ object FullDecoder extends Decoder.Factory {
 
 						val h_wordOnly = iterator.history(-1)
 						wordOnlyFeatures.foreachMatching(h_wordOnly)(weights =>
-							targetTags.foreach { targetTag =>
-								wordOnlyScores(targetTag) += weights(targetTag)
-							})
+							weights.foreach { case (tag, weight) => wordOnlyScores(tag) += weight}
+						)
 						allSourceStates.foreach { sourceState =>
 							targetTags.foreach { targetTag =>
 								scores(targetTag)(sourceState) = wordOnlyScores(targetTag)
@@ -91,9 +90,8 @@ object FullDecoder extends Decoder.Factory {
 						allSourceStates.foreach { sourceState =>
 							val h = iterator.history(sourceState)
 							otherFeatures.foreachMatching(h)(weights =>
-								targetTags.foreach { targetTag =>
-									scores(targetTag)(sourceState) += weights(targetTag)
-								})
+								weights.foreach { case (tag, weight) => scores(tag)(sourceState) += weight}
+							)
 						}
 				}
 

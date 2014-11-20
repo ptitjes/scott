@@ -20,10 +20,10 @@ object trainAndSave extends App {
 	val conf = Configuration()
 		//		.set(Configuration.TRAINER, RelFreqTrainer)
 		.set(Configuration.TRAINER, DiscriminantTrainer)
-		.set(Trainer.ORDER, 3)
+		.set(Trainer.ORDER, 2)
 		//		.set(DiscriminantTrainer.DECODER, FullDecoder)
-		.set(DiscriminantTrainer.ITERATION_COUNT, 5)
-		.set(DiscriminantTrainer.AVERAGING, DiscriminantTrainer.NO_AVERAGING)
+		.set(DiscriminantTrainer.ITERATION_COUNT, 1)
+		.set(DiscriminantTrainer.AVERAGING, DiscriminantTrainer.COMPLETE_AVERAGING)
 		.set(Configuration.DECODER, FullDecoder)
 	//			.set(Configuration.DECODER, BeamDecoder)
 	//			.set(BeamDecoder.BEAM, 5)
@@ -40,7 +40,7 @@ object trainAndSave extends App {
 		decoder.decode(devCorpus)
 	}
 
-	toFile(hmm, new File("temp/" + conf.toFilename + ".json"))
+	//toFile(hmm, new File("temp/" + conf.toFilename + ".json"))
 
 	val results = Checking.check(conf, hmm, devCorpus, hypCorpus,
 		trainingElapsedTime, decodingElapsedTime,

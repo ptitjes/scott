@@ -43,6 +43,22 @@ object Features {
 		def apply(h: History): Int = h.previousTags(index - 1)
 	}
 
+	case class Weights(breadth: Int, tags: Set[Int], values: Array[Double]) {
+
+		def this(breadth: Int, tags: Set[Int]) =
+			this(breadth, tags, Array.ofDim(breadth))
+
+		def apply(key: Int) = values(key)
+
+		def update(key: Int, value: Double) = values(key) = value
+
+		def foreach[U](f: (Int, Double) => U): Unit =
+			tags.foreach(t => f(t, values(t)))
+
+		def map(f: Double => Double): Weights =
+			new Weights(breadth, tags, values.map(f))
+	}
+
 	sealed trait FeatureTree[T] {
 
 		def foreachMatching(h: History)(f: T => Unit): Unit = this match {
@@ -100,8 +116,8 @@ object Features {
 
 	case class FTLeaf[T](weights: T) extends FeatureTree[T]
 
-	def makeNgramTree[T](depth: Int, breadth: Int, f: () => T): FeatureTree[T] =
-		if (depth == 0) FTLeaf(f())
+	def makeNgramTree[T](depth: Int, breadth: Int, f: Set[Int] => T): FeatureTree[T] =
+		if (depth == 0) FTLeaf(f((0 until breadth).toSet))
 		else
 			FTDispatchInt(
 				EPreviousTag(1),
@@ -110,27 +126,30 @@ object Features {
 				}
 			)
 
-	def makePrefixTree[T](prefixes: Set[String], f: () => T): FeatureTree[T] =
-		makeCharTree(prefixes, 0, s => (s.charAt(0), s.substring(1)), i => FTLeaf(f()))
+	def makePrefixTree[T](prefixes: Map[String, Set[Int]], f: Set[Int] => T): FeatureTree[T] =
+		makeCharTree(prefixes, 0, s => (s.charAt(0), s.substring(1)), tags => FTLeaf(f(tags)))
 
-	def makeSuffixTree[T](suffixes: Set[String], f: () => T): FeatureTree[T] =
-		makeCharTree(suffixes, 0, s => (s.last, s.substring(0, s.length - 1)), i => FTLeaf(f()))
+	def makeSuffixTree[T](suffixes: Map[String, Set[Int]], f: Set[Int] => T): FeatureTree[T] =
+		makeCharTree(suffixes, 0, s => (s.last, s.substring(0, s.length - 1)), tags => FTLeaf(f(tags)))
 
-	def makeWordTree[T](index: Int, words: Set[Int], f: () => T): FeatureTree[T] =
-		FTDispatchInt(EWordCode(index), words.foldLeft(Map[Int, FeatureTree[T]]())((m, w) => m + (w -> FTLeaf(f()))))
+	def makeWordTree[T](index: Int, words: Map[Int, Set[Int]], f: Set[Int] => T): FeatureTree[T] =
+		FTDispatchInt(EWordCode(index),
+			words.foldLeft(Map[Int, FeatureTree[T]]()) {
+				case (m, (w, tags)) => m + (w -> FTLeaf(f(tags)))
+			})
 
-	def makeCharTree[T](suffixes: Set[String],
+	def makeCharTree[T](affixes: Map[String, Set[Int]],
 	                    index: Int, ht: (String) => (Char, String),
-	                    leaf: Int => FeatureTree[T]): FeatureTree[T] = {
-		if (suffixes.contains("")) {
-			if (suffixes.size == 1) {
-				leaf(index)
+	                    leaf: Set[Int] => FeatureTree[T]): FeatureTree[T] = {
+		if (affixes.contains("")) {
+			if (affixes.size == 1) {
+				leaf(affixes(""))
 			} else {
 				FTConjunction(
-					leaf(index) ::
+					leaf(affixes("")) ::
 						FTDispatchChar(
 							ECharAt(index),
-							crunchChars(suffixes - "", ht).map {
+							crunchChars(affixes - "", ht).map {
 								case (char, strings) => (char, makeCharTree(strings, index + 1, ht, leaf))
 							}
 						) :: Nil
@@ -139,16 +158,20 @@ object Features {
 		} else {
 			FTDispatchChar(
 				ECharAt(index),
-				crunchChars(suffixes, ht).map {
+				crunchChars(affixes, ht).map {
 					case (char, strings) => (char, makeCharTree(strings, index + 1, ht, leaf))
 				}
 			)
 		}
 	}
 
-	def crunchChars(strings: Set[String], f: String => (Char, String)): Map[Char, Set[String]] =
-		strings.map(f).foldLeft(Map[Char, Set[String]]()) {
-			case (map, (char, str)) =>
-				map + (char -> (map.withDefaultValue(Set[String]())(char) + str))
+	def crunchChars(strings: Map[String, Set[Int]],
+	                f: String => (Char, String)): Map[Char, Map[String, Set[Int]]] =
+		strings.map { case (s, tags) => (f(s), tags)}
+			.foldLeft(Map[Char, Map[String, Set[Int]]]()) {
+			case (map, ((char, str), tags)) =>
+				val previous = if (map.contains(char)) map(char) else Map[String, Set[Int]]()
+				val newTags = if (previous.contains(str)) previous(str) ++ tags else tags
+				map + (char -> (previous + (str -> newTags)))
 		}
 }
