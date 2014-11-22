@@ -58,10 +58,9 @@ object Features {
 		def apply(h: History): Int = h.previousTag(index)
 	}
 
-	case class Weights(breadth: Int, tags: BitSet, values: Array[Double]) {
+	case class Weights(tags: BitSet, values: Array[Double]) {
 
-		def this(breadth: Int, tags: BitSet) =
-			this(breadth, tags, Array.ofDim(breadth))
+		def this(breadth: Int, tags: BitSet) = this(tags, Array.ofDim[Double](breadth))
 
 		def apply(key: Int) = values(key)
 
@@ -73,7 +72,7 @@ object Features {
 			tags.foreach(t => f(t, values(t)))
 
 		def map(f: Double => Double): Weights =
-			new Weights(breadth, tags, values.map(f))
+			new Weights(tags, values.map(f))
 	}
 
 	sealed trait FeatureTree[T] {

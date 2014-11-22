@@ -18,7 +18,7 @@ object BeamDecoder extends Decoder.Factory {
 
 	object MULTI_THREADED extends BooleanParameter("MultiThreaded", c => c(Trainer.ORDER) >= 3)
 
-	object BEAM extends IntParameter("Beam", 3)
+	object BEAM extends IntParameter("Beam", 5)
 
 	def instantiate(hmm: HiddenMarkovModel, configuration: Configuration): Decoder = new Instance(hmm, configuration)
 

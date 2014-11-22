@@ -20,13 +20,10 @@ object trainAndSave extends App {
 	val conf = Configuration()
 		//		.set(Configuration.TRAINER, RelFreqTrainer)
 		.set(Configuration.TRAINER, DiscriminantTrainer)
-		.set(Trainer.ORDER, 1)
-		//		.set(DiscriminantTrainer.DECODER, FullDecoder)
-		.set(DiscriminantTrainer.ITERATION_COUNT, 1)
-		.set(DiscriminantTrainer.AVERAGING, DiscriminantTrainer.NO_AVERAGING)
-		//				.set(Configuration.DECODER, FullDecoder)
-		.set(Configuration.DECODER, BeamDecoder)
-		.set(BeamDecoder.BEAM, 5)
+		.set(Trainer.ORDER, 2)
+		.set(DiscriminantTrainer.ITERATION_COUNT, 14)
+		.set(DiscriminantTrainer.AVERAGING, DiscriminantTrainer.COMPLETE_AVERAGING)
+		.set(Configuration.DECODER, FullDecoder)
 
 	println(conf)
 

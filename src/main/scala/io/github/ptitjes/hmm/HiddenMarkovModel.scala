@@ -62,7 +62,7 @@ object HiddenMarkovModel {
 			classOf[FTLeaf[Array[Double]]]
 		))) +
 		new CharKeySerializer + new CharacterKeySerializer +
-		new CharSerializer + new CharacterSerializer + new BitSetSerializer
+		new CharSerializer + new CharacterSerializer + new BitSetSerializer + new WeightsSerializer
 
 	def fromFile(file: File): HiddenMarkovModel = {
 		using(new FileReader(file)) {
@@ -114,6 +114,22 @@ object HiddenMarkovModel {
 		case a: JArray => immutable.BitSet.fromBitMask(Extraction.extract[Array[Long]](a))
 	}, {
 		case v: BitSet => Extraction.decompose(v.toBitMask)
+	}
+		))
+
+	class WeightsSerializer extends CustomSerializer[Weights](format => ( {
+		case v: JValue =>
+			val map = Extraction.extract[Map[Int, Double]](v)
+			val maxIndex = map.foldLeft(0) { case (m, (i, _)) => if (i > m) i else m}
+			Weights(BitSet() ++ map.keySet, map.foldLeft(Array.ofDim[Double](maxIndex + 1)) {
+				case (weights, (tag, weight)) =>
+					weights(tag) = weight
+					weights
+			})
+	}, {
+		case Weights(tags, weights) => Extraction.decompose(
+			tags.map(tag => (tag, weights(tag))).toMap
+		)
 	}
 		))
 
