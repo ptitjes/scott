@@ -36,6 +36,9 @@ class LaTexReport(reportFilename: String) {
 							"\\usepackage{pgfplots}\n" +
 							"\\pgfplotsset{compat=1.9}\n" +
 							"\\usetikzlibrary{plotmarks}\n" +
+							"\\pgfplotscreateplotcyclelist{alllinestyles}" +
+							"{solid,loosely dashed,dotted,dashdotted,dashdotdotted," +
+							"densely dashed,densely dotted,densely dashdotted,densely dashdotdotted}\n" +
 							"\n\\begin{document}\n\\selectcolormodel{gray}\n")
 
 					elements foreach { e => e.generate(runner, out)}
@@ -91,6 +94,7 @@ object LaTexReport {
 				"\\begin{tikzpicture}" +
 					"\\begin{axis}[\n\tlegend style={\n\t\tcells={anchor=east},\n\t\tlegend pos=outer north east,\n\t},\n" +
 					"\tcycle list name=mark list*,\n" +
+					"\tcycle list name=alllinestyles, semithick,\n" +
 					s"\ttitle=$title,\n" +
 					makeTicks +
 					s"\txlabel=${xAxis.param.name},\n\tylabel=${yAxis.name} (${yAxis.unit})]")

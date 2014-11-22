@@ -16,7 +16,7 @@ object BeamDecoder extends Decoder.Factory {
 
 	override def parameters: Set[Parameter[_]] = Set(BEAM, MULTI_THREADED)
 
-	object MULTI_THREADED extends BooleanParameter("MultiThreaded", c => c(Trainer.ORDER) >= 3)
+	object MULTI_THREADED extends BooleanParameter("MultiThreaded", false)
 
 	object BEAM extends IntParameter("Beam", 5)
 

@@ -31,7 +31,7 @@ trait IterationCallback {
 
 object Trainer {
 
-	object ORDER extends IntParameter("Order", 3)
+	object ORDER extends IntParameter("Order", 2)
 
 	object ITERATION_COUNT extends IntParameter("Iterations", 1)
 

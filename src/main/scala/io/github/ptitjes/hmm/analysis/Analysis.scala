@@ -73,8 +73,8 @@ class AnalysisRunner(cacheFilename: String,
 					pool = pool(configuration) = results
 					saveResults(cacheFile, pool)
 				}
+				println()
 			}
-			println()
 		}
 
 		pool

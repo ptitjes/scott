@@ -23,7 +23,7 @@ object trainAndSave extends App {
 		.set(Trainer.ORDER, 2)
 		.set(DiscriminantTrainer.ITERATION_COUNT, 14)
 		.set(DiscriminantTrainer.AVERAGING, DiscriminantTrainer.COMPLETE_AVERAGING)
-		.set(Configuration.DECODER, FullDecoder)
+		.set(Configuration.DECODER, BeamDecoder)
 
 	println(conf)
 

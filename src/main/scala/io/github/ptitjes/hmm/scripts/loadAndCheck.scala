@@ -15,7 +15,7 @@ object loadAndCheck extends App {
 	private val PATH_TO_TEST = "/home/didier/Documents/Work/Master/Docs/Inférence Statistique/Alexis Nasr/Code HMM/ftb.test.encode"
 	val testCorpus = Corpora.annotatedFrom(new File(PATH_TO_TEST), Lexica.WORDS)
 
-	val hmmFilename = "temp/Disc-Beam-Averaging-No-Iterations-1-Order-1.json"
+	val hmmFilename = "selected-hmms/Disc-Full-Averaging-Complete-Iterations-14-Order-2.json"
 
 	val conf = Configuration()
 		.set(Configuration.DECODER, BeamDecoder)
