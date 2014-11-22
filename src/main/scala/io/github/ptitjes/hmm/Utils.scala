@@ -27,12 +27,15 @@ object Utils {
 	def avoidInfinity(logProbability: Double) =
 		if (logProbability.isNegInfinity || logProbability.isNaN) -1.0e307 else logProbability
 
-	def timed[T](step: String)(execution: => T): T = {
+	def timed[T](step: String)(execution: => T): (T, Long) = {
+		val indicator = new ProgressIndicator(step)
+
 		val start = System.currentTimeMillis()
 		val result = execution
 		val time = System.currentTimeMillis() - start
-		println(step + ": " + time + "ms")
-		result
+
+		indicator.stop(time)
+		(result, time)
 	}
 
 	def timed[T](execution: => T): (T, Long) = {
@@ -100,6 +103,31 @@ object Utils {
 				print(f"$name: $done%5d/$count |" + "=" * 100 +
 					"|     Total: " + totalTime + "\n")
 			}
+		}
+	}
+
+	class ProgressIndicator(val name: String) {
+
+		var finished = false
+
+		private val thread = new Thread(new Runnable {
+			val chars = "/-\\|".toCharArray
+
+			override def run(): Unit = {
+				var i = 0
+				while (!finished) {
+					print(name + ": " + chars(i) + "\r")
+					Thread.sleep(500)
+					i = (i + 1) % chars.length
+				}
+			}
+		})
+		thread.start()
+
+		def stop(time: Long): Unit = {
+			finished = true
+			thread.join()
+			print(name + ": " + prettyTimeMs(time) + "\n")
 		}
 	}
 

@@ -7,7 +7,7 @@ import io.github.ptitjes.hmm.Utils._
 import io.github.ptitjes.hmm._
 import io.github.ptitjes.hmm.analysis.{Checking, Analysis}
 import io.github.ptitjes.hmm.analysis.Results._
-import io.github.ptitjes.hmm.decoders.FullDecoder
+import io.github.ptitjes.hmm.decoders._
 
 object loadAndCheck extends App {
 
@@ -21,11 +21,11 @@ object loadAndCheck extends App {
 	val hmmFilename = "temp/Disc-Beam-Averaging-No-Beam-5-Iterations-1-Order-1.json"
 
 	val conf = Configuration()
-		.set(Configuration.DECODER, FullDecoder)
-	//		.set(Configuration.DECODER, BeamDecoder)
-	//		.set(BeamDecoder.BEAM, 5)
+//		.set(Configuration.DECODER, FullDecoder)
+			.set(Configuration.DECODER, BeamDecoder)
+			.set(BeamDecoder.BEAM, 5)
 
-	val (hmm, loadTime) = timed {
+	val (hmm, loadTime) = timed(s"Loading '$hmmFilename'") {
 		fromFile(new File(hmmFilename))
 	}
 

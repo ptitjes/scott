@@ -7,7 +7,6 @@ import io.github.ptitjes.hmm.Utils._
 import io.github.ptitjes.hmm._
 
 import scala.collection._
-import scala.collection.mutable
 
 object DiscriminantTrainer extends Trainer.Factory {
 
@@ -41,12 +40,12 @@ object DiscriminantTrainer extends Trainer.Factory {
 		def train(corpus: Corpus[Sequence with Annotation], callback: IterationCallback): Unit = {
 			val breadth = stateCount(corpus)
 
-			val dictionary: mutable.Map[Word, Set[Int]] = mutable.Map()
+			val dictionary: mutable.Map[Word, BitSet] = mutable.Map()
 			val previousWords = Array.fill(depth) {
-				mutable.Map[Word, Set[Int]]()
+				mutable.Map[Word, BitSet]()
 			}
 			val nextWords = Array.fill(depth) {
-				mutable.Map[Word, Set[Int]]()
+				mutable.Map[Word, BitSet]()
 			}
 			val ngrams = Array.fill(depth) {
 				mutable.Set[(List[Int], Int)]()
@@ -54,10 +53,10 @@ object DiscriminantTrainer extends Trainer.Factory {
 
 			val sequences = corpus.sequences
 
-			def addTagForWord(word: Word, tag: Int, dict: mutable.Map[Word, Set[Int]]) = {
+			def addTagForWord(word: Word, tag: Int, dict: mutable.Map[Word, BitSet]) = {
 				if (word != null) {
 					if (!dict.contains(word))
-						dict(word) = Set(tag)
+						dict(word) = BitSet(tag)
 					else
 						dict(word) += tag
 				}
@@ -84,26 +83,10 @@ object DiscriminantTrainer extends Trainer.Factory {
 			val wordsByCode = dictionary map { case (w, tags) => (w.code, tags)}
 			val wordsByString = dictionary map { case (w, tags) => (w.string, tags)}
 
-			//			val suffixes = wordsByString.toList.flatMap { case (word, tags) =>
-			//				for (s <- 1 to 4 if word.length >= s) yield (word.substring(word.length - s), tags)
-			//			}.foldLeft(Map[String, Set[Int]]()) {
-			//				case (map, (suffix, tags)) =>
-			//					val newTags = if (map.contains(suffix)) map(suffix) ++ tags else tags
-			//					map + (suffix -> newTags)
-			//			}
-			//
-			//			val prefixes = wordsByString.toList.flatMap { case (word, tags) =>
-			//				for (s <- 1 to 4 if word.length >= s) yield (word.substring(0, s), tags)
-			//			}.foldLeft(Map[String, Set[Int]]()) {
-			//				case (map, (prefix, tags)) =>
-			//					val newTags = if (map.contains(prefix)) map(prefix) ++ tags else tags
-			//					map + (prefix -> newTags)
-			//			}
-
-			val allTags = (0 until breadth).toSet
+			val allTags = BitSet() ++ (0 until breadth).toSet
 
 			var allWeightPairs = mutable.ArrayBuffer[(Weights, Weights)]()
-			val weightFactory: Set[Int] => (Weights, Weights) = {
+			val weightFactory: BitSet => (Weights, Weights) = {
 				tags =>
 					val weights = new Weights(breadth, tags)
 					val averagedWeights = new Weights(breadth, tags)
@@ -117,13 +100,13 @@ object DiscriminantTrainer extends Trainer.Factory {
 					makePrefixTree(wordsByString, weightFactory) ::
 						makeSuffixTree(wordsByString, weightFactory) ::
 
-						FTGuard(PContainsNumber(), FTLeaf(weightFactory(allTags), BitSet() ++ allTags)) ::
-						FTGuard(PContains('-'), FTLeaf(weightFactory(allTags), BitSet() ++ allTags)) ::
-						FTGuard(PContainsUppercase(), FTLeaf(weightFactory(allTags), BitSet() ++ allTags)) ::
-						FTGuard(PUppercaseOnly(), FTLeaf(weightFactory(allTags), BitSet() ++ allTags)) ::
+						FTGuard(PContainsNumber(), FTLeaf(weightFactory(allTags), allTags)) ::
+						FTGuard(PContains('-'), FTLeaf(weightFactory(allTags), allTags)) ::
+						FTGuard(PContainsUppercase(), FTLeaf(weightFactory(allTags), allTags)) ::
+						FTGuard(PUppercaseOnly(), FTLeaf(weightFactory(allTags), allTags)) ::
 						FTGuard(PContainsUppercase(),
 							FTDispatchInt(EPreviousTag(1),
-								(0 until breadth).map(i => (i, FTLeaf(weightFactory(allTags), BitSet() ++ allTags))).toMap)) ::
+								(0 until breadth).map(i => (i, FTLeaf(weightFactory(allTags), allTags))).toMap)) ::
 
 						makeWordTree(0, wordsByCode, weightFactory) :: Nil ++
 						(1 to depth).map(d => makeWordTree(-d,
@@ -136,7 +119,6 @@ object DiscriminantTrainer extends Trainer.Factory {
 
 			val otherFeatures =
 				FTConjunction(
-					//										(1 to depth).map(d => makeNgramTree(d, breadth, weightFactory))
 					(1 to depth).map(d => makeNgramTree(ngrams(d - 1), weightFactory))
 				)
 

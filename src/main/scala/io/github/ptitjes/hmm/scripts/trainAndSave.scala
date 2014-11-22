@@ -21,7 +21,7 @@ object trainAndSave extends App {
 		//		.set(Configuration.TRAINER, RelFreqTrainer)
 		.set(Configuration.TRAINER, DiscriminantTrainer)
 		.set(Trainer.ORDER, 1)
-//		.set(DiscriminantTrainer.DECODER, FullDecoder)
+		//		.set(DiscriminantTrainer.DECODER, FullDecoder)
 		.set(DiscriminantTrainer.ITERATION_COUNT, 1)
 		.set(DiscriminantTrainer.AVERAGING, DiscriminantTrainer.NO_AVERAGING)
 		//				.set(Configuration.DECODER, FullDecoder)
@@ -35,14 +35,12 @@ object trainAndSave extends App {
 		trainer.train(trainCorpus)
 	}
 
+	private val hmmFilename = "temp/" + conf.toFilename + ".json"
+	timed(s"Saving '$hmmFilename'") {
+		toFile(hmm, new File(hmmFilename))
+	}
+
 	decode(conf)
-
-//	val conf2 = Configuration()
-//		.set(Configuration.DECODER, FullDecoder)
-//
-//	decodeAndSave(conf2)
-
-	toFile(hmm, new File("temp/" + conf.toFilename + ".json"))
 
 	def decode(configuration: Configuration) {
 		val decoder = configuration(Configuration.DECODER).instantiate(hmm, configuration)

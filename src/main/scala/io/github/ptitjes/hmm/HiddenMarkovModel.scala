@@ -51,8 +51,12 @@ object HiddenMarkovModel {
 	implicit val formats = Serialization.formats(
 		ShortTypeHints(List(
 			classOf[HMMGenerative], classOf[HMMDiscriminant],
-			classOf[PContainsUppercase], classOf[PContainsNumber], classOf[PContains], classOf[PLength],
+
+			classOf[PContainsUppercase], classOf[PUppercaseOnly],
+			classOf[PContainsNumber], classOf[PContains], classOf[PLength],
+
 			classOf[EPrefixChar], classOf[ESuffixChar], classOf[EWordCode], classOf[EPreviousTag],
+
 			classOf[FTConjunction[Array[Double]]], classOf[FTDispatchInt[Array[Double]]],
 			classOf[FTDispatchChar[Array[Double]]], classOf[FTGuard[Array[Double]]],
 			classOf[FTLeaf[Array[Double]]]

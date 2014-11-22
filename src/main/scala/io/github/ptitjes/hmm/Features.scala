@@ -58,9 +58,9 @@ object Features {
 		def apply(h: History): Int = h.previousTag(index)
 	}
 
-	case class Weights(breadth: Int, tags: Set[Int], values: Array[Double]) {
+	case class Weights(breadth: Int, tags: BitSet, values: Array[Double]) {
 
-		def this(breadth: Int, tags: Set[Int]) =
+		def this(breadth: Int, tags: BitSet) =
 			this(breadth, tags, Array.ofDim(breadth))
 
 		def apply(key: Int) = values(key)
@@ -125,11 +125,11 @@ object Features {
 
 	case class FTLeaf[T](weights: T, tags: BitSet) extends FeatureTree[T]
 
-	def makeNgramTree[T](ngrams: Set[(List[Int], Int)], f: Set[Int] => T): FeatureTree[T] = {
+	def makeNgramTree[T](ngrams: Set[(List[Int], Int)], f: BitSet => T): FeatureTree[T] = {
 
-		def aux(ngrams: Map[List[Int], Set[Int]], index: Int): FeatureTree[T] = {
+		def aux(ngrams: Map[List[Int], BitSet], index: Int): FeatureTree[T] = {
 			if (ngrams.size == 1) {
-				val allTags = ngrams.foldLeft(Set[Int]()) { case (collected, (_, tags)) => collected ++ tags}
+				val allTags = ngrams.foldLeft(BitSet()) { case (collected, (_, tags)) => collected ++ tags}
 				FTLeaf(f(allTags), BitSet() ++ allTags)
 			} else {
 				val perPrevious = ngrams.groupBy(_._1.head).mapValues(
@@ -144,34 +144,34 @@ object Features {
 			}
 		}
 
-		val ngramTags = ngrams.groupBy(_._1).mapValues(_.map(_._2))
+		val ngramTags = ngrams.groupBy(_._1).mapValues(BitSet() ++ _.map(_._2))
 		aux(ngramTags, 1)
 	}
 
-	def makeWordTree[T](index: Int, words: Map[Int, Set[Int]], f: Set[Int] => T): FeatureTree[T] =
+	def makeWordTree[T](index: Int, words: Map[Int, BitSet], f: BitSet => T): FeatureTree[T] =
 		FTDispatchInt(EWordCode(index),
 			words.foldLeft(Map[Int, FeatureTree[T]]()) {
 				case (m, (w, tags)) => m + (w -> FTLeaf(f(tags), BitSet() ++ tags))
 			})
 
-	def makePrefixTree[T](words: Map[String, Set[Int]], f: Set[Int] => T): FeatureTree[T] =
+	def makePrefixTree[T](words: Map[String, BitSet], f: BitSet => T): FeatureTree[T] =
 		makeCharTree(words, 4,
 			s => (s.charAt(0), s.substring(1)),
 			i => EPrefixChar(i),
 			tags => FTLeaf(f(tags), BitSet() ++ tags)
 		)
 
-	def makeSuffixTree[T](words: Map[String, Set[Int]], f: Set[Int] => T): FeatureTree[T] =
+	def makeSuffixTree[T](words: Map[String, BitSet], f: BitSet => T): FeatureTree[T] =
 		makeCharTree(words, 4,
 			s => (s.last, s.substring(0, s.length - 1)),
 			i => ESuffixChar(i),
 			tags => FTLeaf(f(tags), BitSet() ++ tags)
 		)
 
-	def makeCharTree[T](words: Map[String, Set[Int]], maxLength: Int,
+	def makeCharTree[T](words: Map[String, BitSet], maxLength: Int,
 	                    cruncher: String => (Char, String),
 	                    extractor: Int => Extractor[Char],
-	                    leaf: Set[Int] => FeatureTree[T]): FeatureTree[T] = {
+	                    leaf: BitSet => FeatureTree[T]): FeatureTree[T] = {
 
 		val allTags = (0 until 15).toSet
 
@@ -194,27 +194,27 @@ object Features {
 
 	trait Tree
 
-	case class Node(children: Map[Char, Tree], filter: Set[Int]) extends Tree
+	case class Node(children: Map[Char, Tree], filter: BitSet) extends Tree
 
-	case class Leaf(children: Map[String, Set[Int]], filter: Set[Int]) extends Tree
+	case class Leaf(children: Map[String, BitSet], filter: BitSet) extends Tree
 
-	def makeTree(words: Map[String, Set[Int]], cruncher: String => (Char, String), max: Int): Tree = {
+	def makeTree(words: Map[String, BitSet], cruncher: String => (Char, String), max: Int): Tree = {
 
-		def crunch(l: Map[String, Set[Int]]): Map[Char, Map[String, Set[Int]]] = {
+		def crunch(l: Map[String, BitSet]): Map[Char, Map[String, BitSet]] = {
 			l.toList.map {
 				case (word, tags) =>
 					val (head, rest) = cruncher(word)
 					(head, (rest, tags))
 			}.groupBy(_._1).mapValues(
 			    _.map(_._2).groupBy(_._1).mapValues(
-				    _.map(_._2).fold(Set[Int]())(_ ++ _)
+				    _.map(_._2).fold(BitSet())(_ ++ _)
 			    )
 				)
 		}
 
-		def doMakeTree(words: Map[String, Set[Int]], index: Int): (Tree, Set[Int]) = {
+		def doMakeTree(words: Map[String, BitSet], index: Int): (Tree, BitSet) = {
 			if (index == max) {
-				val allTags = words.foldLeft(Set[Int]()) {
+				val allTags = words.foldLeft(BitSet()) {
 					case (collected, (str, tags)) => collected ++ tags
 				}
 				(Leaf(words, allTags), allTags)
@@ -231,7 +231,7 @@ object Features {
 						(char, (tree, completeTags))
 				}
 
-				val allTags = charToTreeAndTags.foldLeft(Set[Int]()) {
+				val allTags = charToTreeAndTags.foldLeft(BitSet()) {
 					case (collected, (_, (_, tags))) => collected ++ tags
 				}
 				val charToTree = charToTreeAndTags.map {
