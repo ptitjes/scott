@@ -32,6 +32,8 @@ object FullDecoder extends Decoder.Factory {
 		val scores = Array.ofDim[Double](breadth, maxStateCount)
 		val wordOnlyScores = Array.ofDim[Double](breadth)
 
+		val allTags = BitSet() ++ (0 until breadth)
+
 		def decode(sequence: Sequence): Sequence with Annotation = {
 			deltas(0) = 0
 			psis(0) = -1
@@ -76,7 +78,7 @@ object FullDecoder extends Decoder.Factory {
 							wordOnlyScores(targetTag) = 0
 						}
 						val h_wordOnly = iterator.history(-1)
-						wordOnlyFeatures.foreachMatching(h_wordOnly)(weights =>
+						wordOnlyFeatures.foreachMatching(h_wordOnly, allTags)(weights =>
 							weights.foreach { case (tag, weight) => wordOnlyScores(tag) += weight}
 						)
 
@@ -86,7 +88,7 @@ object FullDecoder extends Decoder.Factory {
 							}
 
 							val h = iterator.history(sourceState)
-							otherFeatures.foreachMatching(h)(weights =>
+							otherFeatures.foreachMatching(h, allTags)(weights =>
 								weights.foreach { case (tag, weight) => scores(tag)(sourceState) += weight}
 							)
 						}

@@ -4,7 +4,7 @@ import io.github.ptitjes.hmm._
 import io.github.ptitjes.hmm.analysis.ConfigurationSet._
 import io.github.ptitjes.hmm.analysis.LaTexReport._
 import io.github.ptitjes.hmm.analysis.{Analysis, AnalysisRunner, LaTexReport}
-import io.github.ptitjes.hmm.decoders.FullDecoder
+import io.github.ptitjes.hmm.decoders.{BeamDecoder, FullDecoder}
 import io.github.ptitjes.hmm.trainers.DiscriminantTrainer
 
 object analyseDiscriminant extends App {
@@ -29,7 +29,7 @@ object analyseDiscriminant extends App {
 			DiscriminantTrainer.PARTIAL_AVERAGING and
 			DiscriminantTrainer.COMPLETE_AVERAGING)
 
-	val maxIterations = 75
+	val maxIterations = 30
 
 	runner.resultsFor(all * (DiscriminantTrainer.ITERATION_COUNT as maxIterations))
 

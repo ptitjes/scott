@@ -48,6 +48,9 @@ object DiscriminantTrainer extends Trainer.Factory {
 			val nextWords = Array.fill(depth) {
 				mutable.Map[Word, Set[Int]]()
 			}
+			val ngrams = Array.fill(depth) {
+				mutable.Set[(List[Int], Int)]()
+			}
 
 			val sequences = corpus.sequences
 
@@ -72,27 +75,32 @@ object DiscriminantTrainer extends Trainer.Factory {
 						addTagForWord(h.previousWords(i), tag, previousWords(i))
 						addTagForWord(h.nextWords(i), tag, nextWords(i))
 					}
+					(0 until depth).foreach { i =>
+						ngrams(i) += ((h.previousTags.toList, tag))
+					}
 				}
 			}
 
 			val wordsByCode = dictionary map { case (w, tags) => (w.code, tags)}
 			val wordsByString = dictionary map { case (w, tags) => (w.string, tags)}
 
-			val suffixes = wordsByString.flatMap { case (word, tags) =>
-				for (s <- 1 to 4 if word.length >= s) yield (word.substring(word.length - s), tags)
-			}.foldLeft(Map[String, Set[Int]]()) {
-				case (map, (suffix, tags)) =>
-					val newTags = if (map.contains(suffix)) map(suffix) ++ tags else tags
-					map + (suffix -> newTags)
-			}
+			//			val suffixes = wordsByString.toList.flatMap { case (word, tags) =>
+			//				for (s <- 1 to 4 if word.length >= s) yield (word.substring(word.length - s), tags)
+			//			}.foldLeft(Map[String, Set[Int]]()) {
+			//				case (map, (suffix, tags)) =>
+			//					val newTags = if (map.contains(suffix)) map(suffix) ++ tags else tags
+			//					map + (suffix -> newTags)
+			//			}
+			//
+			//			val prefixes = wordsByString.toList.flatMap { case (word, tags) =>
+			//				for (s <- 1 to 4 if word.length >= s) yield (word.substring(0, s), tags)
+			//			}.foldLeft(Map[String, Set[Int]]()) {
+			//				case (map, (prefix, tags)) =>
+			//					val newTags = if (map.contains(prefix)) map(prefix) ++ tags else tags
+			//					map + (prefix -> newTags)
+			//			}
 
-			val prefixes = wordsByString.flatMap { case (word, tags) =>
-				for (s <- 1 to 4 if word.length >= s) yield (word.substring(0, s), tags)
-			}.foldLeft(Map[String, Set[Int]]()) {
-				case (map, (prefix, tags)) =>
-					val newTags = if (map.contains(prefix)) map(prefix) ++ tags else tags
-					map + (prefix -> newTags)
-			}
+			val allTags = (0 until breadth).toSet
 
 			var allWeightPairs = mutable.ArrayBuffer[(Weights, Weights)]()
 			val weightFactory: Set[Int] => (Weights, Weights) = {
@@ -103,27 +111,33 @@ object DiscriminantTrainer extends Trainer.Factory {
 					allWeightPairs += weightPair
 					weightPair
 			}
-			val allTags = (0 until breadth).toSet
 
 			val wordOnlyFeatures =
 				FTConjunction(
-					makePrefixTree(prefixes, weightFactory) ::
-						makeSuffixTree(suffixes, weightFactory) ::
-						FTGuard(PNumber(), FTLeaf(weightFactory(allTags))) ::
-						FTGuard(PUppercased(), FTLeaf(weightFactory(allTags))) ::
-						FTGuard(PContains('-'), FTLeaf(weightFactory(allTags))) ::
-						makeWordTree(0, wordsByCode.toMap, weightFactory) :: Nil ++
+					makePrefixTree(wordsByString, weightFactory) ::
+						makeSuffixTree(wordsByString, weightFactory) ::
+
+						FTGuard(PContainsNumber(), FTLeaf(weightFactory(allTags), BitSet() ++ allTags)) ::
+						FTGuard(PContains('-'), FTLeaf(weightFactory(allTags), BitSet() ++ allTags)) ::
+						FTGuard(PContainsUppercase(), FTLeaf(weightFactory(allTags), BitSet() ++ allTags)) ::
+						FTGuard(PUppercaseOnly(), FTLeaf(weightFactory(allTags), BitSet() ++ allTags)) ::
+						FTGuard(PContainsUppercase(),
+							FTDispatchInt(EPreviousTag(1),
+								(0 until breadth).map(i => (i, FTLeaf(weightFactory(allTags), BitSet() ++ allTags))).toMap)) ::
+
+						makeWordTree(0, wordsByCode, weightFactory) :: Nil ++
 						(1 to depth).map(d => makeWordTree(-d,
-							previousWords(d - 1).map { case (w, tags) => (w.code, tags)}.toMap,
+							previousWords(d - 1).map { case (w, tags) => (w.code, tags)},
 							weightFactory)) ++
 						(1 to depth).map(d => makeWordTree(d,
-							nextWords(d - 1).map { case (w, tags) => (w.code, tags)}.toMap,
+							nextWords(d - 1).map { case (w, tags) => (w.code, tags)},
 							weightFactory))
 				)
 
 			val otherFeatures =
 				FTConjunction(
-					(1 to depth).map(d => makeNgramTree(d, breadth, weightFactory))
+					//										(1 to depth).map(d => makeNgramTree(d, breadth, weightFactory))
+					(1 to depth).map(d => makeNgramTree(ngrams(d - 1), weightFactory))
 				)
 
 			val hmm = HMMDiscriminant(breadth, depth,
@@ -162,24 +176,27 @@ object DiscriminantTrainer extends Trainer.Factory {
 								val h_ref = refIterator.history
 								val h_hyp = hypIterator.history
 
-								wordOnlyFeatures.foreachMatching(h_ref) {
+								val refTagFilter = BitSet(sRef)
+								val hypTagFilter = BitSet(sHyp)
+
+								wordOnlyFeatures.foreachMatching(h_ref, refTagFilter) {
 									case (weights, _) => weights(sRef) += 1.0
 								}
-								wordOnlyFeatures.foreachMatching(h_hyp) {
+								wordOnlyFeatures.foreachMatching(h_hyp, hypTagFilter) {
 									case (weights, _) => weights(sHyp) -= 1.0
 								}
 
-								otherFeatures.foreachMatching(h_ref) {
+								otherFeatures.foreachMatching(h_ref, refTagFilter) {
 									case (weights, _) => weights(sRef) += 1.0
 								}
-								otherFeatures.foreachMatching(h_hyp) {
+								otherFeatures.foreachMatching(h_hyp, hypTagFilter) {
 									case (weights, _) => weights(sHyp) -= 1.0
 								}
 							}
 						}
 
 						if (useAveraging == COMPLETE_AVERAGING) {
-							allWeightPairs.foreach {
+							allWeightPairs.par.foreach {
 								case (weights, averagedWeights) =>
 									weights.foreach { case (tag, weight) => averagedWeights(tag) += weight}
 							}
@@ -189,7 +206,7 @@ object DiscriminantTrainer extends Trainer.Factory {
 					}
 
 					if (useAveraging == PARTIAL_AVERAGING) {
-						allWeightPairs.foreach {
+						allWeightPairs.par.foreach {
 							case (weights, averagedWeights) =>
 								weights.foreach { case (tag, weight) => averagedWeights(tag) += weight}
 						}

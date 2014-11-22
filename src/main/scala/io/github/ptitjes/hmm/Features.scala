@@ -9,16 +9,19 @@ object Features {
 	sealed trait Predicate extends (History => Boolean) {
 
 		def apply(h: History): Boolean = this match {
-			case PUppercased() => h.word.string.exists(_.isUpper)
-			case PNumber() => h.word.string.exists(_.isDigit)
+			case PContainsUppercase() => h.word.string.exists(_.isUpper)
+			case PUppercaseOnly() => h.word.string.forall(_.isUpper)
+			case PContainsNumber() => h.word.string.exists(_.isDigit)
 			case PContains(v) => h.word.string.indexOf(v) != -1
 			case PLength(i, l) => h.wordAt(i).string.length == l
 		}
 	}
 
-	case class PUppercased() extends Predicate
+	case class PContainsUppercase() extends Predicate
 
-	case class PNumber() extends Predicate
+	case class PUppercaseOnly() extends Predicate
+
+	case class PContainsNumber() extends Predicate
 
 	case class PContains(value: Char) extends Predicate
 
@@ -26,10 +29,20 @@ object Features {
 
 	sealed trait Extractor[T] extends (History => T)
 
-	case class ECharAt(index: Int) extends Extractor[Char] {
+	case class EPrefixChar(index: Int) extends Extractor[Char] {
 
-		def apply(h: History): Char =
-			if (h.word.string.length > index) h.word.string.charAt(index) else 0.toChar
+		def apply(h: History): Char = {
+			val word = h.word.string
+			if (word.length > index) word.charAt(index) else 0.toChar
+		}
+	}
+
+	case class ESuffixChar(index: Int) extends Extractor[Char] {
+
+		def apply(h: History): Char = {
+			val word = h.word.string
+			if (word.length > index) word.charAt(word.length - index - 1) else 0.toChar
+		}
 	}
 
 	case class EWordCode(index: Int) extends Extractor[Int] {
@@ -42,7 +55,7 @@ object Features {
 
 	case class EPreviousTag(index: Int) extends Extractor[Int] {
 
-		def apply(h: History): Int = h.previousTags(index - 1)
+		def apply(h: History): Int = h.previousTag(index)
 	}
 
 	case class Weights(breadth: Int, tags: Set[Int], values: Array[Double]) {
@@ -52,7 +65,9 @@ object Features {
 
 		def apply(key: Int) = values(key)
 
-		def update(key: Int, value: Double) = values(key) = value
+		def update(key: Int, value: Double) =
+			if (!tags(key)) throw new ArrayIndexOutOfBoundsException(key)
+			else values(key) = value
 
 		def foreach[U](f: (Int, Double) => U): Unit =
 			tags.foreach(t => f(t, values(t)))
@@ -63,117 +78,169 @@ object Features {
 
 	sealed trait FeatureTree[T] {
 
-		def foreachMatching(h: History)(f: T => Unit): Unit = this match {
-			case FTConjunction(children) => children.foreach(c => c.foreachMatching(h)(f))
-			case FTDispatchChar(extract, children) =>
-				val key = extract(h)
-				if (children.contains(key)) children(key).foreachMatching(h)(f)
+		def foreachMatching(h: History, tags: BitSet)(f: T => Unit): Unit = this match {
+			case FTConjunction(children) => children.foreach(c => c.foreachMatching(h, tags)(f))
+			case FTDispatchChar(extract, children, filter) =>
+				if ((tags & filter).nonEmpty) {
+					val key = extract(h)
+					if (children.contains(key)) children(key).foreachMatching(h, tags)(f)
+				}
 			case FTDispatchInt(extract, children) =>
 				val key = extract(h)
-				if (children.contains(key)) children(key).foreachMatching(h)(f)
-			case FTGuard(predicate, child) => if (predicate(h)) child.foreachMatching(h)(f)
-			case FTLeaf(weights) => f(weights)
+				if (children.contains(key)) children(key).foreachMatching(h, tags)(f)
+			case FTGuard(predicate, child) => if (predicate(h)) child.foreachMatching(h, tags)(f)
+			case FTLeaf(weights, filter) => if ((tags & filter).nonEmpty) f(weights)
 		}
 
 		def foreach(f: T => Unit): Unit = this match {
 			case FTConjunction(children) => children.foreach(c => c.foreach(f))
-			case FTDispatchChar(extract, children) => children.foreach({ case (k, c) => c.foreach(f)})
-			case FTDispatchInt(extract, children) => children.foreach({ case (k, c) => c.foreach(f)})
+			case FTDispatchChar(extract, children, tags) =>
+				children.foreach({ case (k, c) => c.foreach(f)})
+			case FTDispatchInt(extract, children) =>
+				children.foreach({ case (k, c) => c.foreach(f)})
 			case FTGuard(predicate, child) => child.foreach(f)
-			case FTLeaf(weights) => f(weights)
+			case FTLeaf(weights, filter) => f(weights)
 		}
 
 		def map[U](f: T => U): FeatureTree[U] = this match {
 			case FTConjunction(children) => FTConjunction(children.map(c => c.map(f)))
-			case FTDispatchChar(extract, children) => FTDispatchChar(extract, children.map { case (k, c) => (k, c.map(f))})
-			case FTDispatchInt(extract, children) => FTDispatchInt(extract, children.map { case (k, c) => (k, c.map(f))})
+			case FTDispatchChar(extract, children, tags) =>
+				FTDispatchChar(extract, children.map { case (k, c) => (k, c.map(f))}, tags)
+			case FTDispatchInt(extract, children) =>
+				FTDispatchInt(extract, children.map { case (k, c) => (k, c.map(f))})
 			case FTGuard(predicate, child) => FTGuard(predicate, child.map(f))
-			case FTLeaf(weights) => FTLeaf(f(weights))
+			case FTLeaf(weights, filter) => FTLeaf(f(weights), filter)
 		}
-
-		//		def addAveraged(other: FeatureTree, divider: Int): Unit = {
-		//			def aux(d: FeatureTree, s: FeatureTree): Unit = (d, s) match {
-		//				case (FTConjunction(children1), FTConjunction(children2)) =>
-		//					children1.zip(children2).foreach { case (c1, c2) => aux(c1, c2)}
-		//				case (FTDispatchChar(_, children1), FTDispatchChar(_, children2)) =>
-		//					children1.zip(children2).foreach { case ((_, c1), (_, c2)) => aux(c1, c2)}
-		//				case (FTDispatchInt(_, children1), FTDispatchInt(_, children2)) =>
-		//					children1.zip(children2).foreach { case ((_, c1), (_, c2)) => aux(c1, c2)}
-		//				case (FTGuard(_, c1), FTGuard(_, c2)) => aux(c1, c2)
-		//				case (FTLeaf(w1), FTLeaf(w2)) =>
-		//					for (i <- 0 until w1.length) w1(i) += w2(i) / divider
-		//				case _ => throw new IllegalArgumentException()
-		//			}
-		//			aux(this, other)
-		//		}
 	}
 
 	case class FTConjunction[T](children: Seq[FeatureTree[T]]) extends FeatureTree[T]
 
-	case class FTDispatchChar[T](extract: Extractor[Char], children: Map[Char, FeatureTree[T]]) extends FeatureTree[T]
+	case class FTDispatchChar[T](extract: Extractor[Char],
+	                             children: Map[Char, FeatureTree[T]],
+	                             tags: BitSet) extends FeatureTree[T]
 
 	case class FTDispatchInt[T](extract: Extractor[Int], children: Map[Int, FeatureTree[T]]) extends FeatureTree[T]
 
 	case class FTGuard[T](predicate: Predicate, child: FeatureTree[T]) extends FeatureTree[T]
 
-	case class FTLeaf[T](weights: T) extends FeatureTree[T]
+	case class FTLeaf[T](weights: T, tags: BitSet) extends FeatureTree[T]
 
-	def makeNgramTree[T](depth: Int, breadth: Int, f: Set[Int] => T): FeatureTree[T] =
-		if (depth == 0) FTLeaf(f((0 until breadth).toSet))
-		else
-			FTDispatchInt(
-				EPreviousTag(1),
-				(-1 until breadth).foldLeft(Map[Int, FeatureTree[T]]()) {
-					(m, i) => m + (i -> makeNgramTree(depth - 1, breadth, f))
-				}
-			)
+	def makeNgramTree[T](ngrams: Set[(List[Int], Int)], f: Set[Int] => T): FeatureTree[T] = {
 
-	def makePrefixTree[T](prefixes: Map[String, Set[Int]], f: Set[Int] => T): FeatureTree[T] =
-		makeCharTree(prefixes, 0, s => (s.charAt(0), s.substring(1)), tags => FTLeaf(f(tags)))
+		def aux(ngrams: Map[List[Int], Set[Int]], index: Int): FeatureTree[T] = {
+			if (ngrams.size == 1) {
+				val allTags = ngrams.foldLeft(Set[Int]()) { case (collected, (_, tags)) => collected ++ tags}
+				FTLeaf(f(allTags), BitSet() ++ allTags)
+			} else {
+				val perPrevious = ngrams.groupBy(_._1.head).mapValues(
+					_.map { case (seq, tags) => (seq.tail, tags)}
+				)
+				FTDispatchInt(
+					EPreviousTag(index),
+					perPrevious.map {
+						case (tag, innerNgrams) => tag -> aux(innerNgrams, index + 1)
+					}
+				)
+			}
+		}
 
-	def makeSuffixTree[T](suffixes: Map[String, Set[Int]], f: Set[Int] => T): FeatureTree[T] =
-		makeCharTree(suffixes, 0, s => (s.last, s.substring(0, s.length - 1)), tags => FTLeaf(f(tags)))
+		val ngramTags = ngrams.groupBy(_._1).mapValues(_.map(_._2))
+		aux(ngramTags, 1)
+	}
 
 	def makeWordTree[T](index: Int, words: Map[Int, Set[Int]], f: Set[Int] => T): FeatureTree[T] =
 		FTDispatchInt(EWordCode(index),
 			words.foldLeft(Map[Int, FeatureTree[T]]()) {
-				case (m, (w, tags)) => m + (w -> FTLeaf(f(tags)))
+				case (m, (w, tags)) => m + (w -> FTLeaf(f(tags), BitSet() ++ tags))
 			})
 
-	def makeCharTree[T](affixes: Map[String, Set[Int]],
-	                    index: Int, ht: (String) => (Char, String),
+	def makePrefixTree[T](words: Map[String, Set[Int]], f: Set[Int] => T): FeatureTree[T] =
+		makeCharTree(words, 4,
+			s => (s.charAt(0), s.substring(1)),
+			i => EPrefixChar(i),
+			tags => FTLeaf(f(tags), BitSet() ++ tags)
+		)
+
+	def makeSuffixTree[T](words: Map[String, Set[Int]], f: Set[Int] => T): FeatureTree[T] =
+		makeCharTree(words, 4,
+			s => (s.last, s.substring(0, s.length - 1)),
+			i => ESuffixChar(i),
+			tags => FTLeaf(f(tags), BitSet() ++ tags)
+		)
+
+	def makeCharTree[T](words: Map[String, Set[Int]], maxLength: Int,
+	                    cruncher: String => (Char, String),
+	                    extractor: Int => Extractor[Char],
 	                    leaf: Set[Int] => FeatureTree[T]): FeatureTree[T] = {
-		if (affixes.contains("")) {
-			if (affixes.size == 1) {
-				leaf(affixes(""))
-			} else {
-				FTConjunction(
-					leaf(affixes("")) ::
-						FTDispatchChar(
-							ECharAt(index),
-							crunchChars(affixes - "", ht).map {
-								case (char, strings) => (char, makeCharTree(strings, index + 1, ht, leaf))
-							}
-						) :: Nil
-				)
-			}
-		} else {
-			FTDispatchChar(
-				ECharAt(index),
-				crunchChars(affixes, ht).map {
-					case (char, strings) => (char, makeCharTree(strings, index + 1, ht, leaf))
+
+		val allTags = (0 until 15).toSet
+
+		def aux(tree: Tree, index: Int): FeatureTree[T] = tree match {
+			case Node(children, filter) =>
+				val childrenFeatures = children.map {
+					case (char, child) =>
+						(char, aux(child, index + 1))
 				}
-			)
+				FTConjunction(
+					leaf(filter) ::
+						FTDispatchChar(extractor(index), childrenFeatures, BitSet() ++ filter) ::
+						Nil
+				)
+			case Leaf(children, filter) => leaf(filter)
 		}
+
+		aux(makeTree(words, cruncher, maxLength), 0)
 	}
 
-	def crunchChars(strings: Map[String, Set[Int]],
-	                f: String => (Char, String)): Map[Char, Map[String, Set[Int]]] =
-		strings.map { case (s, tags) => (f(s), tags)}
-			.foldLeft(Map[Char, Map[String, Set[Int]]]()) {
-			case (map, ((char, str), tags)) =>
-				val previous = if (map.contains(char)) map(char) else Map[String, Set[Int]]()
-				val newTags = if (previous.contains(str)) previous(str) ++ tags else tags
-				map + (char -> (previous + (str -> newTags)))
+	trait Tree
+
+	case class Node(children: Map[Char, Tree], filter: Set[Int]) extends Tree
+
+	case class Leaf(children: Map[String, Set[Int]], filter: Set[Int]) extends Tree
+
+	def makeTree(words: Map[String, Set[Int]], cruncher: String => (Char, String), max: Int): Tree = {
+
+		def crunch(l: Map[String, Set[Int]]): Map[Char, Map[String, Set[Int]]] = {
+			l.toList.map {
+				case (word, tags) =>
+					val (head, rest) = cruncher(word)
+					(head, (rest, tags))
+			}.groupBy(_._1).mapValues(
+			    _.map(_._2).groupBy(_._1).mapValues(
+				    _.map(_._2).fold(Set[Int]())(_ ++ _)
+			    )
+				)
 		}
+
+		def doMakeTree(words: Map[String, Set[Int]], index: Int): (Tree, Set[Int]) = {
+			if (index == max) {
+				val allTags = words.foldLeft(Set[Int]()) {
+					case (collected, (str, tags)) => collected ++ tags
+				}
+				(Leaf(words, allTags), allTags)
+			} else {
+				val crunched = crunch(words)
+				val charToTreeAndTags = crunched.map {
+					case (char, stringsToTags) =>
+						val (tree, tags) = doMakeTree(stringsToTags - "", index + 1)
+
+						val completeTags =
+							if (stringsToTags.contains("")) tags ++ stringsToTags("")
+							else tags
+
+						(char, (tree, completeTags))
+				}
+
+				val allTags = charToTreeAndTags.foldLeft(Set[Int]()) {
+					case (collected, (_, (_, tags))) => collected ++ tags
+				}
+				val charToTree = charToTreeAndTags.map {
+					case (char, (tree, _)) => (char, tree)
+				}
+				(Node(charToTree, allTags), allTags)
+			}
+		}
+
+		doMakeTree(words, 0)._1
+	}
 }

@@ -20,11 +20,11 @@ object trainAndSave extends App {
 	val conf = Configuration()
 		//		.set(Configuration.TRAINER, RelFreqTrainer)
 		.set(Configuration.TRAINER, DiscriminantTrainer)
-		.set(Trainer.ORDER, 2)
-		//		.set(DiscriminantTrainer.DECODER, FullDecoder)
-		.set(DiscriminantTrainer.ITERATION_COUNT, 15)
-		.set(DiscriminantTrainer.AVERAGING, DiscriminantTrainer.COMPLETE_AVERAGING)
-		//		.set(Configuration.DECODER, FullDecoder)
+		.set(Trainer.ORDER, 1)
+//		.set(DiscriminantTrainer.DECODER, FullDecoder)
+		.set(DiscriminantTrainer.ITERATION_COUNT, 1)
+		.set(DiscriminantTrainer.AVERAGING, DiscriminantTrainer.NO_AVERAGING)
+		//				.set(Configuration.DECODER, FullDecoder)
 		.set(Configuration.DECODER, BeamDecoder)
 		.set(BeamDecoder.BEAM, 5)
 
@@ -35,16 +35,25 @@ object trainAndSave extends App {
 		trainer.train(trainCorpus)
 	}
 
-	val decoder = conf(Configuration.DECODER).instantiate(hmm, conf)
-	val (hypCorpus, decodingElapsedTime) = timed {
-		decoder.decode(devCorpus)
+	decode(conf)
+
+//	val conf2 = Configuration()
+//		.set(Configuration.DECODER, FullDecoder)
+//
+//	decodeAndSave(conf2)
+
+	toFile(hmm, new File("temp/" + conf.toFilename + ".json"))
+
+	def decode(configuration: Configuration) {
+		val decoder = configuration(Configuration.DECODER).instantiate(hmm, configuration)
+		val (hypCorpus, decodingElapsedTime) = timed {
+			decoder.decode(devCorpus)
+		}
+
+		val results = Checking.check(configuration, hmm, devCorpus, hypCorpus,
+			trainingElapsedTime, decodingElapsedTime,
+			new File("temp/" + configuration.toFilename + ".check"))
+
+		results.display()
 	}
-
-	//toFile(hmm, new File("temp/" + conf.toFilename + ".json"))
-
-	val results = Checking.check(conf, hmm, devCorpus, hypCorpus,
-		trainingElapsedTime, decodingElapsedTime,
-		new File("temp/" + conf.toFilename + ".check"))
-
-	results.display()
 }

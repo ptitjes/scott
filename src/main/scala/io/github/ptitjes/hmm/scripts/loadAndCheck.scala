@@ -17,7 +17,8 @@ object loadAndCheck extends App {
 	val testCorpus = Corpora.annotatedFrom(new File(PATH_TO_TEST), Lexica.WORDS)
 
 	val confName = "Disc-Full-Averaging-Complete-Iterations-40-Order-2"
-	val hmmFilename = "selected-hmms/" + confName + ".json"
+	//val hmmFilename = "selected-hmms/" + confName + ".json"
+	val hmmFilename = "temp/Disc-Beam-Averaging-No-Beam-5-Iterations-1-Order-1.json"
 
 	val conf = Configuration()
 		.set(Configuration.DECODER, FullDecoder)

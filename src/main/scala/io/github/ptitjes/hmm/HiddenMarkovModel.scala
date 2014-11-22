@@ -51,19 +51,19 @@ object HiddenMarkovModel {
 	implicit val formats = Serialization.formats(
 		ShortTypeHints(List(
 			classOf[HMMGenerative], classOf[HMMDiscriminant],
-			classOf[PUppercased], classOf[PNumber], classOf[PContains], classOf[PLength],
-			classOf[ECharAt], classOf[EWordCode], classOf[EPreviousTag],
+			classOf[PContainsUppercase], classOf[PContainsNumber], classOf[PContains], classOf[PLength],
+			classOf[EPrefixChar], classOf[ESuffixChar], classOf[EWordCode], classOf[EPreviousTag],
 			classOf[FTConjunction[Array[Double]]], classOf[FTDispatchInt[Array[Double]]],
 			classOf[FTDispatchChar[Array[Double]]], classOf[FTGuard[Array[Double]]],
 			classOf[FTLeaf[Array[Double]]]
 		))) +
 		new CharKeySerializer + new CharacterKeySerializer +
-		new CharSerializer + new CharacterSerializer
+		new CharSerializer + new CharacterSerializer + new BitSetSerializer
 
 	def fromFile(file: File): HiddenMarkovModel = {
 		using(new FileReader(file)) {
-			fileReader => using(new BufferedReader(fileReader)) {
-				reader => read[HiddenMarkovModel](reader)
+			fileInput => using(new BufferedReader(fileInput)) {
+				in => read[HiddenMarkovModel](in)
 			}
 		}
 	}
@@ -103,6 +103,13 @@ object HiddenMarkovModel {
 		case JString(v) => new Character(v.charAt(0))
 	}, {
 		case v: Character => JString(v.toString)
+	}
+		))
+
+	class BitSetSerializer extends CustomSerializer[BitSet](format => ( {
+		case a: JArray => immutable.BitSet.fromBitMask(Extraction.extract[Array[Long]](a))
+	}, {
+		case v: BitSet => Extraction.decompose(v.toBitMask)
 	}
 		))
 

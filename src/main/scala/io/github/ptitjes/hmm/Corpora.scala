@@ -48,6 +48,9 @@ object Corpora {
 			if (index == 0) word
 			else if (index > 0) nextWords(index - 1)
 			else previousWords(-index - 1)
+
+		def previousTag(index: Int): Int =
+			previousTags(index - 1)
 	}
 
 	trait HistoryIterator {

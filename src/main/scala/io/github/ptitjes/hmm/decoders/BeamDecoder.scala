@@ -45,6 +45,10 @@ object BeamDecoder extends Decoder.Factory {
 		val scores = Array.ofDim[Double](breadth, maxStateCount)
 		val wordOnlyScores = Array.ofDim[Double](breadth)
 
+		val dictionary = hmm match {
+			case HMMGenerative(_, _, _, _, _, dict) => dict
+			case HMMDiscriminant(_, _, _, _, dict) => dict
+		}
 		val allTags = BitSet() ++ (0 until breadth)
 
 		def decode(sequence: Sequence): Sequence with Annotation = {
@@ -73,12 +77,7 @@ object BeamDecoder extends Decoder.Factory {
 				val word = iterator.next()
 				val d = iterator.currentDepth
 
-				val tags = hmm match {
-					case HMMGenerative(_, _, _, _, _, dictionary) =>
-						if (dictionary.contains(word.code)) dictionary(word.code) else allTags
-					case HMMDiscriminant(_, _, _, _, dictionary) =>
-						if (dictionary.contains(word.code)) dictionary(word.code) else allTags
-				}
+				val tags = if (dictionary.contains(word.code)) dictionary(word.code) else allTags
 
 				hmm match {
 					case HMMGenerative(_, _, t, e, ue, _) =>
@@ -100,7 +99,7 @@ object BeamDecoder extends Decoder.Factory {
 							wordOnlyScores(targetTag) = 0
 						}
 						val h_wordOnly = iterator.history(-1)
-						wordOnlyFeatures.foreachMatching(h_wordOnly)(weights =>
+						wordOnlyFeatures.foreachMatching(h_wordOnly, tags)(weights =>
 							weights.foreach { case (tag, weight) => if (tags(tag)) wordOnlyScores(tag) += weight}
 						)
 
@@ -110,7 +109,7 @@ object BeamDecoder extends Decoder.Factory {
 							}
 
 							val h = iterator.history(sourceState)
-							otherFeatures.foreachMatching(h)(weights =>
+							otherFeatures.foreachMatching(h, tags)(weights =>
 								weights.foreach { case (tag, weight) => if (tags(tag)) scores(tag)(sourceState) += weight}
 							)
 						}
