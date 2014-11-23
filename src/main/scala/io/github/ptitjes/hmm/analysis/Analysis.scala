@@ -57,7 +57,7 @@ class AnalysisRunner(cacheFilename: String,
 				}
 
 				def testAndSaveHmm(configuration: Configuration, hmm: HiddenMarkovModel, trainingElapsedTime: Long) {
-					//toFile(hmm, new File("results/hmms/" + configuration.toFilename + ".json"))
+					toFile(hmm, new File("results/hmms/" + configuration.toFilename + ".json"))
 
 					val decoder = decoderFactory.instantiate(hmm, configuration)
 					val (hypCorpus, decodingElapsedTime) = timed {
