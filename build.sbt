@@ -10,7 +10,8 @@ scalacOptions ++= Seq(
   "-deprecation",
   "-unchecked",
   "-feature",
-  "-language:implicitConversions",
+	"-language:implicitConversions",
+	"-language:existentials",
 	"-Xmax-classfile-name 100"
 )
 
