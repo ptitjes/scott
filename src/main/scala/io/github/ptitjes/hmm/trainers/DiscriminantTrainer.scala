@@ -30,60 +30,30 @@ object DiscriminantTrainer extends Trainer.Factory {
 		}
 	}
 
+	object BasicFeatureTemplate extends FeatureSetTemplate {
+		def features(order: Int) = List(
+			// Lexical features
+			FeaTemWordAt(0),
+			FeaTemPrefix(4),
+			FeaTemSuffix(4),
+			FeaTemContainsNumber,
+			FeaTemContains('-'),
+			FeaTemUppercases) ++
+			// Contextual features
+			(1 to order).map(o => FeaTemNgram(o)) ++
+			(1 to order).map(i => FeaTemWordAt(-i)) ++
+			(1 to order).map(i => FeaTemWordAt(i))
+	}
+
 	def instantiate(configuration: Configuration): Trainer = new Instance(configuration)
 
 	class Instance(configuration: Configuration) extends Trainer with IterativeTrainer {
 
-		val depth = configuration(ORDER)
+		val order = configuration(ORDER)
 		val useAveraging = configuration(AVERAGING)
 
 		def train(corpus: Corpus[Sequence with Annotation], callback: IterationCallback): Unit = {
 			val breadth = stateCount(corpus)
-
-			val dictionary: mutable.Map[Word, BitSet] = mutable.Map()
-			val previousWords = Array.fill(depth) {
-				mutable.Map[Word, BitSet]()
-			}
-			val nextWords = Array.fill(depth) {
-				mutable.Map[Word, BitSet]()
-			}
-			val ngrams = Array.fill(depth) {
-				mutable.Set[(List[Int], Int)]()
-			}
-
-			val sequences = corpus.sequences
-
-			def addTagForWord(word: Word, tag: Int, dict: mutable.Map[Word, BitSet]) = {
-				if (word != null) {
-					if (!dict.contains(word))
-						dict(word) = BitSet(tag)
-					else
-						dict(word) += tag
-				}
-			}
-
-			sequences.foreach { s: Sequence with Annotation =>
-				val iterator = s.annotatedIterator(breadth, depth)
-				while (iterator.hasNext) {
-					val (word, tag) = iterator.next()
-
-					addTagForWord(word, tag, dictionary)
-
-					val h = iterator.history
-					(0 until depth).foreach { i =>
-						addTagForWord(h.previousWords(i), tag, previousWords(i))
-						addTagForWord(h.nextWords(i), tag, nextWords(i))
-					}
-					(0 until depth).foreach { i =>
-						ngrams(i) += ((h.previousTags.toList, tag))
-					}
-				}
-			}
-
-			val wordsByCode = dictionary map { case (w, tags) => (w.code, tags)}
-			val wordsByString = dictionary map { case (w, tags) => (w.string, tags)}
-
-			val allTags = BitSet() ++ (0 until breadth).toSet
 
 			var allWeightPairs = mutable.ArrayBuffer[(Weights, Weights)]()
 			val weightFactory: BitSet => (Weights, Weights) = {
@@ -95,40 +65,18 @@ object DiscriminantTrainer extends Trainer.Factory {
 					weightPair
 			}
 
-			val wordOnlyFeatures =
-				FTConjunction(
-					makePrefixTree(wordsByString, weightFactory) ::
-						makeSuffixTree(wordsByString, weightFactory) ::
+			val (wordOnlyFeatures, otherFeatures, dictionary) =
+				BasicFeatureTemplate.buildFeatures(breadth, order, corpus, weightFactory)
 
-						FTGuard(PContainsNumber(), FTLeaf(weightFactory(allTags), allTags)) ::
-						FTGuard(PContains('-'), FTLeaf(weightFactory(allTags), allTags)) ::
-						FTGuard(PContainsUppercase(), FTLeaf(weightFactory(allTags), allTags)) ::
-						FTGuard(PUppercaseOnly(), FTLeaf(weightFactory(allTags), allTags)) ::
-						FTGuard(PContainsUppercase(),
-							FTDispatchInt(EPreviousTag(1),
-								(0 until breadth).map(i => (i, FTLeaf(weightFactory(allTags), allTags))).toMap)) ::
-
-						makeWordTree(0, wordsByCode, weightFactory) :: Nil ++
-						(1 to depth).map(d => makeWordTree(-d,
-							previousWords(d - 1).map { case (w, tags) => (w.code, tags)},
-							weightFactory)) ++
-						(1 to depth).map(d => makeWordTree(d,
-							nextWords(d - 1).map { case (w, tags) => (w.code, tags)},
-							weightFactory))
-				)
-
-			val otherFeatures =
-				FTConjunction(
-					(1 to depth).map(d => makeNgramTree(ngrams(d - 1), weightFactory))
-				)
-
-			val hmm = HMMDiscriminant(breadth, depth,
+			val hmm = HMMDiscriminant(breadth, order,
 				wordOnlyFeatures.map { case (weights, averagedWeights) => weights},
 				otherFeatures.map { case (weights, averagedWeights) => weights},
-				dictionary.map { case (word, tags) => (word.code, BitSet() ++ tags)})
+				dictionary
+			)
 
 			val decoder = configuration(DECODER).instantiate(hmm, configuration)
 
+			val sequences = corpus.sequences
 			val iterationCount = configuration(ITERATION_COUNT)
 			for (i <- 1 to iterationCount) {
 
@@ -144,8 +92,8 @@ object DiscriminantTrainer extends Trainer.Factory {
 							throw new IllegalStateException("Observable length mismatch!")
 						}
 
-						val refIterator = refSeq.annotatedIterator(breadth, depth)
-						val hypIterator = hypSeq.annotatedIterator(breadth, depth)
+						val refIterator = refSeq.annotatedIterator(breadth, order)
+						val hypIterator = hypSeq.annotatedIterator(breadth, order)
 						while (refIterator.hasNext) {
 							val (oRef, sRef) = refIterator.next()
 							val (oHyp, sHyp) = hypIterator.next()
@@ -200,14 +148,14 @@ object DiscriminantTrainer extends Trainer.Factory {
 					else {
 						val averagingDivider = i * (if (useAveraging == COMPLETE_AVERAGING) sequences.size else 1)
 
-						HMMDiscriminant(breadth, depth,
+						HMMDiscriminant(breadth, order,
 							wordOnlyFeatures.map { case (weights, averagedWeights) =>
 								averagedWeights.map(w => w / averagingDivider)
 							},
 							otherFeatures.map { case (weights, averagedWeights) =>
 								averagedWeights.map(w => w / averagingDivider)
 							},
-							dictionary.map { case (word, tags) => (word.code, BitSet() ++ tags)}
+							dictionary
 						)
 					},
 					elapsedTime
@@ -216,10 +164,4 @@ object DiscriminantTrainer extends Trainer.Factory {
 		}
 	}
 
-	def printProgress(done: Int, count: Int): Unit = {
-		if (done < count) {
-			val doneSize = done * 100 / count
-			print(f"$done%5d/$count |" + "=" * doneSize + " " * (100 - doneSize) + "|\r")
-		} else print(f"$done%5d/$count |" + "=" * 100 + "|\n")
-	}
 }

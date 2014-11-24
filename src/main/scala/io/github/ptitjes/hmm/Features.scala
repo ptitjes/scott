@@ -124,122 +124,307 @@ object Features {
 
 	case class FTLeaf[T](weights: T, tags: BitSet) extends FeatureTree[T]
 
-	def makeNgramTree[T](ngrams: Set[(List[Int], Int)], f: BitSet => T): FeatureTree[T] = {
+	trait FeatureSetTemplate {
 
-		def aux(ngrams: Map[List[Int], BitSet], index: Int): FeatureTree[T] = {
-			if (ngrams.size == 1) {
-				val allTags = ngrams.foldLeft(BitSet()) { case (collected, (_, tags)) => collected ++ tags}
-				FTLeaf(f(allTags), BitSet() ++ allTags)
-			} else {
-				val perPrevious = ngrams.groupBy(_._1.head).mapValues(
-					_.map { case (seq, tags) => (seq.tail, tags)}
-				)
-				FTDispatchInt(
-					EPreviousTag(index),
-					perPrevious.map {
-						case (tag, innerNgrams) => tag -> aux(innerNgrams, index + 1)
+		def features(order: Int): List[FeatureTemplate[_]]
+
+		def buildFeatures[T](breadth: Int, order: Int,
+		                     corpus: Corpus[Sequence with Annotation],
+		                     f: BitSet => T): (FeatureTree[T], FeatureTree[T], Map[Int, BitSet]) = {
+
+			val templates = features(order)
+			val dictionaryCrawler = CrwlWordsAt(List(0))
+
+			val crawlers = templates.map(_.crawler).toSet + dictionaryCrawler
+			val dataStructures: Map[CorpusCrawler[_], _] =
+				crawlers.map(c => (c, c.instantiateDataStructure())).toMap
+
+
+			def getData[D](crawler: CorpusCrawler[D]): D = {
+				dataStructures(crawler).asInstanceOf[D]
+			}
+
+			def feed[D](crawler: CorpusCrawler[D], tag: Int, history: History) {
+				crawler.feed(tag, history, getData(crawler))
+			}
+
+			corpus.sequences.foreach { s: Sequence with Annotation =>
+				val iterator = s.annotatedIterator(breadth, order)
+				while (iterator.hasNext) {
+					val (_, tag) = iterator.next()
+					val h = iterator.history
+
+					crawlers.foreach(crawler => feed(crawler, tag, h))
+				}
+			}
+
+			def generate[D](template: FeatureTemplate[D]): FeatureTree[T] = {
+				template.generateFrom(getData(template.crawler), f)
+			}
+
+			val wordOnlyFeatures = FTConjunction(
+				templates.filter(_.isWordOnly).map(generate(_))
+			)
+			val otherFeatures = FTConjunction(
+				templates.filter(!_.isWordOnly).map(generate(_))
+			)
+			val dictionary = getData(dictionaryCrawler).map { case (w, tags) => (w.head.code, tags)}
+			(wordOnlyFeatures, otherFeatures, dictionary)
+		}
+	}
+
+	trait CorpusCrawler[D] {
+
+		def instantiateDataStructure(): D
+
+		def feed(tag: Int, history: History, data: D): Unit
+	}
+
+	trait FeatureTemplate[D] {
+
+		def isWordOnly: Boolean
+
+		def crawler: CorpusCrawler[D]
+
+		def generateFrom[T](data: D, f: BitSet => T): FeatureTree[T]
+	}
+
+	case object CrwlAllTags extends CorpusCrawler[mutable.BitSet] {
+
+		override def instantiateDataStructure(): mutable.BitSet = {
+			mutable.BitSet()
+		}
+
+		override def feed(tag: Int, history: History, data: mutable.BitSet): Unit = {
+			if (!data.contains(tag)) data += tag
+		}
+	}
+
+	case class CrwlTagsAt(indexes: List[Int]) extends CorpusCrawler[mutable.Map[List[Int], BitSet]] {
+
+		override def instantiateDataStructure(): mutable.Map[List[Int], BitSet] = {
+			mutable.Map[List[Int], BitSet]()
+		}
+
+		override def feed(tag: Int, history: History, data: mutable.Map[List[Int], BitSet]): Unit = {
+			val previousTags = indexes.map(i => history.previousTag(i))
+			if (!data.contains(previousTags))
+				data(previousTags) = BitSet(tag)
+			else
+				data(previousTags) += tag
+		}
+	}
+
+	case class CrwlWordsAt(indexes: List[Int]) extends CorpusCrawler[mutable.Map[List[Word], BitSet]] {
+
+		override def instantiateDataStructure(): mutable.Map[List[Word], BitSet] = {
+			mutable.Map[List[Word], BitSet]()
+		}
+
+		override def feed(tag: Int, history: History, data: mutable.Map[List[Word], BitSet]): Unit = {
+			val words = indexes.map(i => history.wordAt(i))
+			if (!words.contains(null)) {
+				if (!data.contains(words))
+					data(words) = BitSet(tag)
+				else
+					data(words) += tag
+			}
+		}
+	}
+
+	case class FeaTemNgram(depth: Int) extends FeatureTemplate[mutable.Map[List[Int], BitSet]] {
+
+		def isWordOnly = false
+
+		override val crawler = CrwlTagsAt((1 to depth).toList)
+
+		override def generateFrom[T](data: mutable.Map[List[Int], BitSet], f: (BitSet) => T): FeatureTree[T] = {
+
+			def aux(ngrams: Map[List[Int], BitSet], index: Int): FeatureTree[T] = {
+				if (ngrams.size == 1) {
+					val allTags = ngrams.foldLeft(BitSet()) { case (collected, (_, tags)) => collected ++ tags}
+					FTLeaf(f(allTags), BitSet() ++ allTags)
+				} else {
+					val perPrevious = ngrams.groupBy(_._1.head).mapValues(
+						_.map { case (seq, tags) => (seq.tail, tags)}
+					)
+					FTDispatchInt(
+						EPreviousTag(index),
+						perPrevious.map {
+							case (tag, innerNgrams) => tag -> aux(innerNgrams, index + 1)
+						}
+					)
+				}
+			}
+
+			aux(data, 1)
+		}
+	}
+
+	case object FeaTemUppercases extends FeatureTemplate[mutable.BitSet] {
+
+		def isWordOnly = true
+
+		override def crawler: CorpusCrawler[mutable.BitSet] = CrwlAllTags
+
+		override def generateFrom[T](data: mutable.BitSet, f: (BitSet) => T): FeatureTree[T] = {
+			val allTags = data
+
+			FTConjunction(
+				FTGuard(PContainsUppercase(), FTLeaf(f(allTags), allTags)) ::
+					FTGuard(PUppercaseOnly(), FTLeaf(f(allTags), allTags)) ::
+					FTGuard(PContainsUppercase(),
+						FTDispatchInt(EPreviousTag(1),
+							allTags.map(i => (i, FTLeaf(f(allTags), allTags))).toMap
+						)
+					) ::
+					Nil
+			)
+		}
+	}
+
+	case class FeaTemContains(char: Char) extends FeatureTemplate[mutable.BitSet] {
+
+		def isWordOnly = true
+
+		override def crawler: CorpusCrawler[mutable.BitSet] = CrwlAllTags
+
+		override def generateFrom[T](data: mutable.BitSet, f: (BitSet) => T): FeatureTree[T] = {
+			val allTags = data
+			FTGuard(PContains(char), FTLeaf(f(allTags), allTags))
+		}
+	}
+
+	case object FeaTemContainsNumber extends FeatureTemplate[mutable.BitSet] {
+
+		def isWordOnly = true
+
+		override def crawler: CorpusCrawler[mutable.BitSet] = CrwlAllTags
+
+		override def generateFrom[T](data: mutable.BitSet, f: (BitSet) => T): FeatureTree[T] = {
+			val allTags = data
+			FTGuard(PContainsNumber(), FTLeaf(f(allTags), allTags))
+		}
+	}
+
+
+	case class FeaTemWordAt(index: Int) extends FeatureTemplate[mutable.Map[List[Word], BitSet]] {
+
+		def isWordOnly = true
+
+		override val crawler: CorpusCrawler[mutable.Map[List[Word], BitSet]] = CrwlWordsAt(List(index))
+
+		override def generateFrom[T](data: mutable.Map[List[Word], BitSet], f: BitSet => T): FeatureTree[T] = {
+			FTDispatchInt(EWordCode(index),
+				data.foldLeft(Map[Int, FeatureTree[T]]()) {
+					case (m, (w, tags)) => m + (w.head.code -> FTLeaf(f(tags), BitSet() ++ tags))
+				})
+		}
+	}
+
+	case class FeaTemPrefix(maxSize: Int) extends FeaTemAffix {
+		val extractor: Int => Extractor[Char] = i => EPrefixChar(i)
+		val cruncher: String => (Char, String) = s => (s.charAt(0), s.substring(1))
+	}
+
+	case class FeaTemSuffix(maxSize: Int) extends FeaTemAffix {
+		val extractor: Int => Extractor[Char] = i => ESuffixChar(i)
+		val cruncher: String => (Char, String) = s => (s.last, s.substring(0, s.length - 1))
+	}
+
+	abstract class FeaTemAffix extends FeatureTemplate[mutable.Map[List[Word], BitSet]] {
+
+		def isWordOnly = true
+
+		override val crawler: CorpusCrawler[mutable.Map[List[Word], BitSet]] = CrwlWordsAt(List(0))
+
+		override def generateFrom[T](data: mutable.Map[List[Word], BitSet], f: BitSet => T): FeatureTree[T] = {
+			makeCharTree(data.map { case (w, tags) => (w.head.string, tags)}, maxSize,
+				cruncher, extractor, tags => FTLeaf(f(tags), BitSet() ++ tags)
+			)
+		}
+
+		def maxSize: Int
+
+		def extractor: Int => Extractor[Char]
+
+		def cruncher: String => (Char, String)
+
+		def makeCharTree[T](words: Map[String, BitSet], maxLength: Int,
+		                    cruncher: String => (Char, String),
+		                    extractor: Int => Extractor[Char],
+		                    leaf: BitSet => FeatureTree[T]): FeatureTree[T] = {
+
+			val allTags = (0 until 15).toSet
+
+			def aux(tree: Tree, index: Int): FeatureTree[T] = tree match {
+				case Node(children, filter) =>
+					val childrenFeatures = children.map {
+						case (char, child) =>
+							(char, aux(child, index + 1))
 					}
-				)
+					FTConjunction(
+						leaf(filter) ::
+							FTDispatchChar(extractor(index), childrenFeatures, BitSet() ++ filter) ::
+							Nil
+					)
+				case Leaf(children, filter) => leaf(filter)
 			}
+
+			aux(makeTree(words, cruncher, maxLength), 0)
 		}
 
-		val ngramTags = ngrams.groupBy(_._1).mapValues(BitSet() ++ _.map(_._2))
-		aux(ngramTags, 1)
-	}
+		trait Tree
 
-	def makeWordTree[T](index: Int, words: Map[Int, BitSet], f: BitSet => T): FeatureTree[T] =
-		FTDispatchInt(EWordCode(index),
-			words.foldLeft(Map[Int, FeatureTree[T]]()) {
-				case (m, (w, tags)) => m + (w -> FTLeaf(f(tags), BitSet() ++ tags))
-			})
+		case class Node(children: Map[Char, Tree], filter: BitSet) extends Tree
 
-	def makePrefixTree[T](words: Map[String, BitSet], f: BitSet => T): FeatureTree[T] =
-		makeCharTree(words, 4,
-			s => (s.charAt(0), s.substring(1)),
-			i => EPrefixChar(i),
-			tags => FTLeaf(f(tags), BitSet() ++ tags)
-		)
+		case class Leaf(children: Map[String, BitSet], filter: BitSet) extends Tree
 
-	def makeSuffixTree[T](words: Map[String, BitSet], f: BitSet => T): FeatureTree[T] =
-		makeCharTree(words, 4,
-			s => (s.last, s.substring(0, s.length - 1)),
-			i => ESuffixChar(i),
-			tags => FTLeaf(f(tags), BitSet() ++ tags)
-		)
+		def makeTree(words: Map[String, BitSet], cruncher: String => (Char, String), max: Int): Tree = {
 
-	def makeCharTree[T](words: Map[String, BitSet], maxLength: Int,
-	                    cruncher: String => (Char, String),
-	                    extractor: Int => Extractor[Char],
-	                    leaf: BitSet => FeatureTree[T]): FeatureTree[T] = {
-
-		val allTags = (0 until 15).toSet
-
-		def aux(tree: Tree, index: Int): FeatureTree[T] = tree match {
-			case Node(children, filter) =>
-				val childrenFeatures = children.map {
-					case (char, child) =>
-						(char, aux(child, index + 1))
-				}
-				FTConjunction(
-					leaf(filter) ::
-						FTDispatchChar(extractor(index), childrenFeatures, BitSet() ++ filter) ::
-						Nil
-				)
-			case Leaf(children, filter) => leaf(filter)
-		}
-
-		aux(makeTree(words, cruncher, maxLength), 0)
-	}
-
-	trait Tree
-
-	case class Node(children: Map[Char, Tree], filter: BitSet) extends Tree
-
-	case class Leaf(children: Map[String, BitSet], filter: BitSet) extends Tree
-
-	def makeTree(words: Map[String, BitSet], cruncher: String => (Char, String), max: Int): Tree = {
-
-		def crunch(l: Map[String, BitSet]): Map[Char, Map[String, BitSet]] = {
-			l.toList.map {
-				case (word, tags) =>
-					val (head, rest) = cruncher(word)
-					(head, (rest, tags))
-			}.groupBy(_._1).mapValues(
-			    _.map(_._2).groupBy(_._1).mapValues(
-				    _.map(_._2).fold(BitSet())(_ ++ _)
-			    )
-				)
-		}
-
-		def doMakeTree(words: Map[String, BitSet], index: Int): (Tree, BitSet) = {
-			if (index == max) {
-				val allTags = words.foldLeft(BitSet()) {
-					case (collected, (str, tags)) => collected ++ tags
-				}
-				(Leaf(words, allTags), allTags)
-			} else {
-				val crunched = crunch(words)
-				val charToTreeAndTags = crunched.map {
-					case (char, stringsToTags) =>
-						val (tree, tags) = doMakeTree(stringsToTags - "", index + 1)
-
-						val completeTags =
-							if (stringsToTags.contains("")) tags ++ stringsToTags("")
-							else tags
-
-						(char, (tree, completeTags))
-				}
-
-				val allTags = charToTreeAndTags.foldLeft(BitSet()) {
-					case (collected, (_, (_, tags))) => collected ++ tags
-				}
-				val charToTree = charToTreeAndTags.map {
-					case (char, (tree, _)) => (char, tree)
-				}
-				(Node(charToTree, allTags), allTags)
+			def crunch(l: Map[String, BitSet]): Map[Char, Map[String, BitSet]] = {
+				l.toList.map {
+					case (word, tags) =>
+						val (head, rest) = cruncher(word)
+						(head, (rest, tags))
+				}.groupBy(_._1).mapValues(
+				    _.map(_._2).groupBy(_._1).mapValues(
+					    _.map(_._2).fold(BitSet())(_ ++ _)
+				    )
+					)
 			}
-		}
 
-		doMakeTree(words, 0)._1
+			def doMakeTree(words: Map[String, BitSet], index: Int): (Tree, BitSet) = {
+				if (index == max) {
+					val allTags = words.foldLeft(BitSet()) {
+						case (collected, (str, tags)) => collected ++ tags
+					}
+					(Leaf(words, allTags), allTags)
+				} else {
+					val crunched = crunch(words)
+					val charToTreeAndTags = crunched.map {
+						case (char, stringsToTags) =>
+							val (tree, tags) = doMakeTree(stringsToTags - "", index + 1)
+
+							val completeTags =
+								if (stringsToTags.contains("")) tags ++ stringsToTags("")
+								else tags
+
+							(char, (tree, completeTags))
+					}
+
+					val allTags = charToTreeAndTags.foldLeft(BitSet()) {
+						case (collected, (_, (_, tags))) => collected ++ tags
+					}
+					val charToTree = charToTreeAndTags.map {
+						case (char, (tree, _)) => (char, tree)
+					}
+					(Node(charToTree, allTags), allTags)
+				}
+			}
+
+			doMakeTree(words, 0)._1
+		}
 	}
+
 }
