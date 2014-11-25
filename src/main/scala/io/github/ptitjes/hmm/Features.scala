@@ -6,28 +6,34 @@ object Features {
 
 	import Corpora._
 
-	sealed trait Predicate extends (History => Boolean) {
+	sealed trait Extractor[T] extends (History => T)
 
-		def apply(h: History): Boolean = this match {
-			case PContainsUppercase() => h.word.string.exists(_.isUpper)
-			case PUppercaseOnly() => h.word.string.forall(_.isUpper)
-			case PContainsNumber() => h.word.string.exists(_.isDigit)
-			case PContains(v) => h.word.string.indexOf(v) != -1
-			case PLength(i, l) => h.wordAt(i).string.length == l
+	sealed trait Predicate[T] extends Extractor[Boolean]
+
+	abstract class WordPredicate extends Predicate[Word] {
+
+		def from: Extractor[Word]
+
+		def apply(h: History): Boolean = {
+			val word = from(h)
+
+			if (word == null) false
+			else this match {
+				case PContainsUppercase() => word.string.exists(_.isUpper)
+				case PUppercaseOnly() => word.string.forall(_.isUpper)
+				case PContainsNumber() => word.string.exists(_.isDigit)
+				case PContains(v) => word.string.indexOf(v) != -1
+			}
 		}
 	}
 
-	case class PContainsUppercase() extends Predicate
+	case class PContainsUppercase(from: Extractor[Word]) extends WordPredicate
 
-	case class PUppercaseOnly() extends Predicate
+	case class PUppercaseOnly(from: Extractor[Word]) extends WordPredicate
 
-	case class PContainsNumber() extends Predicate
+	case class PContainsNumber(from: Extractor[Word]) extends WordPredicate
 
-	case class PContains(value: Char) extends Predicate
-
-	case class PLength(index: Int, l: Int) extends Predicate
-
-	sealed trait Extractor[T] extends (History => T)
+	case class PContains(from: Extractor[Word], value: Char) extends WordPredicate
 
 	case class EPrefixChar(index: Int) extends Extractor[Char] {
 
@@ -43,6 +49,11 @@ object Features {
 			val word = h.word.string
 			if (word.length > index) word.charAt(word.length - index - 1) else 0.toChar
 		}
+	}
+
+	case class EWordAt(index: Int) extends Extractor[Word] {
+
+		def apply(h: History): Word = h.wordAt(index)
 	}
 
 	case class EWordCode(index: Int) extends Extractor[Int] {
@@ -271,9 +282,9 @@ object Features {
 			val allTags = data
 
 			FTConjunction(
-				FTGuard(PContainsUppercase(), FTLeaf(f(allTags), allTags)) ::
-					FTGuard(PUppercaseOnly(), FTLeaf(f(allTags), allTags)) ::
-					FTGuard(PContainsUppercase(),
+				FTGuard(PContainsUppercase(EWordAt(0)), FTLeaf(f(allTags), allTags)) ::
+					FTGuard(PUppercaseOnly(EWordAt(0)), FTLeaf(f(allTags), allTags)) ::
+					FTGuard(PContainsUppercase(EWordAt(0)),
 						FTDispatchInt(EPreviousTag(1),
 							allTags.map(i => (i, FTLeaf(f(allTags), allTags))).toMap
 						)
@@ -291,7 +302,7 @@ object Features {
 
 		override def generateFrom[T](data: mutable.BitSet, f: (BitSet) => T): FeatureTree[T] = {
 			val allTags = data
-			FTGuard(PContains(char), FTLeaf(f(allTags), allTags))
+			FTGuard(PContains(EWordAt(0), char), FTLeaf(f(allTags), allTags))
 		}
 	}
 
@@ -303,7 +314,7 @@ object Features {
 
 		override def generateFrom[T](data: mutable.BitSet, f: (BitSet) => T): FeatureTree[T] = {
 			val allTags = data
-			FTGuard(PContainsNumber(), FTLeaf(f(allTags), allTags))
+			FTGuard(PContainsNumber(EWordAt(0)), FTLeaf(f(allTags), allTags))
 		}
 	}
 
