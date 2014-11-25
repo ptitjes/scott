@@ -30,12 +30,16 @@ object Utils {
 	def timed[T](step: String)(execution: => T): (T, Long) = {
 		val indicator = new ProgressIndicator(step)
 
-		val start = System.currentTimeMillis()
-		val result = execution
-		val time = System.currentTimeMillis() - start
+		try {
+			val start = System.currentTimeMillis()
+			val result = execution
+			val time = System.currentTimeMillis() - start
 
-		indicator.stop(time)
-		(result, time)
+			indicator.stop(time)
+			(result, time)
+		} finally {
+			indicator.stop()
+		}
 	}
 
 	def timed[T](execution: => T): (T, Long) = {
@@ -123,6 +127,11 @@ object Utils {
 			}
 		})
 		thread.start()
+
+		def stop(): Unit = {
+			finished = true
+			thread.join()
+		}
 
 		def stop(time: Long): Unit = {
 			finished = true
