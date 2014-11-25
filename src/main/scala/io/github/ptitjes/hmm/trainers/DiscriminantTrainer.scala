@@ -31,18 +31,20 @@ object DiscriminantTrainer extends Trainer.Factory {
 	}
 
 	object BasicFeatureTemplate extends FeatureSetTemplate {
-		def features(order: Int) = List(
-			// Lexical features
-			FeaTemWordAt(0),
-			FeaTemPrefix(4),
-			FeaTemSuffix(4),
-			FeaTemContainsNumber,
-			FeaTemContains('-'),
-			FeaTemUppercases) ++
-			// Contextual features
-			(1 to order).map(o => FeaTemNgram(o)) ++
-			(1 to order).map(i => FeaTemWordAt(-i)) ++
-			(1 to order).map(i => FeaTemWordAt(i))
+		def features(order: Int) =
+		// Lexical features
+			FeatureTemplate(w(0)) ::
+				FeatureTemplate(w(0) contains '-').unleash ::
+				FeatureTemplate(w(0) containsNumber).unleash ::
+				FeatureTemplate(w(0) containsUppercase).unleash ::
+				FeatureTemplate(w(0) containsOnlyUppercase).unleash ::
+				FeatureTemplate(w(0) containsUppercase, not(t(-1) === -1), t(-1)).unleash :: Nil ++
+				(for (l <- 0 until 4) yield FeatureTemplate(for (i <- 0 to l) yield p(i))) ++
+				(for (l <- 0 until 4) yield FeatureTemplate(for (i <- 0 to l) yield s(i))) ++
+				// Contextual features
+				(for (o <- 1 to order) yield FeatureTemplate(for (i <- 1 to o) yield t(-i))) ++
+				(for (i <- 1 to order) yield FeatureTemplate(w(-i))) ++
+				(for (i <- 1 to order) yield FeatureTemplate(w(i)))
 	}
 
 	def instantiate(configuration: Configuration): Trainer = new Instance(configuration)

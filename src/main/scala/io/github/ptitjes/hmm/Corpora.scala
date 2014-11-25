@@ -50,7 +50,7 @@ object Corpora {
 			else previousWords(-index - 1)
 
 		def previousTag(index: Int): Int =
-			previousTags(index - 1)
+			previousTags(-index - 1)
 	}
 
 	trait HistoryIterator {

@@ -54,8 +54,10 @@ object HiddenMarkovModel {
 
 			classOf[PContainsUppercase], classOf[PUppercaseOnly],
 			classOf[PContainsNumber], classOf[PContains],
+			classOf[PTagEqual], classOf[PNot],
 
-			classOf[EPrefixChar], classOf[ESuffixChar], classOf[EWordCode], classOf[EWordAt], classOf[EPreviousTag],
+			classOf[EPrefixChar], classOf[ESuffixChar],
+			classOf[EWordCode], classOf[EWordString], classOf[EPreviousTag],
 
 			classOf[FTConjunction[Array[Double]]], classOf[FTGuard[Array[Double]]],
 			classOf[FTDispatchInt[Array[Double]]], classOf[FTDispatchChar[Array[Double]]],
