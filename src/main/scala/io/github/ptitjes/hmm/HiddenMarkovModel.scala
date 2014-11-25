@@ -53,16 +53,16 @@ object HiddenMarkovModel {
 			classOf[HMMGenerative], classOf[HMMDiscriminant],
 
 			classOf[PContainsUppercase], classOf[PUppercaseOnly],
-			classOf[PContainsNumber], classOf[PContains], classOf[PLength],
+			classOf[PContainsNumber], classOf[PContains],
 
-			classOf[EPrefixChar], classOf[ESuffixChar], classOf[EWordCode], classOf[EPreviousTag],
+			classOf[EPrefixChar], classOf[ESuffixChar], classOf[EWordCode], classOf[EWordAt], classOf[EPreviousTag],
 
-			classOf[FTConjunction[Array[Double]]], classOf[FTDispatchInt[Array[Double]]],
-			classOf[FTDispatchChar[Array[Double]]], classOf[FTGuard[Array[Double]]],
+			classOf[FTConjunction[Array[Double]]], classOf[FTGuard[Array[Double]]],
+			classOf[FTDispatchInt[Array[Double]]], classOf[FTDispatchChar[Array[Double]]],
 			classOf[FTLeaf[Array[Double]]]
 		))) +
 		new CharKeySerializer + new CharacterKeySerializer +
-		new CharSerializer + new CharacterSerializer + new BitSetSerializer + new WeightsSerializer
+		new CharSerializer + new CharacterSerializer + new BitSetSerializer /*+ new WeightsSerializer*/
 
 	def fromFile(file: File): HiddenMarkovModel = {
 		using(new FileReader(file)) {
@@ -117,20 +117,20 @@ object HiddenMarkovModel {
 	}
 		))
 
-	class WeightsSerializer extends CustomSerializer[Weights](format => ( {
-		case v: JValue =>
-			val map = Extraction.extract[Map[Int, Double]](v)
-			val maxIndex = map.foldLeft(0) { case (m, (i, _)) => if (i > m) i else m}
-			Weights(BitSet() ++ map.keySet, map.foldLeft(Array.ofDim[Double](maxIndex + 1)) {
-				case (weights, (tag, weight)) =>
-					weights(tag) = weight
-					weights
-			})
-	}, {
-		case Weights(tags, weights) => Extraction.decompose(
-			tags.map(tag => (tag, weights(tag))).toMap
-		)
-	}
-		))
+	/*	class WeightsSerializer extends CustomSerializer[Weights](format => ( {
+			case v: JValue =>
+				val map = Extraction.extract[Map[Int, Double]](v)
+				val maxIndex = map.foldLeft(0) { case (m, (i, _)) => if (i > m) i else m}
+				Weights(BitSet() ++ map.keySet, map.foldLeft(Array.ofDim[Double](maxIndex + 1)) {
+					case (weights, (tag, weight)) =>
+						weights(tag) = weight
+						weights
+				})
+		}, {
+			case Weights(tags, weights) => Extraction.decompose(
+				tags.map(tag => (tag, weights(tag))).toMap
+			)
+		}
+			))*/
 
 }

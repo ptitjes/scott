@@ -58,8 +58,8 @@ object DiscriminantTrainer extends Trainer.Factory {
 			var allWeightPairs = mutable.ArrayBuffer[(Weights, Weights)]()
 			val weightFactory: BitSet => (Weights, Weights) = {
 				tags =>
-					val weights = new Weights(breadth, tags)
-					val averagedWeights = new Weights(breadth, tags)
+					val weights = new Weights(tags, Array.ofDim[Double](breadth))
+					val averagedWeights = new Weights(tags, Array.ofDim[Double](breadth))
 					val weightPair = (weights, averagedWeights)
 					allWeightPairs += weightPair
 					weightPair

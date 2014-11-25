@@ -19,10 +19,10 @@ object Features {
 
 			if (word == null) false
 			else this match {
-				case PContainsUppercase() => word.string.exists(_.isUpper)
-				case PUppercaseOnly() => word.string.forall(_.isUpper)
-				case PContainsNumber() => word.string.exists(_.isDigit)
-				case PContains(v) => word.string.indexOf(v) != -1
+				case PContainsUppercase(_) => word.string.exists(_.isUpper)
+				case PUppercaseOnly(_) => word.string.forall(_.isUpper)
+				case PContainsNumber(_) => word.string.exists(_.isDigit)
+				case PContains(_, v) => word.string.indexOf(v) != -1
 			}
 		}
 	}
@@ -71,8 +71,6 @@ object Features {
 
 	case class Weights(tags: BitSet, values: Array[Double]) {
 
-		def this(breadth: Int, tags: BitSet) = this(tags, Array.ofDim[Double](breadth))
-
 		def apply(key: Int) = values(key)
 
 		def update(key: Int, value: Double) =
@@ -90,23 +88,25 @@ object Features {
 
 		def foreachMatching(h: History, tags: BitSet)(f: T => Unit): Unit = this match {
 			case FTConjunction(children) => children.foreach(c => c.foreachMatching(h, tags)(f))
+			case FTDispatchInt(extract, children, filter) =>
+				if ((tags & filter).nonEmpty) {
+					val key = extract(h)
+					if (children.contains(key)) children(key).foreachMatching(h, tags)(f)
+				}
 			case FTDispatchChar(extract, children, filter) =>
 				if ((tags & filter).nonEmpty) {
 					val key = extract(h)
 					if (children.contains(key)) children(key).foreachMatching(h, tags)(f)
 				}
-			case FTDispatchInt(extract, children) =>
-				val key = extract(h)
-				if (children.contains(key)) children(key).foreachMatching(h, tags)(f)
 			case FTGuard(predicate, child) => if (predicate(h)) child.foreachMatching(h, tags)(f)
 			case FTLeaf(weights, filter) => if ((tags & filter).nonEmpty) f(weights)
 		}
 
 		def foreach(f: T => Unit): Unit = this match {
 			case FTConjunction(children) => children.foreach(c => c.foreach(f))
-			case FTDispatchChar(extract, children, tags) =>
+			case FTDispatchInt(extract, children, tags) =>
 				children.foreach({ case (k, c) => c.foreach(f)})
-			case FTDispatchInt(extract, children) =>
+			case FTDispatchChar(extract, children, tags) =>
 				children.foreach({ case (k, c) => c.foreach(f)})
 			case FTGuard(predicate, child) => child.foreach(f)
 			case FTLeaf(weights, filter) => f(weights)
@@ -114,10 +114,10 @@ object Features {
 
 		def map[U](f: T => U): FeatureTree[U] = this match {
 			case FTConjunction(children) => FTConjunction(children.map(c => c.map(f)))
+			case FTDispatchInt(extract, children, tags) =>
+				FTDispatchInt(extract, children.map { case (k, c) => (k, c.map(f))}, tags)
 			case FTDispatchChar(extract, children, tags) =>
 				FTDispatchChar(extract, children.map { case (k, c) => (k, c.map(f))}, tags)
-			case FTDispatchInt(extract, children) =>
-				FTDispatchInt(extract, children.map { case (k, c) => (k, c.map(f))})
 			case FTGuard(predicate, child) => FTGuard(predicate, child.map(f))
 			case FTLeaf(weights, filter) => FTLeaf(f(weights), filter)
 		}
@@ -125,13 +125,15 @@ object Features {
 
 	case class FTConjunction[T](children: Seq[FeatureTree[T]]) extends FeatureTree[T]
 
+	case class FTDispatchInt[T](extract: Extractor[Int],
+	                            children: Map[Int, FeatureTree[T]],
+	                            tags: BitSet) extends FeatureTree[T]
+
 	case class FTDispatchChar[T](extract: Extractor[Char],
-	                             children: Map[Char, FeatureTree[T]],
-	                             tags: BitSet) extends FeatureTree[T]
+	                            children: Map[Char, FeatureTree[T]],
+	                            tags: BitSet) extends FeatureTree[T]
 
-	case class FTDispatchInt[T](extract: Extractor[Int], children: Map[Int, FeatureTree[T]]) extends FeatureTree[T]
-
-	case class FTGuard[T](predicate: Predicate, child: FeatureTree[T]) extends FeatureTree[T]
+	case class FTGuard[T](predicate: Predicate[_], child: FeatureTree[T]) extends FeatureTree[T]
 
 	case class FTLeaf[T](weights: T, tags: BitSet) extends FeatureTree[T]
 
@@ -251,24 +253,26 @@ object Features {
 
 		override def generateFrom[T](data: mutable.Map[List[Int], BitSet], f: (BitSet) => T): FeatureTree[T] = {
 
-			def aux(ngrams: Map[List[Int], BitSet], index: Int): FeatureTree[T] = {
+			def aux(ngrams: Map[List[Int], BitSet], index: Int): (FeatureTree[T], BitSet) = {
 				if (ngrams.size == 1) {
 					val allTags = ngrams.foldLeft(BitSet()) { case (collected, (_, tags)) => collected ++ tags}
-					FTLeaf(f(allTags), BitSet() ++ allTags)
+					(FTLeaf(f(allTags), allTags), allTags)
 				} else {
 					val perPrevious = ngrams.groupBy(_._1.head).mapValues(
 						_.map { case (seq, tags) => (seq.tail, tags)}
 					)
-					FTDispatchInt(
+					val intToTreeTags = perPrevious.map { case (tag, innerNgrams) => (tag, aux(innerNgrams, index + 1))}
+					val allTags = intToTreeTags.foldLeft(BitSet()) { case (collected, (_, (_, tags))) => collected ++ tags}
+					(FTDispatchInt(
 						EPreviousTag(index),
-						perPrevious.map {
-							case (tag, innerNgrams) => tag -> aux(innerNgrams, index + 1)
-						}
-					)
+						intToTreeTags.map { case (tag, (tree, tags)) => tag -> tree},
+						allTags
+					), allTags)
 				}
 			}
 
-			aux(data, 1)
+			val (tree, _) = aux(data, 1)
+			tree
 		}
 	}
 
@@ -286,7 +290,8 @@ object Features {
 					FTGuard(PUppercaseOnly(EWordAt(0)), FTLeaf(f(allTags), allTags)) ::
 					FTGuard(PContainsUppercase(EWordAt(0)),
 						FTDispatchInt(EPreviousTag(1),
-							allTags.map(i => (i, FTLeaf(f(allTags), allTags))).toMap
+							allTags.map(i => (i, FTLeaf(f(allTags), allTags))).toMap,
+							allTags
 						)
 					) ::
 					Nil
@@ -328,8 +333,12 @@ object Features {
 		override def generateFrom[T](data: mutable.Map[List[Word], BitSet], f: BitSet => T): FeatureTree[T] = {
 			FTDispatchInt(EWordCode(index),
 				data.foldLeft(Map[Int, FeatureTree[T]]()) {
-					case (m, (w, tags)) => m + (w.head.code -> FTLeaf(f(tags), BitSet() ++ tags))
-				})
+					case (m, (w, tags)) => m + (w.head.code -> FTLeaf(f(tags), tags))
+				},
+				data.foldLeft(BitSet()) {
+					case (allTags, (_, tags)) => allTags ++ tags
+				}
+			)
 		}
 	}
 
