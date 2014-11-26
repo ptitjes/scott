@@ -102,7 +102,7 @@ object Utils {
 				print(f"$name: $done%5d/$count |" + "=" * doneSize + " " * (100 - doneSize) +
 					"| Remaining: " + remainingTime + "\r")
 			} else {
-				val totalTime = prettyTime(time)
+				val totalTime = prettyTimeMs(time)
 
 				print(f"$name: $done%5d/$count |" + "=" * 100 +
 					"|     Total: " + totalTime + "\n")

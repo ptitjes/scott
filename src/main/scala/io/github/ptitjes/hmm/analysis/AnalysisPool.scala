@@ -99,7 +99,8 @@ class AnalysisPool(val cacheFile: File) {
 			val conf = c.set(rows, row)
 			val trainingConf = conf.completeForTraining
 			val decodingConf = conf.completeForDecoding
-			f(resultsCache((trainingConf, decodingConf)))
+			val (results, _) = getDecoding((trainingConf, decodingConf))
+			f(results)
 		})
 	}
 
