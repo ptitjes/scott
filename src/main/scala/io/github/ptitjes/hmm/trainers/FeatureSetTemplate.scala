@@ -18,7 +18,7 @@ object FeatureTemplate {
 
 trait FeatureSetTemplate {
 
-	import scala.language.postfixOps
+	def name: String
 
 	def features(order: Int): List[FeatureTemplate]
 
@@ -148,6 +148,7 @@ trait FeatureSetTemplate {
 							valueToTree.asInstanceOf[Map[Int, FeatureTree[T]]],
 							filterTags
 						), filterTags)
+					case EWordString(_) => throw new UnsupportedOperationException
 				}
 			}
 		}

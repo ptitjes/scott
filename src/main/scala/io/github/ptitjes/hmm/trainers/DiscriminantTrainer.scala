@@ -5,6 +5,8 @@ import io.github.ptitjes.hmm.Features._
 import io.github.ptitjes.hmm.Trainer._
 import io.github.ptitjes.hmm.Utils._
 import io.github.ptitjes.hmm._
+import io.github.ptitjes.hmm.decoders.FullDecoder
+import io.github.ptitjes.hmm.trainers.features.BaseFeatures
 
 import scala.collection._
 
@@ -12,9 +14,14 @@ object DiscriminantTrainer extends Trainer.Factory {
 
 	def name: String = "Disc"
 
-	override def parameters: Set[Parameter[_]] = Set(ORDER, ITERATION_COUNT, AVERAGING)
+	override def parameters: Set[Parameter[_]] = Set(ORDER, FEATURES, ITERATION_COUNT, AVERAGING, DECODER)
 
-	object DECODER extends DecoderParameter("", c => c(Configuration.DECODER))
+	object TrainerParameter
+
+	object FEATURES extends ScalaObjectParameter[FeatureSetTemplate]("", c => BaseFeatures) {
+
+		def formatValue(value: FeatureSetTemplate): String = value.name
+	}
 
 	object ITERATION_COUNT extends IntParameter("Iterations", 1)
 
@@ -30,22 +37,9 @@ object DiscriminantTrainer extends Trainer.Factory {
 		}
 	}
 
-	object BasicFeatureTemplate extends FeatureSetTemplate {
-		def features(order: Int) =
-			List(
-				// Lexical features
-				FeatureTemplate(w(0)),
-				FeatureTemplate(w(0) contains '-'),
-				FeatureTemplate(w(0) containsNumber),
-				FeatureTemplate(w(0) containsUppercase),
-				FeatureTemplate(w(0) containsOnlyUppercase),
-				FeatureTemplate(w(0) containsUppercase, not(t(-1) === -1), t(-1))) ++
-				(for (l <- 0 until 4) yield FeatureTemplate(for (i <- 0 to l) yield p(i))) ++
-				(for (l <- 0 until 4) yield FeatureTemplate(for (i <- 0 to l) yield s(i))) ++
-				// Contextual features
-				(for (o <- 1 to order) yield FeatureTemplate(for (i <- 1 to o) yield t(-i))) ++
-				(for (i <- 1 to order) yield FeatureTemplate(w(-i))) ++
-				(for (i <- 1 to order) yield FeatureTemplate(w(i)))
+	object DECODER extends ScalaObjectParameter[Decoder.Factory]("", c => FullDecoder) {
+
+		def formatValue(value: Decoder.Factory): String = value.name
 	}
 
 	def instantiate(configuration: Configuration): Trainer = new Instance(configuration)
@@ -53,7 +47,10 @@ object DiscriminantTrainer extends Trainer.Factory {
 	class Instance(configuration: Configuration) extends Trainer with IterativeTrainer {
 
 		val order = configuration(ORDER)
+		val features = configuration(FEATURES)
+		val iterationCount = configuration(ITERATION_COUNT)
 		val useAveraging = configuration(AVERAGING)
+		val decoderFactory = configuration(DECODER)
 
 		def train(corpus: Corpus[Sequence with Annotation], callback: IterationCallback): Unit = {
 			val breadth = stateCount(corpus)
@@ -69,7 +66,7 @@ object DiscriminantTrainer extends Trainer.Factory {
 			}
 
 			val (wordOnlyFeatures, otherFeatures, dictionary) =
-				BasicFeatureTemplate.buildFeatures(breadth, order, corpus, weightFactory)
+				features.buildFeatures(breadth, order, corpus, weightFactory)
 
 			val hmm = HMMDiscriminant(breadth, order,
 				wordOnlyFeatures.map { case (weights, averagedWeights) => weights},
@@ -77,10 +74,9 @@ object DiscriminantTrainer extends Trainer.Factory {
 				dictionary
 			)
 
-			val decoder = configuration(DECODER).instantiate(hmm, configuration)
+			val decoder = decoderFactory.instantiate(hmm, configuration)
 
 			val sequences = corpus.sequences
-			val iterationCount = configuration(ITERATION_COUNT)
 			for (i <- 1 to iterationCount) {
 
 				val (_, elapsedTime) = timed {

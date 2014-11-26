@@ -36,9 +36,15 @@ object Configuration {
 
 	object CORPUS_RATIO extends IntParameter("Corpus Ratio", 100)
 
-	object TRAINER extends TrainerParameter("", c => RelFreqTrainer)
+	object TRAINER extends ScalaObjectParameter[Trainer.Factory]("", c => RelFreqTrainer) {
 
-	object DECODER extends DecoderParameter("", c => FullDecoder)
+		def formatValue(value: Trainer.Factory): String = value.name
+	}
+
+	object DECODER extends ScalaObjectParameter[Decoder.Factory]("", c => FullDecoder) {
+
+		def formatValue(value: Decoder.Factory): String = value.name
+	}
 
 	def complete(configuration: Configuration): Configuration = {
 
@@ -108,28 +114,13 @@ case class StringParameter(name: String, default: Configuration => String) exten
 	def toJson(value: String): JValue = JString(value)
 }
 
-case class TrainerParameter(name: String, default: Configuration => Trainer.Factory)
-	extends Parameter[Trainer.Factory]() {
+abstract case class ScalaObjectParameter[T](name: String, default: Configuration => T)
+	extends Parameter[T]() {
 
-	def formatValue(value: Trainer.Factory): String = value.name
-
-	def fromJson(value: JValue): Trainer.Factory = value match {
-		case JString(t) => nameToObject[Trainer.Factory](t)
+	def fromJson(value: JValue): T = value match {
+		case JString(t) => nameToObject[T](t)
 		case _ => throw new IllegalArgumentException
 	}
 
-	def toJson(value: Trainer.Factory): JValue = JString(objectToName(value))
-}
-
-case class DecoderParameter(name: String, default: Configuration => Decoder.Factory)
-	extends Parameter[Decoder.Factory]() {
-
-	def formatValue(value: Decoder.Factory): String = value.name
-
-	def fromJson(value: JValue): Decoder.Factory = value match {
-		case JString(t) => nameToObject[Decoder.Factory](t)
-		case _ => throw new IllegalArgumentException
-	}
-
-	def toJson(value: Decoder.Factory): JValue = JString(objectToName(value))
+	def toJson(value: T): JValue = JString(objectToName(value))
 }
