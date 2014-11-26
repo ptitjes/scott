@@ -26,6 +26,8 @@ object RelFreqDiscountingTrainer extends Trainer.Factory {
 
 	object MULTIPLIER extends IntParameter("Multiplier", 8)
 
+	override def isIterative = false
+
 	def instantiate(configuration: Configuration): Trainer = new Instance(configuration)
 
 	class Instance(configuration: Configuration) extends Trainer {

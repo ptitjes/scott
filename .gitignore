@@ -2,6 +2,6 @@ target/
 .idea/
 .idea_modules/
 report/
-results/
+analysis/
 selected-hmms/
 temp/

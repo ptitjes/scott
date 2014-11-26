@@ -1,6 +1,6 @@
 package io.github.ptitjes.hmm
 
-import io.github.ptitjes.hmm.analysis.ResultPool._
+import io.github.ptitjes.hmm.analysis.AnalysisPool._
 import io.github.ptitjes.hmm.decoders.FullDecoder
 import io.github.ptitjes.hmm.trainers.RelFreqTrainer
 import org.json4s.JsonAST.{JBool, JInt, JString, JValue}
@@ -21,15 +21,31 @@ case class Configuration(parameters: Map[Parameter[_], Any] = Map()) {
 		if (parameters.contains(parameter)) parameters(parameter).asInstanceOf[V]
 		else parameter.default(this)
 
+	import Configuration._
+
+	def completeForTraining: Configuration = {
+		val ta = this(TRAINER)
+		(List(TRAINER, CORPUS_RATIO) ++ ta.parameters).foldLeft(Configuration()) {
+			case (c, param) => c.set(param, this(param))
+		}
+	}
+
+	def completeForDecoding: Configuration = {
+		val da = this(DECODER)
+		(List(DECODER) ++ da.parameters).foldLeft(Configuration()) {
+			case (c, param) => c.set(param, this(param))
+		}
+	}
+
 	override def toString =
-		Configuration.TRAINER.formatValue(this) + " " +
-			Configuration.DECODER.formatValue(this) + " " +
-			(parameters.keySet -(Configuration.TRAINER, Configuration.DECODER)).toList
+		(if (this.parameters.contains(TRAINER)) TRAINER.formatValue(this) + " " else "") +
+			(if (this.parameters.contains(DECODER)) DECODER.formatValue(this) + " " else "") +
+			(parameters.keySet -(TRAINER, DECODER)).toList
 				.sortBy(_.name).map {
-				p => (if (p.name != "") p.name + " " else "") + p.formatValue(this)
+				p => (if (p.name != "") p.name + "=" else "") + p.formatValue(this)
 			}.mkString("; ")
 
-	def toFilename = toString.replace(";", "").replace(" ", "-")
+	def toFilename = toString.replace(" ", "-")
 }
 
 object Configuration {
@@ -46,15 +62,6 @@ object Configuration {
 		def formatValue(value: Decoder.Factory): String = value.name
 	}
 
-	def complete(configuration: Configuration): Configuration = {
-
-		val ta = configuration(TRAINER)
-		val da = configuration(DECODER)
-
-		(List(CORPUS_RATIO) ++ ta.parameters ++ da.parameters).foldLeft(configuration) {
-			case (c, param) => if (c.parameters.contains(param)) c else c.set(param, param.default(c))
-		}
-	}
 }
 
 trait Parameter[V] {

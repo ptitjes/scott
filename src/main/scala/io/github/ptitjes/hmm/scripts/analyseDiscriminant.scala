@@ -10,7 +10,7 @@ import io.github.ptitjes.hmm.trainers.DiscriminantTrainer._
 
 object analyseDiscriminant extends App {
 
-	implicit val runner: AnalysisRunner = new AnalysisRunner("results/results-discriminant.json",
+	implicit val runner: AnalysisRunner = new AnalysisRunner("analysis/results-discriminant.json",
 		Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"), Lexica.WORDS),
 		Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"), Lexica.WORDS))
 

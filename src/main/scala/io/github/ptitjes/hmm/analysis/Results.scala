@@ -13,8 +13,7 @@ case class Results(globalCounts: ErrorCount,
                    top50KnownMostFrequent: List[(Word, ErrorCount, Array[Array[Int]])],
                    top50UnknownMostFrequent: List[(Word, ErrorCount, Array[Array[Int]])],
                    top50Known: List[(Word, ErrorCount, Array[Array[Int]])],
-                   top50Unknown: List[(Word, ErrorCount, Array[Array[Int]])],
-                   trainingElapsedTime: Long, decodingElapsedTime: Long) {
+                   top50Unknown: List[(Word, ErrorCount, Array[Array[Int]])]) {
 
 	def errorRate = globalCounts.errorRate
 
@@ -89,12 +88,7 @@ case class Results(globalCounts: ErrorCount,
 		out.println()
 	}
 
-	override def toString: String = globalCounts +
-		s"; TrainingTime: ${
-			prettyTimeMs(trainingElapsedTime)
-		} ms; DecodingTime: ${
-			prettyTimeMs(decodingElapsedTime)
-		} ms."
+	override def toString: String = globalCounts.toString
 }
 
 class ErrorCount {

@@ -8,45 +8,26 @@ import io.github.ptitjes.hmm._
 
 object Checking {
 
-	def check(hmm: HiddenMarkovModel,
-	          refCorpus: Corpus[Sequence with Annotation],
-	          hypCorpus: Corpus[Sequence with Annotation],
-	          trainingElapsedTime: Long, decodingElapsedTime: Long): Results = {
-
-		val results = check(hmm, refCorpus, hypCorpus,
-			trainingElapsedTime, decodingElapsedTime, None)
-
-		results.copy(
-			top50KnownMostFrequent = null, top50UnknownMostFrequent = null,
-			top50Known = null, top50Unknown = null)
-	}
-
 	def check(conf: Configuration,
 	          hmm: HiddenMarkovModel,
 	          refCorpus: Corpus[Sequence with Annotation],
 	          hypCorpus: Corpus[Sequence with Annotation],
-	          trainingElapsedTime: Long, decodingElapsedTime: Long,
 	          checkFile: File): Results = {
 
-		val results = using(new FileWriter(checkFile)) {
+		using(new FileWriter(checkFile)) {
 			fileOutput => using(new PrintWriter(fileOutput)) {
 				out =>
 					out.println(conf)
 					out.println()
 
-					check(hmm, refCorpus, hypCorpus,
-						trainingElapsedTime, decodingElapsedTime, Some(out))
+					check(hmm, refCorpus, hypCorpus, Some(out))
 			}
 		}
-		results.copy(
-			top50KnownMostFrequent = null, top50UnknownMostFrequent = null,
-			top50Known = null, top50Unknown = null)
 	}
 
 	def check(hmm: HiddenMarkovModel,
 	          refCorpus: Corpus[Sequence with Annotation],
 	          hypCorpus: Corpus[Sequence with Annotation],
-	          trainingElapsedTime: Long, decodingElapsedTime: Long,
 	          writer: Option[PrintWriter]): Results = {
 
 		val globalCounts = new ErrorCount
@@ -138,8 +119,7 @@ object Checking {
 			.take(50)
 
 		val results = Results(globalCounts, perCategoryCounts, confusionMatrix,
-			top50KnownMostFrequent, top50UnknownMostFrequent, top50Known, top50Unknown,
-			trainingElapsedTime, decodingElapsedTime)
+			top50KnownMostFrequent, top50UnknownMostFrequent, top50Known, top50Unknown)
 
 		writer.foreach(out => results.printTo(out))
 

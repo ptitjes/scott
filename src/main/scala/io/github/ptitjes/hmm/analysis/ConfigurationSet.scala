@@ -2,6 +2,8 @@ package io.github.ptitjes.hmm.analysis
 
 import io.github.ptitjes.hmm._
 
+import scala.collection._
+
 trait ConfigurationSet {
 
 	def *(rhs: ConfigurationSet) = ConfSetProduct(this, rhs)

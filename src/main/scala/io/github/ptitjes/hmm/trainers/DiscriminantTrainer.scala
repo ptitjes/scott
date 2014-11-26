@@ -18,7 +18,7 @@ object DiscriminantTrainer extends Trainer.Factory {
 
 	object TrainerParameter
 
-	object FEATURES extends ScalaObjectParameter[FeatureSetTemplate]("", c => BaseFeatures) {
+	object FEATURES extends ScalaObjectParameter[FeatureSetTemplate]("Features", c => BaseFeatures) {
 
 		def formatValue(value: FeatureSetTemplate): String = value.name
 	}
@@ -41,6 +41,8 @@ object DiscriminantTrainer extends Trainer.Factory {
 
 		def formatValue(value: Decoder.Factory): String = value.name
 	}
+
+	override def isIterative: Boolean = true
 
 	def instantiate(configuration: Configuration): Trainer = new Instance(configuration)
 

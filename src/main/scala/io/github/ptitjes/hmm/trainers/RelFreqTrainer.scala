@@ -12,6 +12,8 @@ object RelFreqTrainer extends Trainer.Factory {
 		ORDER, EmittingTraining.UNKNOWN_THRESHOLD
 	)
 
+	override def isIterative: Boolean = false
+
 	def instantiate(configuration: Configuration): Trainer = new Instance(configuration)
 
 	class Instance(configuration: Configuration) extends Trainer {

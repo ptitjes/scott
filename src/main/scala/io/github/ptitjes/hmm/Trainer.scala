@@ -41,6 +41,8 @@ object Trainer {
 
 		def parameters: Set[Parameter[_]] = Set()
 
+		def isIterative: Boolean
+
 		def instantiate(configuration: Configuration): Trainer
 	}
 
