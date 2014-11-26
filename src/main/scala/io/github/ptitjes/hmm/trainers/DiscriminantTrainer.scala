@@ -35,11 +35,11 @@ object DiscriminantTrainer extends Trainer.Factory {
 			List(
 				// Lexical features
 				FeatureTemplate(w(0)),
-				FeatureTemplate(w(0) contains '-').unleash,
-				FeatureTemplate(w(0) containsNumber).unleash,
-				FeatureTemplate(w(0) containsUppercase).unleash,
-				FeatureTemplate(w(0) containsOnlyUppercase).unleash,
-				FeatureTemplate(w(0) containsUppercase, not(t(-1) === -1), t(-1)).unleash) ++
+				FeatureTemplate(w(0) contains '-'),
+				FeatureTemplate(w(0) containsNumber),
+				FeatureTemplate(w(0) containsUppercase),
+				FeatureTemplate(w(0) containsOnlyUppercase),
+				FeatureTemplate(w(0) containsUppercase, not(t(-1) === -1), t(-1))) ++
 				(for (l <- 0 until 4) yield FeatureTemplate(for (i <- 0 to l) yield p(i))) ++
 				(for (l <- 0 until 4) yield FeatureTemplate(for (i <- 0 to l) yield s(i))) ++
 				// Contextual features
