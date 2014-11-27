@@ -20,7 +20,7 @@ object DiscriminantTrainer extends Trainer.Factory {
 
 	object FEATURES extends ScalaObjectParameter[FeatureSetTemplate]("Features", c => BaseFeatures) {
 
-		def formatValue(value: FeatureSetTemplate): String = value.name
+		def format(value: FeatureSetTemplate): String = value.name
 	}
 
 	object ITERATION_COUNT extends IntParameter("Iterations", 1)
@@ -30,7 +30,7 @@ object DiscriminantTrainer extends Trainer.Factory {
 	val COMPLETE_AVERAGING = 2
 
 	object AVERAGING extends IntParameter("Averaging", 0) {
-		override def formatValue(value: Int): String = value match {
+		override def format(value: Int): String = value match {
 			case NO_AVERAGING => "No"
 			case PARTIAL_AVERAGING => "Partial"
 			case COMPLETE_AVERAGING => "Complete"
@@ -39,7 +39,7 @@ object DiscriminantTrainer extends Trainer.Factory {
 
 	object DECODER extends ScalaObjectParameter[Decoder.Factory]("", c => FullDecoder) {
 
-		def formatValue(value: Decoder.Factory): String = value.name
+		def format(value: Decoder.Factory): String = value.name
 	}
 
 	override def isIterative: Boolean = true

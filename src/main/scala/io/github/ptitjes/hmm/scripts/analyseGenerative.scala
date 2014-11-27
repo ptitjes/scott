@@ -3,7 +3,7 @@ package io.github.ptitjes.hmm.scripts
 import io.github.ptitjes.hmm._
 import io.github.ptitjes.hmm.analysis.ConfigurationSet._
 import io.github.ptitjes.hmm.analysis.LaTexReport._
-import io.github.ptitjes.hmm.analysis.{Analysis, AnalysisRunner, LaTexReport}
+import io.github.ptitjes.hmm.analysis.{ConfigurationSet, Analysis, AnalysisRunner, LaTexReport}
 import io.github.ptitjes.hmm.decoders.{BeamDecoder, FullDecoder}
 import io.github.ptitjes.hmm.trainers.{EmittingTraining, RelFreqDiscountingTrainer, RelFreqTrainer}
 
@@ -15,8 +15,8 @@ object analyseGenerative extends App {
 
 	val report: LaTexReport = new LaTexReport("report/report-generative.tex")
 
-	val accuracy = YAxis("Accuracy", "\\%", _.accuracy * 100)
-	val unknownAccuracy = YAxis("Unknown Word Accuracy", "\\%", _.unknownAccuracy * 100)
+	val accuracy = YAxis("Accuracy", "\\%", (_: Int, r) => r.accuracy * 100)
+	val unknownAccuracy = YAxis("Unknown Word Accuracy", "\\%", (_: Int, r) => r.unknownAccuracy * 100)
 
 	val `all freq trainers + all decoders` =
 		(Configuration.TRAINER forAll RelFreqTrainer and RelFreqDiscountingTrainer) *
@@ -26,55 +26,59 @@ object analyseGenerative extends App {
 		(Configuration.TRAINER as trainers.RelFreqDiscountingTrainer) *
 			(Configuration.DECODER as decoders.FullDecoder)
 
-	report << Graph("corpusRatioFull", "Impact de la quantité de corpus d'apprentissage",
+	report << LinePlot("corpusRatioFull", "Impact de la quantité de corpus d'apprentissage",
+		ConfigurationSet(),
 		`all freq trainers + all decoders` *
-			(Trainer.ORDER from (1 to 3)) *
-			(Configuration.CORPUS_RATIO from (10 to 100 by 10)),
-		XAxis(Configuration.CORPUS_RATIO), accuracy)
+			(Trainer.ORDER from (1 to 3)),
+		Configuration.CORPUS_RATIO from (10 to 100 by 10), accuracy)
 
-	report << Graph("corpusRatioZoom", "Impact de la quantité de corpus d'apprentissage",
+	report << LinePlot("corpusRatioZoom", "Impact de la quantité de corpus d'apprentissage",
+		ConfigurationSet(),
 		`all freq trainers + all decoders` *
-			(Trainer.ORDER from (1 to 3)) *
-			(Configuration.CORPUS_RATIO from (50 to 100 by 10)),
-		XAxis(Configuration.CORPUS_RATIO), accuracy)
+			(Trainer.ORDER from (1 to 3)),
+		Configuration.CORPUS_RATIO from (50 to 100 by 10), accuracy)
 
-	report << Graph("orderAnalysis", "Impact de l'ordre",
-		`all freq trainers + all decoders` *
-			(Trainer.ORDER from (1 to 4)),
-		XAxis(Trainer.ORDER), accuracy)
+	report << LinePlot("orderAnalysis", "Impact de l'ordre",
+		ConfigurationSet(),
+		`all freq trainers + all decoders`,
+		Trainer.ORDER from (1 to 4), accuracy)
 
-	report << Graph("interpolatedOrderAnalysis", "Impact de l'ordre (avec interpolation)",
+	report << LinePlot("interpolatedOrderAnalysis", "Impact de l'ordre (avec interpolation)",
+		ConfigurationSet(),
 		`discounting freq trainer + full and beam decoder` *
-			(Trainer.ORDER from (1 to 4)) *
 			(trainers.RelFreqDiscountingTrainer.MULTIPLIER from (1 to 5)),
-		XAxis(Trainer.ORDER), accuracy)
+		Trainer.ORDER from (1 to 4), accuracy)
 
-	report << Graph("interpolatedOrderAnalysisZoom", "Impact de l'ordre (avec interpolation)",
+	report << LinePlot("interpolatedOrderAnalysisZoom", "Impact de l'ordre (avec interpolation)",
+		ConfigurationSet(),
 		`discounting freq trainer + full and beam decoder` *
-			(Trainer.ORDER from (2 to 4)) *
 			(trainers.RelFreqDiscountingTrainer.MULTIPLIER from (2 to 10)),
-		XAxis(Trainer.ORDER), accuracy)
+		Trainer.ORDER from (2 to 4), accuracy)
 
-	report << Graph("interpolatedOrderAnalysisZoomOrder3", "Relativisation de l'interpolation",
+	report << LinePlot("interpolatedOrderAnalysisZoomOrderThree", "Relativisation de l'interpolation",
+		ConfigurationSet(),
 		`discounting freq trainer + full and beam decoder` *
-			(Trainer.ORDER from (2 to 4)) *
-			(trainers.RelFreqDiscountingTrainer.MULTIPLIER from (3 to 10)),
-		XAxis(trainers.RelFreqDiscountingTrainer.MULTIPLIER), accuracy)
+			(Trainer.ORDER from (2 to 4)),
+		RelFreqDiscountingTrainer.MULTIPLIER from (3 to 10), accuracy)
 
 	val unknownThresholdAnalysis =
-		(((Configuration.TRAINER as trainers.RelFreqDiscountingTrainer) *
-			(trainers.RelFreqDiscountingTrainer.MULTIPLIER as 8) * (Trainer.ORDER from (2 to 3))) +
-			((Configuration.TRAINER as trainers.RelFreqTrainer) * (Trainer.ORDER as 2))) *
-			(Configuration.DECODER as decoders.FullDecoder) *
-			(EmittingTraining.UNKNOWN_THRESHOLD from (1 to 20))
+		(Configuration.TRAINER as RelFreqDiscountingTrainer) * (Trainer.ORDER from (2 to 3)) +
+			(Configuration.TRAINER as RelFreqTrainer) * (Trainer.ORDER as 2)
 
-	report << Graph("unknownGlobalAccuracy", "Impact du seuil de mot inconnu",
+	report << LinePlot("unknownGlobalAccuracy", "Impact du seuil de mot inconnu",
+		Configuration.DECODER as BeamDecoder,
 		unknownThresholdAnalysis,
-		XAxis(trainers.EmittingTraining.UNKNOWN_THRESHOLD), accuracy)
+		EmittingTraining.UNKNOWN_THRESHOLD from (1 to 20), accuracy)
 
-	report << Graph("unknownUnknownAccuracy", "Impact du seuil de mot inconnu",
+	report << LinePlot("unknownUnknownAccuracy", "Impact du seuil de mot inconnu",
+		Configuration.DECODER as BeamDecoder,
 		unknownThresholdAnalysis,
-		XAxis(trainers.EmittingTraining.UNKNOWN_THRESHOLD), unknownAccuracy)
+		EmittingTraining.UNKNOWN_THRESHOLD from (1 to 20), unknownAccuracy)
+
+	report << BarPlot("accuracyPerCategory", "Impact du seuil de mot inconnu",
+		Configuration.DECODER as BeamDecoder,
+		unknownThresholdAnalysis,
+		(0 until 15).toList, YAxis("Accuracy", "\\%", (t: Int, r) => r.perCategoryCounts(t).accuracy * 100))
 
 	report.generate
 }

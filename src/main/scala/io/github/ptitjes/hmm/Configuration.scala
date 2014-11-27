@@ -11,7 +11,7 @@ case class Configuration(parameters: Map[Parameter[_], Any] = Map()) {
 
 	def copyFrom[V](param: Parameter[V], other: Configuration): Configuration = set(param, other(param))
 
-	def merge(other: Configuration): Configuration = {
+	def +(other: Configuration): Configuration = {
 		other.parameters.keys.foldLeft(this) {
 			case (c, param) => c.copyFrom(param, other)
 		}
@@ -20,6 +20,10 @@ case class Configuration(parameters: Map[Parameter[_], Any] = Map()) {
 	def apply[V](parameter: Parameter[V]): V =
 		if (parameters.contains(parameter)) parameters(parameter).asInstanceOf[V]
 		else parameter.default(this)
+
+	def get[V](parameter: Parameter[V]): Option[V] =
+		if (parameters.contains(parameter)) Some(parameters(parameter).asInstanceOf[V])
+		else None
 
 	import Configuration._
 
@@ -38,12 +42,12 @@ case class Configuration(parameters: Map[Parameter[_], Any] = Map()) {
 	}
 
 	override def toString =
-		(if (this.parameters.contains(TRAINER)) TRAINER.formatValue(this) + " " else "") +
-			(if (this.parameters.contains(DECODER)) DECODER.formatValue(this) + " " else "") +
+		(get(TRAINER).map(v => TRAINER.format(v)).toList ++
+			get(DECODER).map(v => DECODER.format(v)).toList ++
 			(parameters.keySet -(TRAINER, DECODER)).toList
 				.sortBy(_.name).map {
-				p => (if (p.name != "") p.name + "=" else "") + p.formatValue(this)
-			}.mkString("; ")
+				p => (if (p.name != "") p.name + "=" else "") + p.format(this)
+			}).mkString(" ")
 
 	def toFilename = toString.replace(" ", "-")
 }
@@ -54,12 +58,12 @@ object Configuration {
 
 	object TRAINER extends ScalaObjectParameter[Trainer.Factory]("", c => RelFreqTrainer) {
 
-		def formatValue(value: Trainer.Factory): String = value.name
+		def format(value: Trainer.Factory): String = value.name
 	}
 
 	object DECODER extends ScalaObjectParameter[Decoder.Factory]("", c => FullDecoder) {
 
-		def formatValue(value: Decoder.Factory): String = value.name
+		def format(value: Decoder.Factory): String = value.name
 	}
 
 }
@@ -70,9 +74,9 @@ trait Parameter[V] {
 
 	def default: Configuration => V
 
-	def formatValue(value: V): String
+	def format(value: V): String
 
-	def formatValue(c: Configuration): String = formatValue(c(this))
+	def format(c: Configuration): String = format(c(this))
 
 	def fromJson(value: JValue): V
 
@@ -83,7 +87,7 @@ case class BooleanParameter(name: String, default: Configuration => Boolean) ext
 
 	def this(name: String, default: Boolean) = this(name, conf => default)
 
-	def formatValue(value: Boolean): String = if (value) "Yes" else "No"
+	def format(value: Boolean): String = if (value) "Yes" else "No"
 
 	def fromJson(value: JValue): Boolean = value match {
 		case JBool(b) => b
@@ -97,7 +101,7 @@ case class IntParameter(name: String, default: Configuration => Int) extends Par
 
 	def this(name: String, default: Int) = this(name, conf => default)
 
-	def formatValue(value: Int): String = value.toString
+	def format(value: Int): String = value.toString
 
 	def fromJson(value: JValue): Int = value match {
 		case JInt(i) => i.toInt
@@ -111,7 +115,7 @@ case class StringParameter(name: String, default: Configuration => String) exten
 
 	def this(name: String, default: String) = this(name, conf => default)
 
-	def formatValue(value: String): String = value
+	def format(value: String): String = value
 
 	def fromJson(value: JValue): String = value match {
 		case JString(v) => v

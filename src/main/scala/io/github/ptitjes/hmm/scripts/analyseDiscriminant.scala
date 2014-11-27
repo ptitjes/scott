@@ -4,7 +4,7 @@ import io.github.ptitjes.hmm._
 import io.github.ptitjes.hmm.analysis.ConfigurationSet._
 import io.github.ptitjes.hmm.analysis.LaTexReport._
 import io.github.ptitjes.hmm.analysis.{AnalysisRunner, LaTexReport}
-import io.github.ptitjes.hmm.decoders.FullDecoder
+import io.github.ptitjes.hmm.decoders.{BeamDecoder, FullDecoder}
 import io.github.ptitjes.hmm.trainers.DiscriminantTrainer
 import io.github.ptitjes.hmm.trainers.DiscriminantTrainer._
 
@@ -16,33 +16,44 @@ object analyseDiscriminant extends App {
 
 	val report: LaTexReport = new LaTexReport("report/report-discriminant.tex")
 
-	val accuracy = YAxis("Accuracy", "\\%", _.accuracy * 100)
-	val unknownAccuracy = YAxis("Unknown Word Accuracy", "\\%", _.unknownAccuracy * 100)
+	val accuracy = YAxis("Accuracy", "\\%", (_: Int, r) => r.accuracy * 100)
+	val unknownAccuracy = YAxis("Unknown Word Accuracy", "\\%", (_: Int, r) => r.unknownAccuracy * 100)
 
-	val `disc trainer + full decoder` =
-		(Configuration.TRAINER as DiscriminantTrainer) * (Configuration.DECODER as FullDecoder)
+	val `perceptron trainer` =
+		(Configuration.TRAINER as DiscriminantTrainer) * (DiscriminantTrainer.DECODER as FullDecoder)
 
-	val `all orders` = `disc trainer + full decoder` * (Trainer.ORDER from (1 to 2))
+	val `all orders` = Trainer.ORDER from (1 to 2)
 
-	val `all averaging strategies` = `all orders` *
-		(AVERAGING forAll NO_AVERAGING and PARTIAL_AVERAGING and COMPLETE_AVERAGING)
+	val `all averaging strategies` =
+		AVERAGING forAll NO_AVERAGING and PARTIAL_AVERAGING and COMPLETE_AVERAGING
 
 	val maxIterations = 30
 
-	runner.resultsFor(`all averaging strategies` * (DiscriminantTrainer.ITERATION_COUNT as maxIterations))
+	val `all decoders` = Configuration.DECODER forAll FullDecoder and BeamDecoder
 
-	report << Graph("discriminant", "Impact du nombre d'itérations sur la méthode discriminant",
-		`all averaging strategies` * (ITERATION_COUNT from (1 to maxIterations)),
-		XAxis(ITERATION_COUNT), accuracy)
+	runner.computeResults(
+		`perceptron trainer` *
+			`all orders` *
+			`all averaging strategies` *
+			(DiscriminantTrainer.ITERATION_COUNT as maxIterations) *
+			`all decoders`
+	)
 
-	report << Graph("discriminant", "Impact du nombre d'itérations sur la méthode discriminant",
-		`all orders` * (ITERATION_COUNT from (4 to maxIterations)) *
+	report << LinePlot("discriminant", "Impact du nombre d'itérations sur la méthode discriminant",
+		`perceptron trainer`,
+		`all orders` * `all averaging strategies` * `all decoders`,
+		ITERATION_COUNT from (1 to maxIterations), accuracy)
+
+	report << LinePlot("discriminant", "Impact du nombre d'itérations sur la méthode discriminant",
+		`perceptron trainer`,
+		`all orders` * `all decoders` *
 			(AVERAGING forAll PARTIAL_AVERAGING and COMPLETE_AVERAGING),
-		XAxis(ITERATION_COUNT), accuracy)
+		ITERATION_COUNT from (1 to maxIterations), accuracy)
 
-	report << Graph("discriminant", "Impact du nombre d'itérations sur la méthode discriminant",
-		`all averaging strategies` * (ITERATION_COUNT from (1 to maxIterations)),
-		XAxis(ITERATION_COUNT), unknownAccuracy)
+	report << LinePlot("discriminant", "Impact du nombre d'itérations sur la méthode discriminant",
+		`perceptron trainer`,
+		`all orders` * `all averaging strategies` * `all decoders`,
+		ITERATION_COUNT from (1 to maxIterations), unknownAccuracy)
 
 	report.generate
 }

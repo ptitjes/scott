@@ -86,22 +86,21 @@ class AnalysisPool(val cacheFile: File) {
 		loaded
 	}
 
-	def buildColumns(configurations: ConfigurationSet, rows: Parameter[_]): List[Configuration] =
-		configurations.generate(Set(rows))
-
 	def extractData[X](configurations: ConfigurationSet,
 	                   rows: Parameter[X],
-	                   columns: List[Configuration],
-	                   f: Results => Double): List[(X, List[Double])] = {
+	                   f: Results => Double): (List[Configuration], List[(X, List[Double])]) = {
 
-		for (row <- configurations(rows))
+		val columns: List[Configuration] = configurations.generateWithout(Set(rows))
+
+		val data = for (row <- configurations(rows))
 		yield (row, columns.map { c =>
-			val conf = c.set(rows, row)
-			val trainingConf = conf.completeForTraining
-			val decodingConf = conf.completeForDecoding
-			val (results, _) = getDecoding((trainingConf, decodingConf))
-			f(results)
-		})
+				val conf = c.set(rows, row)
+				val trainingConf = conf.completeForTraining
+				val decodingConf = conf.completeForDecoding
+				val (results, _) = getDecoding((trainingConf, decodingConf))
+				f(results)
+			})
+		(columns, data)
 	}
 
 	private def loadData(): Unit = {

@@ -21,7 +21,52 @@ class AnalysisRunner(cacheFilename: String,
 
 	import io.github.ptitjes.hmm.Configuration._
 
-	def resultsFor(configurations: ConfigurationSet): AnalysisPool = {
+	def resultsFor[X](common: ConfigurationSet,
+	                  columns: ConfigurationSet,
+	                  rows: MultiValuedParameter[X],
+	                  f: (X, Results) => Double): (List[Configuration], List[(X, List[Double])]) = {
+
+		computeResults(columns * rows * common)
+
+		val columnConfigurations = columns.generate()
+		val rowConfigurations = rows.generate()
+		val rowParameter = rows.parameter
+
+		val data = for (row <- rowConfigurations) yield {
+			val rowValue = row(rowParameter)
+			(rowValue, columnConfigurations.map { column =>
+				val conf = common.flatten + column + row
+				val trainingConf = conf.completeForTraining
+				val decodingConf = conf.completeForDecoding
+				val (results, _) = pool.getDecoding((trainingConf, decodingConf))
+				f(rowValue, results)
+			})
+		}
+		(columnConfigurations, data)
+	}
+
+	def resultsFor[X](common: ConfigurationSet,
+	                  columns: ConfigurationSet,
+	                  rows: List[X],
+	                  f: (X, Results) => Double): (List[Configuration], List[(X, List[Double])]) = {
+
+		computeResults(columns * common)
+
+		val columnConfigurations = columns.generate()
+
+		val data = for (row <- rows) yield {
+			(row, columnConfigurations.map { column =>
+				val conf = common.flatten() + column
+				val trainingConf = conf.completeForTraining
+				val decodingConf = conf.completeForDecoding
+				val (results, _) = pool.getDecoding((trainingConf, decodingConf))
+				f(row, results)
+			})
+		}
+		(columnConfigurations, data)
+	}
+
+	def computeResults(configurations: ConfigurationSet): AnalysisPool = {
 		for {
 			conf <- configurations.generate()
 			trainingConf = conf.completeForTraining
