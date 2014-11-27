@@ -12,7 +12,7 @@ import scala.collection._
 
 object DiscriminantTrainer extends Trainer.Factory {
 
-	def name: String = "Disc"
+	def name: String = "Perceptron"
 
 	override def parameters: Set[Parameter[_]] = Set(ORDER, FEATURES, ITERATION_COUNT, AVERAGING, DECODER)
 

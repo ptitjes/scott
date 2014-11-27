@@ -3,17 +3,18 @@ package io.github.ptitjes.hmm.scripts
 import io.github.ptitjes.hmm._
 import io.github.ptitjes.hmm.analysis.ConfigurationSet._
 import io.github.ptitjes.hmm.analysis.LaTexReport._
-import io.github.ptitjes.hmm.analysis.{ConfigurationSet, Analysis, AnalysisRunner, LaTexReport}
-import io.github.ptitjes.hmm.decoders.{BeamDecoder, FullDecoder}
-import io.github.ptitjes.hmm.trainers.{EmittingTraining, RelFreqDiscountingTrainer, RelFreqTrainer}
+import io.github.ptitjes.hmm.analysis._
+import io.github.ptitjes.hmm.decoders._
+import io.github.ptitjes.hmm.trainers.DiscriminantTrainer._
+import io.github.ptitjes.hmm.trainers._
 
-object analyseGenerative extends App {
+object analyses extends App {
 
-	implicit val runner: AnalysisRunner = new AnalysisRunner("analysis/results-generative.json",
+	implicit val runner: AnalysisRunner = new AnalysisRunner("analysis/results.json",
 		Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"), Lexica.WORDS),
 		Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"), Lexica.WORDS))
 
-	val report: LaTexReport = new LaTexReport("report/report-generative.tex")
+	val report: LaTexReport = new LaTexReport("report/report.tex")
 
 	val accuracy = YAxis("Accuracy", "\\%", (_: Int, r) => r.accuracy * 100)
 	val unknownAccuracy = YAxis("Unknown Word Accuracy", "\\%", (_: Int, r) => r.unknownAccuracy * 100)
@@ -79,6 +80,42 @@ object analyseGenerative extends App {
 		Configuration.DECODER as BeamDecoder,
 		unknownThresholdAnalysis,
 		(0 until 15).toList, YAxis("Accuracy", "\\%", (t: Int, r) => r.perCategoryCounts(t).accuracy * 100))
+
+	val `perceptron trainer` =
+		(Configuration.TRAINER as DiscriminantTrainer) * (DiscriminantTrainer.DECODER as FullDecoder)
+
+	val `all orders` = Trainer.ORDER from (1 to 2)
+
+	val `all averaging strategies` =
+		AVERAGING forAll NO_AVERAGING and PARTIAL_AVERAGING and COMPLETE_AVERAGING
+
+	val maxIterations = 30
+
+	val `all decoders` = Configuration.DECODER forAll FullDecoder and BeamDecoder
+
+	runner.computeResults(
+		`perceptron trainer` *
+			`all orders` *
+			`all averaging strategies` *
+			(DiscriminantTrainer.ITERATION_COUNT as maxIterations) *
+			`all decoders`
+	)
+
+	report << LinePlot("discriminant", "Impact du nombre d'itérations sur la méthode discriminant",
+		`perceptron trainer`,
+		`all orders` * `all averaging strategies` * `all decoders`,
+		ITERATION_COUNT from (1 to maxIterations), accuracy)
+
+	report << LinePlot("discriminant", "Impact du nombre d'itérations sur la méthode discriminant",
+		`perceptron trainer`,
+		`all orders` * `all decoders` *
+			(AVERAGING forAll PARTIAL_AVERAGING and COMPLETE_AVERAGING),
+		ITERATION_COUNT from (1 to maxIterations), accuracy)
+
+	report << LinePlot("discriminant", "Impact du nombre d'itérations sur la méthode discriminant",
+		`perceptron trainer`,
+		`all orders` * `all averaging strategies` * `all decoders`,
+		ITERATION_COUNT from (1 to maxIterations), unknownAccuracy)
 
 	report.generate
 }
