@@ -3,6 +3,7 @@ package io.github.ptitjes.hmm.trainers
 import io.github.ptitjes.hmm.Corpora.{Annotation, Sequence, Corpus}
 import io.github.ptitjes.hmm.Features._
 
+import scala.annotation.tailrec
 import scala.collection._
 
 case class FeatureTemplate(items: List[Extractor[_]], isUnleashed: Boolean = false) {
@@ -192,8 +193,8 @@ trait FeatureSetTemplate {
 					else FTConjunction(merged)
 			}
 
-		def aux(yetToTry: List[FeatureTree[T]],
-		        tried: List[FeatureTree[T]]): List[FeatureTree[T]] =
+		@tailrec def aux(yetToTry: List[FeatureTree[T]],
+		                 tried: List[FeatureTree[T]]): List[FeatureTree[T]] =
 			yetToTry match {
 				case Nil => toMerge :: tried
 				case toTry :: tail => tryToMergeTrees(toTry, toMerge) match {

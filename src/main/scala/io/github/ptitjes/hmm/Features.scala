@@ -83,6 +83,7 @@ object Features {
 	}
 
 	case class Weights(tags: BitSet, values: Array[Double]) {
+		val tagsAsArray = tags.toArray
 
 		def apply(key: Int) = values(key)
 
@@ -91,7 +92,7 @@ object Features {
 			else values(key) = value
 
 		def foreach[U](f: (Int, Double) => U): Unit =
-			tags.foreach(t => f(t, values(t)))
+			tagsAsArray.foreach(t => f(t, values(t)))
 
 		def map(f: Double => Double): Weights =
 			new Weights(tags, values.map(f))
@@ -102,17 +103,17 @@ object Features {
 		def foreachMatching(h: History, tags: BitSet)(f: T => Unit): Unit = this match {
 			case FTConjunction(children) => children.foreach(c => c.foreachMatching(h, tags)(f))
 			case FTDispatchInt(extract, children, filter) =>
-				if ((tags & filter).nonEmpty) {
+				if (tags exists filter) {
 					val key = extract(h)
 					if (children.contains(key)) children(key).foreachMatching(h, tags)(f)
 				}
 			case FTDispatchChar(extract, children, filter) =>
-				if ((tags & filter).nonEmpty) {
+				if (tags exists filter) {
 					val key = extract(h)
 					if (children.contains(key)) children(key).foreachMatching(h, tags)(f)
 				}
 			case FTGuard(predicate, child) => if (predicate(h)) child.foreachMatching(h, tags)(f)
-			case FTLeaf(weights, filter) => if ((tags & filter).nonEmpty) f(weights)
+			case FTLeaf(weights, filter) => if (tags exists filter) f(weights)
 		}
 
 		def foreach(f: T => Unit): Unit = this match {
