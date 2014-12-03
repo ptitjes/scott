@@ -13,17 +13,13 @@ object BeamDecoder extends Decoder.Factory {
 
 	def name: String = "Beam"
 
-	override def parameters: Set[Parameter[_]] = Set(BEAM, MULTI_THREADED)
-
-	object MULTI_THREADED extends BooleanParameter("MultiThreaded", false)
+	override def parameters: Set[Parameter[_]] = Set(BEAM)
 
 	object BEAM extends IntParameter("Beam", 5)
 
 	def instantiate(hmm: HiddenMarkovModel, configuration: Configuration): Decoder = new Instance(hmm, configuration)
 
 	private class Instance(hmm: HiddenMarkovModel, configuration: Configuration) extends Decoder {
-
-		val multiThreaded = configuration(MULTI_THREADED)
 
 		val breadth = hmm.breadth
 		val depth = hmm.depth
