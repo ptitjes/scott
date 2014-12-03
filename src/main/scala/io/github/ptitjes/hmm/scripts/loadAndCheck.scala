@@ -15,20 +15,20 @@ object loadAndCheck extends App {
 
 	val trainCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"), Lexica.WORDS)
 	val testCorpus = {
-		Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"), Lexica.WORDS)
-		//				Corpora.annotatedFrom(new File(PATH_TO_TEST), Lexica.WORDS)
+//		Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"), Lexica.WORDS)
+						Corpora.annotatedFrom(new File(PATH_TO_TEST), Lexica.WORDS)
 	}
 
 	val useBeam = true
 	val (hmmDirname, hmmName) = {
-		//		("analysis/hmms/", "Perceptron-Full-Averaging=Complete-Corpus-Ratio=100-Features=Base-Iterations=10-Order=2")
-		//		("selected-hmms/", "Disc-Full-Averaging-Complete-Iterations-14-Order-2")
-		("temp/", "Perceptron-Full-Averaging=No-Corpus-Ratio=100-Features=Base-Iterations=1-Order=2")
+		("selected-hmms/", "Freq-Corpus-Ratio=100-Order=2-Unknown-Word-Threshold=17")
+//		("selected-hmms/", "Perceptron-Full-Averaging=Complete-Corpus-Ratio=100-Features=Base-Iterations=10-Order=2")
 	}
 
 	val hmmFilename = hmmDirname + hmmName + ".json"
 	val conf = Configuration()
 		.set(Configuration.DECODER, if (useBeam) BeamDecoder else FullDecoder)
+		.set(BeamDecoder.BEAM, 3)
 		.completeForDecoding
 
 	val (hmm, loadTime) = timed(s"Loading '$hmmFilename'") {

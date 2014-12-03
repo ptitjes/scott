@@ -4,16 +4,6 @@ object Utils {
 
 	def log(v: Int): Double = math.log(v)
 
-	//	def pow(a: Int, b: Int): Int = {
-	//		var i = b
-	//		var p = 1
-	//		while (i != 0) {
-	//			p *= a
-	//			i -= 1
-	//		}
-	//		p
-	//	}
-
 	def pow(x: Int, n: Int): Int = {
 		if (n == 0) 1
 		else if ((n & 1) == 0) {
@@ -21,8 +11,6 @@ object Utils {
 			y * y
 		} else x * pow(x, n - 1)
 	}
-
-	// def pow(a: Int, b: Int): Int = math.pow(a, b).asInstanceOf[Int]
 
 	def avoidInfinity(logProbability: Double) =
 		if (logProbability.isNegInfinity || logProbability.isNaN) -1.0e307 else logProbability

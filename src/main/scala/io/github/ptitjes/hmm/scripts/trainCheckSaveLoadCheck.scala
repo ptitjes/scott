@@ -19,8 +19,8 @@ object trainCheckSaveLoadCheck extends App {
 		.set(Configuration.TRAINER, DiscriminantTrainer)
 		.set(Trainer.ORDER, 2)
 		.set(DiscriminantTrainer.DECODER, FullDecoder)
-		.set(DiscriminantTrainer.ITERATION_COUNT, 1)
-		.set(DiscriminantTrainer.AVERAGING, DiscriminantTrainer.NO_AVERAGING)
+		.set(DiscriminantTrainer.ITERATION_COUNT, 10)
+		.set(DiscriminantTrainer.AVERAGING, DiscriminantTrainer.COMPLETE_AVERAGING)
 		.set(Configuration.DECODER, BeamDecoder)
 
 	val trainingConf = conf.completeForTraining
