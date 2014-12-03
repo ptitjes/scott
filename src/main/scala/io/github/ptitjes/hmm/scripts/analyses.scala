@@ -117,5 +117,27 @@ object analyses extends App {
 		`all orders` * `all averaging strategies` * `all decoders`,
 		ITERATION_COUNT from (1 to maxIterations), unknownAccuracy)
 
+	report << LinePlot("corpusRatioCompared", "Impact de la quantité de corpus d'apprentissage",
+		(Configuration.DECODER as BeamDecoder) * (Trainer.ORDER as 2),
+		(Configuration.TRAINER as RelFreqTrainer) +
+			(
+				(Configuration.TRAINER as DiscriminantTrainer) *
+					(DiscriminantTrainer.DECODER as FullDecoder) *
+					(DiscriminantTrainer.ITERATION_COUNT as 10) *
+					(AVERAGING as PARTIAL_AVERAGING)
+				),
+		Configuration.CORPUS_RATIO from (10 to 100 by 10), accuracy)
+
+	report << LinePlot("corpusRatioComparedUnknown", "Impact de la quantité de corpus d'apprentissage",
+		(Configuration.DECODER as BeamDecoder) * (Trainer.ORDER as 2),
+		(Configuration.TRAINER as RelFreqTrainer) +
+			(
+				(Configuration.TRAINER as DiscriminantTrainer) *
+					(DiscriminantTrainer.DECODER as FullDecoder) *
+					(DiscriminantTrainer.ITERATION_COUNT as 10) *
+					(AVERAGING as PARTIAL_AVERAGING)
+				),
+		Configuration.CORPUS_RATIO from (10 to 100 by 10), unknownAccuracy)
+
 	report.generate
 }

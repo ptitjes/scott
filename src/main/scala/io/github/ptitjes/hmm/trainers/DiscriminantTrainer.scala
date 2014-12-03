@@ -19,8 +19,7 @@ object DiscriminantTrainer extends Trainer.Factory {
 	object TrainerParameter
 
 	object FEATURES extends ScalaObjectParameter[FeatureSetTemplate]("Features", c => BaseFeatures) {
-
-		def format(value: FeatureSetTemplate): String = value.name
+		override def format(value: FeatureSetTemplate): String = value.name
 	}
 
 	object ITERATION_COUNT extends IntParameter("Iterations", 1)
@@ -38,8 +37,7 @@ object DiscriminantTrainer extends Trainer.Factory {
 	}
 
 	object DECODER extends ScalaObjectParameter[Decoder.Factory]("", c => FullDecoder) {
-
-		def format(value: Decoder.Factory): String = value.name
+		override def format(value: Decoder.Factory): String = value.name
 	}
 
 	override def isIterative: Boolean = true
@@ -70,11 +68,11 @@ object DiscriminantTrainer extends Trainer.Factory {
 			val (wordOnlyFeatures, otherFeatures, dictionary) =
 				features.buildFeatures(breadth, order, corpus, weightFactory)
 
+			val extractWeights: ((Weights, Weights)) => Weights = {
+				case (weights, averagedWeights) => weights
+			}
 			val hmm = HMMDiscriminant(breadth, order,
-				wordOnlyFeatures.map { case (weights, averagedWeights) => weights},
-				otherFeatures.map { case (weights, averagedWeights) => weights},
-				dictionary
-			)
+				wordOnlyFeatures.map(extractWeights), otherFeatures.map(extractWeights), dictionary)
 
 			val decoder = decoderFactory.instantiate(hmm, configuration)
 
@@ -144,23 +142,18 @@ object DiscriminantTrainer extends Trainer.Factory {
 					}
 				}
 
-				callback.iterationDone(configuration.set(ITERATION_COUNT, i),
+				val resultHmm =
 					if (useAveraging == NO_AVERAGING) hmm
 					else {
 						val averagingDivider = i * (if (useAveraging == COMPLETE_AVERAGING) sequences.size else 1)
-
+						val divideWeights: ((Weights, Weights)) => Weights = {
+							case (weights, averagedWeights) => averagedWeights.map(w => w / averagingDivider)
+						}
 						HMMDiscriminant(breadth, order,
-							wordOnlyFeatures.map { case (weights, averagedWeights) =>
-								averagedWeights.map(w => w / averagingDivider)
-							},
-							otherFeatures.map { case (weights, averagedWeights) =>
-								averagedWeights.map(w => w / averagingDivider)
-							},
-							dictionary
+							wordOnlyFeatures.map(divideWeights), otherFeatures.map(divideWeights), dictionary
 						)
-					},
-					elapsedTime
-				)
+					}
+				callback.iterationDone(configuration.set(ITERATION_COUNT, i), resultHmm, elapsedTime)
 			}
 		}
 	}

@@ -89,7 +89,7 @@ class AnalysisRunner(cacheFilename: String,
 						iterativeTrainer.train(trainCorpusPart, new IterationCallback {
 							def iterationDone(configuration: Configuration, hmm: HiddenMarkovModel, elapsedTime: Long): Unit = {
 								totalElapsedTime += elapsedTime
-								pool.addTraining(trainingConf, hmm, elapsedTime)
+								pool.addTraining(configuration, hmm, elapsedTime)
 
 								test(configuration, hmm)
 							}

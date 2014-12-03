@@ -14,8 +14,6 @@ object trainCheckSaveLoadCheck extends App {
 
 	val trainCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"), Lexica.WORDS)
 	val devCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"), Lexica.WORDS)
-	private val PATH_TO_TEST = "/home/didier/Documents/Work/Master/Docs/Inférence Statistique/Alexis Nasr/Code HMM/ftb.test.encode"
-	val testCorpus = Corpora.annotatedFrom(new File(PATH_TO_TEST), Lexica.WORDS)
 
 	val conf = Configuration()
 		.set(Configuration.TRAINER, DiscriminantTrainer)
@@ -52,9 +50,7 @@ object trainCheckSaveLoadCheck extends App {
 
 	def decode(hmm: HiddenMarkovModel, decodingConf: Configuration, trainingConf: Configuration) {
 		val decoder = decodingConf(Configuration.DECODER).instantiate(hmm, decodingConf)
-		val (hypCorpus, decodingElapsedTime) = timed {
-			decoder.decode(devCorpus)
-		}
+		val hypCorpus = decoder.decode(devCorpus)
 
 		val results = Checking.check(decodingConf, hmm, devCorpus, hypCorpus,
 			new File("temp/" + decodingConf.toFilename + "-on-" + trainingConf.toFilename + ".check"))
