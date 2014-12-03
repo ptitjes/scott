@@ -25,7 +25,9 @@ object loadAndCheck extends App {
 	}
 
 	val hmmFilename = hmmDirname + hmmName + ".json"
-	val conf = Configuration().set(Configuration.DECODER, if (useBeam) BeamDecoder else FullDecoder)
+	val conf = Configuration()
+		.set(Configuration.DECODER, if (useBeam) BeamDecoder else FullDecoder)
+		.completeForDecoding
 
 	val (hmm, loadTime) = timed(s"Loading '$hmmFilename'") {
 		fromFile(new File(hmmFilename))

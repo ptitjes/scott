@@ -3,7 +3,7 @@ package io.github.ptitjes.hmm.trainers
 import io.github.ptitjes.hmm.Corpora.{Annotation, Sequence, Corpus}
 import io.github.ptitjes.hmm.Features._
 
-import scala.collection.{mutable, Map, BitSet, IndexedSeq}
+import scala.collection._
 
 case class FeatureTemplate(items: List[Extractor[_]], isUnleashed: Boolean = false) {
 	def unleash = FeatureTemplate(items, isUnleashed = true)
@@ -88,14 +88,15 @@ trait FeatureSetTemplate {
 
 		val allTags = BitSet() ++ (0 until breadth)
 
-		val wordOnlyFeatures = FTConjunction(
-			templates.filter(isWordOnly(_))
-				.map(template => generateFrom(template, allData(template), allTags, f))
-		)
-		val otherFeatures = FTConjunction(
-			templates.filter(!isWordOnly(_))
-				.map(template => generateFrom(template, allData(template), allTags, f))
-		)
+		def generateAll(filter: FeatureTemplate => Boolean): FeatureTree[T] =
+			FTConjunction(
+				templates.filter(filter)
+					.map(template => generateFrom(template, allData(template), allTags, f))
+					.foldLeft(List[FeatureTree[T]]())(merge)
+			)
+
+		val wordOnlyFeatures = generateAll(isWordOnly)
+		val otherFeatures = generateAll(!isWordOnly(_))
 		(wordOnlyFeatures, otherFeatures, dictionary)
 	}
 
@@ -148,12 +149,64 @@ trait FeatureSetTemplate {
 							valueToTree.asInstanceOf[Map[Int, FeatureTree[T]]],
 							filterTags
 						), filterTags)
-					case EWordString(_) => throw new UnsupportedOperationException
+					case _ => throw new UnsupportedOperationException
 				}
 			}
 		}
 
 		val (resultTree, _) = aux(template.items, data)
 		resultTree
+	}
+
+	private def merge[T](trees: List[FeatureTree[T]],
+	                     toMerge: FeatureTree[T]): List[FeatureTree[T]] = {
+
+		def tryToMergeTrees(left: FeatureTree[T], right: FeatureTree[T]): Option[FeatureTree[T]] =
+			(left, right) match {
+				case (FTDispatchChar(lExtractor, lChildren, lFilter), FTDispatchChar(rExtractor, rChildren, rFilter))
+					if lExtractor == rExtractor =>
+					Some(FTDispatchChar(lExtractor, mergeFeatureMaps(lChildren, rChildren), lFilter ++ rFilter))
+				case (FTDispatchInt(lExtractor, lChildren, lFilter), FTDispatchInt(rExtractor, rChildren, rFilter))
+					if lExtractor == rExtractor =>
+					Some(FTDispatchInt(lExtractor, mergeFeatureMaps(lChildren, rChildren), lFilter ++ rFilter))
+				case (FTGuard(lPredicate, lChild), FTGuard(rPredicate, rChild))
+					if lPredicate == rPredicate =>
+					Some(FTGuard(lPredicate, mergeTrees(lChild, rChild)))
+				case _ => None
+			}
+
+		def mergeFeatureMaps[K](left: Map[K, FeatureTree[T]], right: Map[K, FeatureTree[T]]): Map[K, FeatureTree[T]] =
+			right.foldLeft(left) {
+				case (result, (key, tree)) =>
+					result + (key ->
+						(if (result.contains(key)) mergeTrees(result(key), tree)
+						else tree))
+			}
+
+		def mergeTrees(tree: FeatureTree[T], toMerge: FeatureTree[T]): FeatureTree[T] =
+			tree match {
+				case FTConjunction(lChildren) => FTConjunction(merge(lChildren.toList, toMerge))
+				case _ =>
+					val merged = merge(List(tree), toMerge)
+					if (merged.size == 1) merged.head
+					else FTConjunction(merged)
+			}
+
+		def aux(yetToTry: List[FeatureTree[T]],
+		        tried: List[FeatureTree[T]]): List[FeatureTree[T]] =
+			yetToTry match {
+				case Nil => toMerge :: tried
+				case toTry :: tail => tryToMergeTrees(toTry, toMerge) match {
+					case Some(merged) => merged :: tail ++ tried
+					case None => aux(tail, toTry :: tried)
+				}
+			}
+
+		toMerge match {
+			case FTConjunction(toMergeChildren) => toMergeChildren.foldLeft(trees) {
+				case (toTry, childToMerge) => merge(toTry, childToMerge)
+			}
+			case _ => aux(trees, Nil)
+		}
 	}
 }
