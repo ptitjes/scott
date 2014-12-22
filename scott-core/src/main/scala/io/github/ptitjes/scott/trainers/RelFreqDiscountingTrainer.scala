@@ -5,7 +5,7 @@ import java.io._
 import io.github.ptitjes.scott.HiddenMarkovModel._
 import io.github.ptitjes.scott.Trainer._
 import io.github.ptitjes.scott._
-import io.github.ptitjes.scott.corpora.Corpora
+import io.github.ptitjes.scott.corpora._
 
 import scala.collection.mutable
 import scala.io.Source
@@ -40,7 +40,7 @@ object RelFreqDiscountingTrainer extends Trainer.Factory {
 		val SENTENCE_STOP = -2
 
 		def train(corpus: Corpus[Sequence with Annotation]): HiddenMarkovModel = {
-			val breadth = stateCount(corpus)
+			val breadth = corpus.tagSet.size
 			val depth = configuration(ORDER)
 
 			val ngrams = runNgramCount(depth + 1, corpus)
@@ -106,7 +106,7 @@ object RelFreqDiscountingTrainer extends Trainer.Factory {
 				fileWriter => using(new PrintWriter(fileWriter)) {
 					out =>
 						for (i <- 1 to configuration(MULTIPLIER)) {
-							corpus.sequences.foreach {
+							corpus.foreach {
 								s => out.println(s.observablesAndStates.map { case (o, t) => t}.mkString(" "))
 							}
 						}

@@ -1,15 +1,14 @@
 package io.github.ptitjes.scott
 
-import io.github.ptitjes.scott.corpora.Corpora
-import Corpora._
 import io.github.ptitjes.scott.Utils.ProgressBar
+import io.github.ptitjes.scott.corpora._
 
 import scala.collection._
 
 trait Decoder {
 
 	def decode(corpus: Corpus[Sequence]): Corpus[Sequence with Annotation] = {
-		val progress = new ProgressBar(f"Decoding", corpus.sequences.length)
+		val progress = new ProgressBar(f"Decoding", corpus.size)
 		progress.set(0)
 
 		corpus.map { sequence =>

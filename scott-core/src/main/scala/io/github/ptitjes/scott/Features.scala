@@ -1,12 +1,10 @@
 package io.github.ptitjes.scott
 
-import io.github.ptitjes.scott.corpora.Corpora
+import io.github.ptitjes.scott.corpora._
 
 import scala.collection._
 
 object Features {
-
-	import Corpora._
 
 	sealed trait Extractor[T] extends (History => T)
 
@@ -50,7 +48,7 @@ object Features {
 	case class EPrefixChar(index: Int) extends Extractor[Char] {
 
 		def apply(h: History): Char = {
-			val word = h.word.string
+			val word = h.wordAt(0).string
 			if (word.length > index) word.charAt(index) else 0.toChar
 		}
 	}
@@ -58,7 +56,7 @@ object Features {
 	case class ESuffixChar(index: Int) extends Extractor[Char] {
 
 		def apply(h: History): Char = {
-			val word = h.word.string
+			val word = h.wordAt(0).string
 			if (word.length > index) word.charAt(word.length - index - 1) else 0.toChar
 		}
 	}

@@ -2,7 +2,7 @@ package io.github.ptitjes.scott.analysis
 
 import java.io.{File, FileWriter, PrintWriter}
 
-import io.github.ptitjes.scott.corpora.{TagSet, Corpora}
+import io.github.ptitjes.scott.corpora.{Word, TagSet, Corpora}
 import Corpora._
 import io.github.ptitjes.scott.Utils._
 import io.github.ptitjes.scott._

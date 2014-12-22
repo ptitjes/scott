@@ -1,18 +1,18 @@
 package io.github.ptitjes.scott.nl.lang.fr
 
 import io.github.ptitjes.scott.corpora.TagSet
-import io.github.ptitjes.scott.nl.conll.ConllParser
+import io.github.ptitjes.scott.nl.conll.CoNLLXParser
 
 /**
  * @author Didier Villevalois
  */
 object FTB {
 
-	object BasicConllProfile extends ConllParser.Profile(1, 2, 3, BasicTags)
+	object BasicCoNLLProfile extends CoNLLXParser.Profile(1, 2, 3, CoarsePosTags)
 
-	object ExtendedConllProfile extends ConllParser.Profile(1, 2, 4, ExtendedTags)
+	object ExtendedCoNLLProfile extends CoNLLXParser.Profile(1, 2, 4, PosTags)
 
-	object BasicTags extends TagSet(
+	object CoarsePosTags extends TagSet(
 		IndexedSeq(
 			"A",
 			"ADV",
@@ -32,7 +32,7 @@ object FTB {
 		)
 	)
 
-	object ExtendedTags extends TagSet(
+	object PosTags extends TagSet(
 		IndexedSeq(
 			"ADJ",
 			"ADJWH",

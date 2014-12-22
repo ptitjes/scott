@@ -1,20 +1,19 @@
 package io.github.ptitjes.scott.scripts
 
-import java.io.{File, FileWriter, PrintWriter}
+import java.io.File
 
 import io.github.ptitjes.scott.HiddenMarkovModel._
 import io.github.ptitjes.scott.Utils._
 import io.github.ptitjes.scott._
-import io.github.ptitjes.scott.analysis.{Checking, Analysis}
-import io.github.ptitjes.scott.analysis.Results._
-import io.github.ptitjes.scott.corpora.Corpora
+import io.github.ptitjes.scott.analysis.Checking
+import io.github.ptitjes.scott.corpora._
 import io.github.ptitjes.scott.decoders.{BeamDecoder, FullDecoder}
-import io.github.ptitjes.scott.trainers.{RelFreqTrainer, DiscriminantTrainer}
+import io.github.ptitjes.scott.trainers.DiscriminantTrainer
 
 object trainCheckSaveLoadCheck extends App {
 
-	val trainCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"), Lexica.WORDS)
-	val devCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"), Lexica.WORDS)
+	val trainCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"), Lexica.WORDS, Lexica.CATEGORIES)
+	val devCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"), Lexica.WORDS, Lexica.CATEGORIES)
 
 	val conf = Configuration()
 		.set(Configuration.TRAINER, DiscriminantTrainer)

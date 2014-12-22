@@ -4,6 +4,7 @@ import java.io._
 
 import io.github.ptitjes.scott.Utils._
 import io.github.ptitjes.scott.Features._
+import io.github.ptitjes.scott.corpora.Word
 import org.json4s._
 import org.json4s.native.Serialization
 import org.json4s.native.Serialization._

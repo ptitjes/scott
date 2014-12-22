@@ -2,8 +2,7 @@ package io.github.ptitjes.scott.analysis
 
 import java.io.{File, FileWriter, PrintWriter}
 
-import io.github.ptitjes.scott.corpora.{TagSet, Corpora}
-import Corpora._
+import io.github.ptitjes.scott.corpora._
 import io.github.ptitjes.scott.Utils._
 import io.github.ptitjes.scott._
 
@@ -34,7 +33,7 @@ object Checking {
 	          writer: Option[PrintWriter]): Results = {
 
 		val globalCounts = new ErrorCount
-		val perCategoryCounts = Array.fill(stateCount(refCorpus))(new ErrorCount)
+		val perCategoryCounts = Array.fill(tagSet.tags.size)(new ErrorCount)
 		val confusionMatrix = Array.fill(hmm.breadth)(Array.ofDim[Int](hmm.breadth))
 
 		val lexiconSize = Lexica.WORDS.words.length
@@ -43,7 +42,7 @@ object Checking {
 			Array.fill(hmm.breadth)(Array.ofDim[Int](hmm.breadth))
 		)
 
-		val progress = new ProgressBar(f"Checking", refCorpus.sequences.length)
+		val progress = new ProgressBar(f"Checking", refCorpus.size)
 		progress.set(0)
 
 		refCorpus.sequences.zip(hypCorpus.sequences).foreach {
@@ -98,7 +97,7 @@ object Checking {
 		}
 
 		val allPerWord = (0 until lexiconSize)
-			.map(i => (Lexica.WORDS.get(i), perWordErrorCounts(i), perWordConfusionMatrix(i)))
+			.map(i => (Lexica.WORDS(i), perWordErrorCounts(i), perWordConfusionMatrix(i)))
 			.toList
 
 		val top50KnownMostFrequent = allPerWord

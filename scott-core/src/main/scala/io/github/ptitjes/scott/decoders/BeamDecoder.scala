@@ -1,7 +1,6 @@
 package io.github.ptitjes.scott.decoders
 
-import io.github.ptitjes.scott.corpora.Corpora
-import Corpora._
+import io.github.ptitjes.scott.corpora._
 import io.github.ptitjes.scott.Utils._
 import io.github.ptitjes.scott._
 import io.github.ptitjes.scott.decoders.arrays._

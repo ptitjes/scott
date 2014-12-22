@@ -2,8 +2,7 @@ package io.github.ptitjes.scott.scripts
 
 import java.io.File
 
-import io.github.ptitjes.scott.corpora.Corpora
-import Corpora._
+import io.github.ptitjes.scott.corpora._
 import io.github.ptitjes.scott.HiddenMarkovModel._
 import io.github.ptitjes.scott.Utils._
 import io.github.ptitjes.scott._
@@ -14,10 +13,10 @@ object loadAndCheck extends App {
 
 	val PATH_TO_TEST = "/home/didier/Documents/Work/Master/Docs/Inférence Statistique/Alexis Nasr/Code HMM/ftb.test.encode"
 
-	val trainCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"), Lexica.WORDS)
+	val trainCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"), Lexica.WORDS, Lexica.CATEGORIES)
 	val testCorpus = {
-		Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"), Lexica.WORDS)
-//						Corpora.annotatedFrom(new File(PATH_TO_TEST), Lexica.WORDS)
+		Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"), Lexica.WORDS, Lexica.CATEGORIES)
+//						Corpora.annotatedFrom(new File(PATH_TO_TEST), Lexica.WORDS, Lexica.CATEGORIES)
 	}
 
 	val useBeam = true

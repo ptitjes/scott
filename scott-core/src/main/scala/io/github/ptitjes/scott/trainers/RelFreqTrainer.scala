@@ -3,7 +3,7 @@ package io.github.ptitjes.scott.trainers
 import io.github.ptitjes.scott.HiddenMarkovModel._
 import io.github.ptitjes.scott.Trainer._
 import io.github.ptitjes.scott._
-import io.github.ptitjes.scott.corpora.Corpora
+import io.github.ptitjes.scott.corpora._
 
 object RelFreqTrainer extends Trainer.Factory {
 
@@ -19,11 +19,10 @@ object RelFreqTrainer extends Trainer.Factory {
 
 	class Instance(configuration: Configuration) extends Trainer {
 
-		import Corpora._
 		import io.github.ptitjes.scott.Utils._
 
 		def train(corpus: Corpus[Sequence with Annotation]): HiddenMarkovModel = {
-			val breadth = stateCount(corpus)
+			val breadth = corpus.tagSet.size
 			val depth = configuration(ORDER)
 
 			val size = pow(breadth, depth)
@@ -31,7 +30,7 @@ object RelFreqTrainer extends Trainer.Factory {
 			val allCategoryCounts = initializeMatrixTree[Int](breadth, depth)
 			val perCategoryCounts = initializeMatrixTree[Int](breadth, depth)
 
-			corpus.sequences.foreach { s: Sequence with Annotation =>
+			corpus.foreach { s: Sequence with Annotation =>
 				var d = 0
 				var previousState = 0
 

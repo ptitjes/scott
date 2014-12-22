@@ -1,7 +1,6 @@
 package io.github.ptitjes.scott.trainers
 
-import io.github.ptitjes.scott.corpora.Corpora
-import Corpora._
+import io.github.ptitjes.scott.corpora._
 import io.github.ptitjes.scott.Features._
 import io.github.ptitjes.scott.Trainer._
 import io.github.ptitjes.scott.Utils._
@@ -54,7 +53,7 @@ object DiscriminantTrainer extends Trainer.Factory {
 		val decoderFactory = configuration(DECODER)
 
 		def train(corpus: Corpus[Sequence with Annotation], callback: IterationCallback): Unit = {
-			val breadth = stateCount(corpus)
+			val breadth = corpus.tagSet.size
 
 			var allWeightPairs = mutable.ArrayBuffer[(Weights, Weights)]()
 			val weightFactory: BitSet => (Weights, Weights) = {
@@ -77,14 +76,13 @@ object DiscriminantTrainer extends Trainer.Factory {
 
 			val decoder = decoderFactory.instantiate(hmm, configuration)
 
-			val sequences = corpus.sequences
 			for (i <- 1 to iterationCount) {
 
 				val (_, elapsedTime) = timed {
-					val progress = new ProgressBar(f"Iteration $i%2d/$iterationCount%2d", sequences.length)
+					val progress = new ProgressBar(f"Iteration $i%2d/$iterationCount%2d", corpus.size)
 					progress.set(0)
 
-					sequences.foreach { refSeq: Sequence with Annotation =>
+					corpus.foreach { refSeq: Sequence with Annotation =>
 
 						val hypSeq = decoder.decode(refSeq)
 
@@ -146,7 +144,7 @@ object DiscriminantTrainer extends Trainer.Factory {
 				val resultHmm =
 					if (useAveraging == NO_AVERAGING) hmm
 					else {
-						val averagingDivider = i * (if (useAveraging == COMPLETE_AVERAGING) sequences.size else 1)
+						val averagingDivider = i * (if (useAveraging == COMPLETE_AVERAGING) corpus.size else 1)
 						val divideWeights: ((Weights, Weights)) => Weights = {
 							case (weights, averagedWeights) => averagedWeights.map(w => w / averagingDivider)
 						}

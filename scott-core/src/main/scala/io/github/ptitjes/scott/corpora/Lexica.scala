@@ -1,8 +1,7 @@
-package io.github.ptitjes.scott
+package io.github.ptitjes.scott.corpora
 
 import java.io.File
 
-import io.github.ptitjes.scott.corpora.TagSet
 import io.github.ptitjes.scott.utils.Trie
 
 import scala.collection.mutable.ArrayBuffer
@@ -49,26 +48,22 @@ object Lexica {
 		val V = CATEGORIES("V")
 	}
 
-	case class Lexicon(elements: IndexedSeq[String], maxLength: Int) {
+	case class BasicLexicon(words: Seq[Word]) extends Lexicon {
 
-		private val stringToWord = Trie[Word]() ++ elements.zipWithIndex.map {
-			case (s, i) => (s, Word(i, s))
-		}
+		private val codeToWord = Map[Int, Word]() ++ words.map(w => (w.code, w))
+		private val stringToWord = Trie[Word]() ++ words.map(w => (w.string, w))
+		private val maxLength = words.map(_.string.length).reduce(math.max)
 
-		def apply(i: Int) = elements(i)
+		def apply(i: Int) = codeToWord(i)
 
-		def apply(s: String) = stringToWord(s).get.code
-
-		def get(i: Int) = Word(i, elements(i))
-
-		def get(s: String) = stringToWord(normalizeWord(s)).getOrElse(Word(-1, s))
-
-		def words = (0 until elements.length).map(i => get(i))
+		def apply(s: String) = stringToWord(s).getOrElse(BasicWord(-1, s))
 
 		def padded(i: Int) = {
-			val element = elements(i)
+			val element = codeToWord(i).string
 			element + " " * (maxLength - element.length)
 		}
+
+		def size = words.size
 	}
 
 	def normalizeWord(string: String) =
@@ -81,7 +76,9 @@ object Lexica {
 			if (s.length > maxLength) maxLength = s.length
 			elements += normalizeWord(s)
 		}
-		Lexicon(elements, maxLength)
+		BasicLexicon(elements.zipWithIndex.map {
+			case ((string, code)) => BasicWord(code, string)
+		})
 	}
 
 	def from(file: File): Lexicon = from(Source.fromFile(file))
@@ -90,4 +87,22 @@ object Lexica {
 
 }
 
-case class Word(code: Int, string: String)
+trait Lexicon {
+
+	def apply(i: Int): Word
+
+	def apply(s: String): Word
+
+	def padded(i: Int): String
+
+	def words: Seq[Word]
+
+	def size: Int
+}
+
+trait Word {
+	def string: String
+	def code: Int
+}
+
+case class BasicWord(code: Int, string: String) extends Word

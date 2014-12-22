@@ -1,7 +1,6 @@
 package io.github.ptitjes.scott.trainers
 
-import io.github.ptitjes.scott.corpora.Corpora
-import Corpora.{Annotation, Sequence, Corpus}
+import io.github.ptitjes.scott.corpora._
 import io.github.ptitjes.scott.Features._
 
 import scala.annotation.tailrec
@@ -61,7 +60,7 @@ trait FeatureSetTemplate {
 		}.toMap
 		val dictionary = mutable.Map[Int, BitSet]()
 
-		corpus.sequences.foreach { s: Sequence with Annotation =>
+		corpus.foreach { s: Sequence with Annotation =>
 			val iterator = s.annotatedIterator(breadth, order)
 			while (iterator.hasNext) {
 				val (word, tag) = iterator.next()

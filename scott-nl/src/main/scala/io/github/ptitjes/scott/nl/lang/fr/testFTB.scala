@@ -2,12 +2,12 @@ package io.github.ptitjes.scott.nl.lang.fr
 
 import java.io.File
 
-import io.github.ptitjes.scott.HiddenMarkovModel._
 import io.github.ptitjes.scott.Utils._
 import io.github.ptitjes.scott._
 import io.github.ptitjes.scott.analysis.Checking
+import io.github.ptitjes.scott.corpora.Lexica
 import io.github.ptitjes.scott.decoders.{BeamDecoder, FullDecoder}
-import io.github.ptitjes.scott.nl.conll.ConllParser
+import io.github.ptitjes.scott.nl.conll.CoNLLXParser
 import io.github.ptitjes.scott.trainers.DiscriminantTrainer
 
 import scala.io.Source
@@ -21,8 +21,8 @@ object testFTB extends App {
 	val devCorpusPath = PATH_TO_FTB + "/corpus-conll/" + CONLL_CORPUS + "_2.dep_conll"
 	val testCorpusPath = PATH_TO_FTB + "/corpus-conll/" + CONLL_CORPUS + "_3.dep_conll"
 
-	val parser = new ConllParser
-	val profile = FTB.BasicConllProfile
+	val parser = new CoNLLXParser
+	val profile = FTB.BasicCoNLLProfile
 	println(profile.tagSet.tags.size + " categories")
 	println(profile.tagSet.tags.mkString("\n"))
 	val trainCorpus = parser.parse(profile, Source.fromFile(trainCorpusPath), Lexica.WORDS)

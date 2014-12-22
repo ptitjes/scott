@@ -1,12 +1,10 @@
 package io.github.ptitjes.scott.trainers
 
-import io.github.ptitjes.scott.corpora.Corpora
-import Corpora._
-import io.github.ptitjes.scott.{Word, IntParameter}
+import io.github.ptitjes.scott.IntParameter
 import io.github.ptitjes.scott.Utils._
+import io.github.ptitjes.scott.corpora._
 
-import scala.collection._
-import scala.collection.mutable
+import scala.collection.{mutable, _}
 
 object EmittingTraining {
 

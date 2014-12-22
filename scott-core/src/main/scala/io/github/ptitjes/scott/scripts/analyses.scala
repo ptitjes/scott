@@ -4,7 +4,7 @@ import io.github.ptitjes.scott._
 import io.github.ptitjes.scott.analysis.ConfigurationSet._
 import io.github.ptitjes.scott.analysis.LaTexReport._
 import io.github.ptitjes.scott.analysis._
-import io.github.ptitjes.scott.corpora.Corpora
+import io.github.ptitjes.scott.corpora.{Lexica, Corpora}
 import io.github.ptitjes.scott.decoders._
 import io.github.ptitjes.scott.trainers.DiscriminantTrainer._
 import io.github.ptitjes.scott.trainers._
@@ -12,8 +12,8 @@ import io.github.ptitjes.scott.trainers._
 object analyses extends App {
 
 	implicit val runner: AnalysisRunner = new AnalysisRunner("analysis/results.json",
-		Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"), Lexica.WORDS),
-		Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"), Lexica.WORDS))
+		Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"), Lexica.WORDS, Lexica.CATEGORIES),
+		Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"), Lexica.WORDS, Lexica.CATEGORIES))
 
 	val report: LaTexReport = new LaTexReport("report/report.tex")
 

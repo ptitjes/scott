@@ -1,8 +1,6 @@
 package io.github.ptitjes.scott.nl.conll
 
-import io.github.ptitjes.scott.corpora.{TagSet, Corpora}
-import io.github.ptitjes.scott.{Word, Lexica}
-import Corpora._
+import io.github.ptitjes.scott.corpora._
 
 import scala.collection.mutable
 import scala.io.Source
@@ -10,11 +8,11 @@ import scala.io.Source
 /**
  * @author Didier Villevalois
  */
-class ConllParser {
-	
-	import ConllParser._
+class CoNLLXParser {
 
-	def parse(profile: Profile, source: Source, lexicon: Lexica.Lexicon): Corpus[Sequence with Annotation] = {
+	import io.github.ptitjes.scott.nl.conll.CoNLLXParser._
+
+	def parse(profile: Profile, source: Source, lexicon: Lexicon): Corpus[Sequence with Annotation] = {
 		val sequences = mutable.ListBuffer[Sequence with Annotation]()
 
 		val elements = mutable.ArrayBuffer[(Word, Int)]()
@@ -25,17 +23,17 @@ class ConllParser {
 			}
 			else {
 				val split = s.split('\t')
-				val word = lexicon.get(split(profile.wordColumn))
+				val word = lexicon(split(profile.wordColumn))
 				val tag = profile.tagSet(split(profile.tagColumn))
 				elements += ((word, tag))
 			}
 		}
 
-		Corpus(sequences)
+		BasicCorpus(sequences, profile.tagSet)
 	}
 }
 
-object ConllParser {
+object CoNLLXParser {
 
 	case class Profile(wordColumn: Int, lemmaColumn: Int, tagColumn: Int, tagSet: TagSet)
 

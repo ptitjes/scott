@@ -2,15 +2,9 @@ package io.github.ptitjes.scott.analysis
 
 import java.io._
 
-import io.github.ptitjes.scott.HiddenMarkovModel._
-import io.github.ptitjes.scott.Trainer._
-import io.github.ptitjes.scott._
-import io.github.ptitjes.scott.corpora.Corpora
-import Corpora._
 import io.github.ptitjes.scott.Utils._
-import io.github.ptitjes.scott.analysis.AnalysisPool._
-
-import scala.collection.mutable
+import io.github.ptitjes.scott._
+import io.github.ptitjes.scott.corpora._
 
 class AnalysisRunner(cacheFilename: String,
                      trainCorpus: Corpus[Sequence with Annotation],
