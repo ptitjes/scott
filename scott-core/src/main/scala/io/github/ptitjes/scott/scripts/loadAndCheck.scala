@@ -2,7 +2,8 @@ package io.github.ptitjes.scott.scripts
 
 import java.io.File
 
-import io.github.ptitjes.scott.Corpora._
+import io.github.ptitjes.scott.corpora.Corpora
+import Corpora._
 import io.github.ptitjes.scott.HiddenMarkovModel._
 import io.github.ptitjes.scott.Utils._
 import io.github.ptitjes.scott._
@@ -46,7 +47,7 @@ object loadAndCheck extends App {
 		val decoder = conf(Configuration.DECODER).instantiate(hmm, conf)
 		val hypCorpus = decoder.decode(refCorpus)
 
-		val results = Checking.check(conf, hmm, refCorpus, hypCorpus,
+		val results = Checking.check(conf, hmm, refCorpus, hypCorpus, Lexica.CATEGORIES,
 			new File("temp/" + conf.toFilename + "-on-" + hmmName + ".check"))
 
 		results.display()

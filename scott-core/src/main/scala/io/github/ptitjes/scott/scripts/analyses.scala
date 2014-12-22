@@ -4,6 +4,7 @@ import io.github.ptitjes.scott._
 import io.github.ptitjes.scott.analysis.ConfigurationSet._
 import io.github.ptitjes.scott.analysis.LaTexReport._
 import io.github.ptitjes.scott.analysis._
+import io.github.ptitjes.scott.corpora.Corpora
 import io.github.ptitjes.scott.decoders._
 import io.github.ptitjes.scott.trainers.DiscriminantTrainer._
 import io.github.ptitjes.scott.trainers._

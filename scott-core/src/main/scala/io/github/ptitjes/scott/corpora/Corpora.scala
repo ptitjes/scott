@@ -1,8 +1,9 @@
-package io.github.ptitjes.scott
+package io.github.ptitjes.scott.corpora
 
 import java.io.File
 
 import io.github.ptitjes.scott.Utils._
+import io.github.ptitjes.scott.{Lexica, Word}
 
 import scala.collection._
 import scala.io.Source

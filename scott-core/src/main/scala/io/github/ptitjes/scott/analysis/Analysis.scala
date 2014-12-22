@@ -5,7 +5,8 @@ import java.io._
 import io.github.ptitjes.scott.HiddenMarkovModel._
 import io.github.ptitjes.scott.Trainer._
 import io.github.ptitjes.scott._
-import io.github.ptitjes.scott.Corpora._
+import io.github.ptitjes.scott.corpora.Corpora
+import Corpora._
 import io.github.ptitjes.scott.Utils._
 import io.github.ptitjes.scott.analysis.AnalysisPool._
 
@@ -126,7 +127,7 @@ class AnalysisRunner(cacheFilename: String,
 							decoder.decode(testCorpus)
 						}
 
-						val results = Checking.check(decodingConf, hmm, testCorpus, hypCorpus,
+						val results = Checking.check(decodingConf, hmm, testCorpus, hypCorpus, Lexica.CATEGORIES,
 							new File("analysis/checks/" + trainingConf.toFilename + "-with-" + decodingConf.toFilename + ".check"))
 
 						println("\t" + results)

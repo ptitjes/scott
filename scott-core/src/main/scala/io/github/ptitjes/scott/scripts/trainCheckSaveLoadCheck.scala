@@ -7,6 +7,7 @@ import io.github.ptitjes.scott.Utils._
 import io.github.ptitjes.scott._
 import io.github.ptitjes.scott.analysis.{Checking, Analysis}
 import io.github.ptitjes.scott.analysis.Results._
+import io.github.ptitjes.scott.corpora.Corpora
 import io.github.ptitjes.scott.decoders.{BeamDecoder, FullDecoder}
 import io.github.ptitjes.scott.trainers.{RelFreqTrainer, DiscriminantTrainer}
 
@@ -52,7 +53,7 @@ object trainCheckSaveLoadCheck extends App {
 		val decoder = decodingConf(Configuration.DECODER).instantiate(hmm, decodingConf)
 		val hypCorpus = decoder.decode(devCorpus)
 
-		val results = Checking.check(decodingConf, hmm, devCorpus, hypCorpus,
+		val results = Checking.check(decodingConf, hmm, devCorpus, hypCorpus, Lexica.CATEGORIES,
 			new File("temp/" + decodingConf.toFilename + "-on-" + trainingConf.toFilename + ".check"))
 
 		results.display()

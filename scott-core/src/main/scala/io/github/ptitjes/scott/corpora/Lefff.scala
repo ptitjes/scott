@@ -4,8 +4,8 @@ import java.io.File
 import java.nio.charset.Charset
 import java.util.Locale
 
-import io.github.ptitjes.scott.{Word, Lexica, Corpora}
-import io.github.ptitjes.scott.Corpora._
+import io.github.ptitjes.scott.{Word, Lexica}
+import Corpora._
 import io.github.ptitjes.scott.utils.Trie
 
 import scala.collection._

@@ -2,7 +2,8 @@ package io.github.ptitjes.scott.analysis
 
 import java.io.{File, FileWriter, PrintWriter}
 
-import io.github.ptitjes.scott.Corpora._
+import io.github.ptitjes.scott.corpora.{TagSet, Corpora}
+import Corpora._
 import io.github.ptitjes.scott.Utils._
 import io.github.ptitjes.scott._
 
@@ -12,6 +13,7 @@ object Checking {
 	          hmm: HiddenMarkovModel,
 	          refCorpus: Corpus[Sequence with Annotation],
 	          hypCorpus: Corpus[Sequence with Annotation],
+	          tagSet: TagSet,
 	          checkFile: File): Results = {
 
 		using(new FileWriter(checkFile)) {
@@ -20,7 +22,7 @@ object Checking {
 					out.println(conf)
 					out.println()
 
-					check(hmm, refCorpus, hypCorpus, Some(out))
+					check(hmm, refCorpus, hypCorpus, tagSet, Some(out))
 			}
 		}
 	}
@@ -28,6 +30,7 @@ object Checking {
 	def check(hmm: HiddenMarkovModel,
 	          refCorpus: Corpus[Sequence with Annotation],
 	          hypCorpus: Corpus[Sequence with Annotation],
+	          tagSet: TagSet,
 	          writer: Option[PrintWriter]): Results = {
 
 		val globalCounts = new ErrorCount
@@ -83,8 +86,8 @@ object Checking {
 							out.print(if (error) ">" else " ")
 							out.print(f"${oRef.code}%6d")
 							out.print(if (hmm.isUnknown(oRef)) " U" else "  ")
-							out.print(f"\t$sRef%2d ${Lexica.CATEGORIES(sRef)}%-5s")
-							out.print(f"\t$sHyp%2d ${Lexica.CATEGORIES(sHyp)}%-5s\t")
+							out.print(f"\t$sRef%2d ${tagSet(sRef)}%-5s")
+							out.print(f"\t$sHyp%2d ${tagSet(sHyp)}%-5s\t")
 							out.println(oRef.string)
 						}
 				}
@@ -121,7 +124,7 @@ object Checking {
 		val results = Results(globalCounts, perCategoryCounts, confusionMatrix,
 			top50KnownMostFrequent, top50UnknownMostFrequent, top50Known, top50Unknown)
 
-		writer.foreach(out => results.printTo(out))
+		writer.foreach(out => results.printTo(out, tagSet))
 
 		results
 	}

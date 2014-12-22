@@ -3,6 +3,7 @@ package io.github.ptitjes.scott.trainers
 import io.github.ptitjes.scott.HiddenMarkovModel._
 import io.github.ptitjes.scott.Trainer._
 import io.github.ptitjes.scott._
+import io.github.ptitjes.scott.corpora.Corpora
 
 object RelFreqTrainer extends Trainer.Factory {
 
@@ -18,7 +19,7 @@ object RelFreqTrainer extends Trainer.Factory {
 
 	class Instance(configuration: Configuration) extends Trainer {
 
-		import io.github.ptitjes.scott.Corpora._
+		import Corpora._
 		import io.github.ptitjes.scott.Utils._
 
 		def train(corpus: Corpus[Sequence with Annotation]): HiddenMarkovModel = {

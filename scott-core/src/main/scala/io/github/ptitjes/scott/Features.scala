@@ -1,5 +1,7 @@
 package io.github.ptitjes.scott
 
+import io.github.ptitjes.scott.corpora.Corpora
+
 import scala.collection._
 
 object Features {

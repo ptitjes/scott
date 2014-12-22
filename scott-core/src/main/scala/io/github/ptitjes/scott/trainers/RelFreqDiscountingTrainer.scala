@@ -5,6 +5,7 @@ import java.io._
 import io.github.ptitjes.scott.HiddenMarkovModel._
 import io.github.ptitjes.scott.Trainer._
 import io.github.ptitjes.scott._
+import io.github.ptitjes.scott.corpora.Corpora
 
 import scala.collection.mutable
 import scala.io.Source
@@ -32,7 +33,7 @@ object RelFreqDiscountingTrainer extends Trainer.Factory {
 
 	class Instance(configuration: Configuration) extends Trainer {
 
-		import io.github.ptitjes.scott.Corpora._
+		import Corpora._
 		import io.github.ptitjes.scott.Utils._
 
 		val SENTENCE_START = -1

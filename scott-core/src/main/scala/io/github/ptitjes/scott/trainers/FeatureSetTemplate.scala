@@ -1,6 +1,7 @@
 package io.github.ptitjes.scott.trainers
 
-import io.github.ptitjes.scott.Corpora.{Annotation, Sequence, Corpus}
+import io.github.ptitjes.scott.corpora.Corpora
+import Corpora.{Annotation, Sequence, Corpus}
 import io.github.ptitjes.scott.Features._
 
 import scala.annotation.tailrec

@@ -2,7 +2,8 @@ package io.github.ptitjes.scott.analysis
 
 import java.io.{File, FileWriter, PrintWriter}
 
-import io.github.ptitjes.scott.Corpora._
+import io.github.ptitjes.scott.corpora.{TagSet, Corpora}
+import Corpora._
 import io.github.ptitjes.scott.Utils._
 import io.github.ptitjes.scott._
 import io.github.ptitjes.scott.decoders.BeamDecoder
@@ -31,12 +32,12 @@ case class Results(globalCounts: ErrorCount,
 		println(this)
 	}
 
-	def printTo(out: PrintWriter): Unit = {
+	def printTo(out: PrintWriter, tagSet: TagSet): Unit = {
 		out.println(this)
 
 		for (i <- 0 until perCategoryCounts.length)
 			out.println(f"\tCategory: ${
-				Lexica.CATEGORIES.padded(i)
+				tagSet.padded(i)
 			} ${
 				perCategoryCounts(i)
 			}; Of Total; ${
@@ -47,11 +48,11 @@ case class Results(globalCounts: ErrorCount,
 		out.println("Confusion matrix")
 		out.print(" " * 5)
 		for (j <- 0 until confusionMatrix.length) {
-			out.print(s"\t${Lexica.CATEGORIES.padded(j)}")
+			out.print(s"\t${tagSet.padded(j)}")
 		}
 		out.println()
 		for (i <- 0 until confusionMatrix.length) {
-			out.print(s"${Lexica.CATEGORIES.padded(i)}")
+			out.print(s"${tagSet.padded(i)}")
 			for (j <- 0 until confusionMatrix(i).length) {
 				out.print(f"\t${confusionMatrix(i)(j)}%5d")
 			}

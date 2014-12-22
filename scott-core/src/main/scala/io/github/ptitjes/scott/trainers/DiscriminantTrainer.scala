@@ -1,6 +1,7 @@
 package io.github.ptitjes.scott.trainers
 
-import io.github.ptitjes.scott.Corpora._
+import io.github.ptitjes.scott.corpora.Corpora
+import Corpora._
 import io.github.ptitjes.scott.Features._
 import io.github.ptitjes.scott.Trainer._
 import io.github.ptitjes.scott.Utils._
