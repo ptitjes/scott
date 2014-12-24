@@ -3,6 +3,7 @@ package io.github.ptitjes.scott.trainers
 import io.github.ptitjes.scott.HiddenMarkovModel._
 import io.github.ptitjes.scott.Trainer._
 import io.github.ptitjes.scott._
+import io.github.ptitjes.scott.corpora.Annotation.CoarsePosTag
 import io.github.ptitjes.scott.corpora._
 
 object RelFreqTrainer extends Trainer.Factory {
@@ -21,7 +22,7 @@ object RelFreqTrainer extends Trainer.Factory {
 
 		import io.github.ptitjes.scott.Utils._
 
-		def train(corpus: Corpus[Sequence with Annotation]): HiddenMarkovModel = {
+		def train(corpus: Corpus): HiddenMarkovModel = {
 			val breadth = corpus.tagSet.size
 			val depth = configuration(ORDER)
 
@@ -30,11 +31,12 @@ object RelFreqTrainer extends Trainer.Factory {
 			val allCategoryCounts = initializeMatrixTree[Int](breadth, depth)
 			val perCategoryCounts = initializeMatrixTree[Int](breadth, depth)
 
-			corpus.foreach { s: Sequence with Annotation =>
+			corpus.foreach { s: Sentence =>
 				var d = 0
 				var previousState = 0
 
-				s.observablesAndStates.foreach { case (word, tag) =>
+				s.tokens.foreach { token =>
+					val tag = token.get(CoarsePosTag)
 
 					perCategoryCounts(d)(tag)(previousState) += 1
 					allCategoryCounts(d)(0)(previousState) += 1

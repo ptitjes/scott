@@ -6,12 +6,12 @@ import scala.collection._
 
 trait Trainer {
 
-	def train(corpus: Corpus[Sequence with Annotation]): HiddenMarkovModel
+	def train(corpus: Corpus): HiddenMarkovModel
 }
 
 trait IterativeTrainer extends Trainer {
 
-	def train(corpus: Corpus[Sequence with Annotation]): HiddenMarkovModel = {
+	def train(corpus: Corpus): HiddenMarkovModel = {
 		var resultHmm: HiddenMarkovModel = null
 		train(corpus, new IterationCallback {
 			override def iterationDone(configuration: Configuration, hmm: HiddenMarkovModel, elapsedTime: Long): Unit = {
@@ -21,7 +21,7 @@ trait IterativeTrainer extends Trainer {
 		resultHmm
 	}
 
-	def train(corpus: Corpus[Sequence with Annotation], callback: IterationCallback): Unit
+	def train(corpus: Corpus, callback: IterationCallback): Unit
 }
 
 trait IterationCallback {

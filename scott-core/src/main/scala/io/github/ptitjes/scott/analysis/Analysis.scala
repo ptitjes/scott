@@ -7,8 +7,8 @@ import io.github.ptitjes.scott._
 import io.github.ptitjes.scott.corpora._
 
 class AnalysisRunner(cacheFilename: String,
-                     trainCorpus: Corpus[Sequence with Annotation],
-                     testCorpus: Corpus[Sequence with Annotation],
+                     trainCorpus: Corpus,
+                     testCorpus: Corpus,
                      force: Boolean = false) {
 
 	private val cacheFile = new File(cacheFilename)

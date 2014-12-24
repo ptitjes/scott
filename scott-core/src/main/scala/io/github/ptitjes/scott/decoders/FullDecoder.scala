@@ -1,9 +1,11 @@
 package io.github.ptitjes.scott.decoders
 
+import io.github.ptitjes.scott.corpora.Annotation.{CoarsePosTag, Form}
 import io.github.ptitjes.scott.corpora._
 import io.github.ptitjes.scott.Utils._
 import io.github.ptitjes.scott._
 import io.github.ptitjes.scott.decoders.arrays._
+import io.github.ptitjes.scott.utils.{States, DepthCounter}
 
 import scala.annotation.tailrec
 import scala.collection._
@@ -23,8 +25,8 @@ object FullDecoder extends Decoder.Factory {
 		val multiThreaded = configuration(MULTI_THREADED)
 
 		val breadth = hmm.breadth
-		val depth = hmm.depth
-		val maxStateCount = pow(breadth, depth)
+		val order = hmm.depth
+		val maxStateCount = pow(breadth, order)
 
 		val deltas = new SwappableArray[Double](maxStateCount)
 		val psis = new PsiArray(maxStateCount, 300)
@@ -34,7 +36,9 @@ object FullDecoder extends Decoder.Factory {
 
 		val allTags = BitSet() ++ (0 until breadth)
 
-		def decode(sequence: Sequence): Sequence with Annotation = {
+		val depth = new DepthCounter(order)
+
+		def decode(sequence: Sentence): Sentence = {
 			deltas(0) = 0
 			psis(0) = -1
 			deltas.swap()
@@ -53,10 +57,12 @@ object FullDecoder extends Decoder.Factory {
 			val targetTagsCount = breadth
 			val targetTags = makeRange(targetTagsCount)
 
-			val iterator = sequence.iterator(breadth, depth)
+			val iterator = sequence.historyIterator
 			while (iterator.hasNext) {
-				val word = iterator.next()
-				val d = iterator.currentDepth
+				val history = iterator.next()
+				val word = history.current.get(Form)
+
+				val d = depth.current
 
 				hmm match {
 					case HMMGenerative(_, _, t, e, ue, _) =>
@@ -77,8 +83,7 @@ object FullDecoder extends Decoder.Factory {
 						targetTags.foreach { targetTag =>
 							wordOnlyScores(targetTag) = 0
 						}
-						val h_wordOnly = iterator.history(-1)
-						wordOnlyFeatures.foreachMatching(h_wordOnly, allTags)(weights =>
+						wordOnlyFeatures.foreachMatching(history, IndexedSeq.empty, allTags)(weights =>
 							weights.foreach { case (tag, weight) => wordOnlyScores(tag) += weight}
 						)
 
@@ -87,8 +92,8 @@ object FullDecoder extends Decoder.Factory {
 								scores(targetTag)(sourceState) = wordOnlyScores(targetTag)
 							}
 
-							val h = iterator.history(sourceState)
-							otherFeatures.foreachMatching(h, allTags)(weights =>
+							val previousTags = States.stateToTagSeq(breadth, order, d, sourceState)
+							otherFeatures.foreachMatching(history, previousTags, allTags)(weights =>
 								weights.foreach { case (tag, weight) => scores(tag)(sourceState) += weight}
 							)
 						}
@@ -109,8 +114,8 @@ object FullDecoder extends Decoder.Factory {
 					}
 				}
 
-				if (d < depth) {
-					if (d + 1 < depth) {
+				if (d < order) {
+					if (d + 1 < order) {
 						sharedTagsCount = pow(breadth, d + 1)
 					} else {
 						sourceTagsCount = breadth
@@ -126,6 +131,8 @@ object FullDecoder extends Decoder.Factory {
 
 				deltas.swap()
 				psis.forward()
+
+				depth.next()
 			}
 
 			@tailrec def reachBack(state: Int, tail: List[Int]): List[Int] = {
@@ -141,7 +148,9 @@ object FullDecoder extends Decoder.Factory {
 
 			psis.rewind()
 
-			AnnotatedSequence(sequence.observables.zip(states))
+			depth.reset()
+
+			Sentence(sequence.tokens.zip(states).map { case ((token, tag)) => token.overlay(CoarsePosTag, tag)})
 		}
 
 		def makeRange(count: Int): GenSeq[Int] = {

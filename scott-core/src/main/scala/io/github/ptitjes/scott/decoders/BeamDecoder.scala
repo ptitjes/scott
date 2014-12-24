@@ -1,10 +1,11 @@
 package io.github.ptitjes.scott.decoders
 
 import io.github.ptitjes.scott.corpora._
+import io.github.ptitjes.scott.corpora.Annotation._
 import io.github.ptitjes.scott.Utils._
 import io.github.ptitjes.scott._
 import io.github.ptitjes.scott.decoders.arrays._
-import io.github.ptitjes.scott.utils.BoundedPriorityQueue
+import io.github.ptitjes.scott.utils.{States, DepthCounter, BoundedPriorityQueue}
 
 import scala.annotation.tailrec
 import scala.collection.{mutable, _}
@@ -22,8 +23,8 @@ object BeamDecoder extends Decoder.Factory {
 	private class Instance(hmm: HiddenMarkovModel, configuration: Configuration) extends Decoder {
 
 		val breadth = hmm.breadth
-		val depth = hmm.depth
-		val maxStateCount = pow(breadth, depth)
+		val order = hmm.depth
+		val maxStateCount = pow(breadth, order)
 
 		val deltas = new SwappableArray[Double](maxStateCount)
 		val psis = new PsiArray(maxStateCount, 300)
@@ -46,7 +47,9 @@ object BeamDecoder extends Decoder.Factory {
 		}
 		val allTags = BitSet() ++ (0 until breadth)
 
-		def decode(sequence: Sequence): Sequence with Annotation = {
+		val depth = new DepthCounter(order)
+
+		def decode(sequence: Sentence): Sentence = {
 			beam.clear()
 			beam(0) = true
 			deltas(0) = 0
@@ -63,10 +66,12 @@ object BeamDecoder extends Decoder.Factory {
 
 			val targetTagsCount = breadth
 
-			val iterator = sequence.iterator(breadth, depth)
+			val iterator = sequence.historyIterator
 			while (iterator.hasNext) {
-				val word = iterator.next()
-				val d = iterator.currentDepth
+				val history = iterator.next()
+				val word = history.current.get(Form)
+
+				val d = depth.current
 
 				val tags = if (dictionary.contains(word.code)) dictionary(word.code) else allTags
 
@@ -89,8 +94,7 @@ object BeamDecoder extends Decoder.Factory {
 						tags.foreach { targetTag =>
 							wordOnlyScores(targetTag) = 0
 						}
-						val h_wordOnly = iterator.history(-1)
-						wordOnlyFeatures.foreachMatching(h_wordOnly, tags)(weights =>
+						wordOnlyFeatures.foreachMatching(history, IndexedSeq.empty, tags)(weights =>
 							weights.foreach { case (tag, weight) => if (tags(tag)) wordOnlyScores(tag) += weight}
 						)
 
@@ -99,8 +103,8 @@ object BeamDecoder extends Decoder.Factory {
 								scores(targetTag)(sourceState) = wordOnlyScores(targetTag)
 							}
 
-							val h = iterator.history(sourceState)
-							otherFeatures.foreachMatching(h, tags)(weights =>
+							val previousTags = States.stateToTagSeq(breadth, order, d, sourceState)
+							otherFeatures.foreachMatching(history, previousTags, tags)(weights =>
 								weights.foreach { case (tag, weight) => if (tags(tag)) scores(tag)(sourceState) += weight}
 							)
 						}
@@ -124,8 +128,8 @@ object BeamDecoder extends Decoder.Factory {
 					}
 				}
 
-				if (d < depth) {
-					if (d + 1 < depth) {
+				if (d < order) {
+					if (d + 1 < order) {
 						sharedTagsCount = pow(breadth, d + 1)
 					} else {
 						sourceTagsCount = breadth
@@ -143,6 +147,8 @@ object BeamDecoder extends Decoder.Factory {
 				beamMaxElements.foreach {
 					case (_, sourceState) => beam(sourceState) = true
 				}
+
+				depth.next()
 			}
 
 			@tailrec def reachBack(state: Int, tail: List[Int]): List[Int] = {
@@ -158,7 +164,9 @@ object BeamDecoder extends Decoder.Factory {
 
 			psis.rewind()
 
-			AnnotatedSequence(sequence.observables.zip(states))
+			depth.reset()
+
+			Sentence(sequence.tokens.zip(states).map { case ((token, tag)) => token.overlay(CoarsePosTag, tag)})
 		}
 
 		@inline def maxArgMax(count: Int, beam: mutable.BitSet,

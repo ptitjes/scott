@@ -2,6 +2,7 @@ package io.github.ptitjes.scott.analysis
 
 import java.io.{File, FileWriter, PrintWriter}
 
+import io.github.ptitjes.scott.corpora.Annotation.{CoarsePosTag, Form}
 import io.github.ptitjes.scott.corpora._
 import io.github.ptitjes.scott.Utils._
 import io.github.ptitjes.scott._
@@ -10,8 +11,8 @@ object Checking {
 
 	def check(conf: Configuration,
 	          hmm: HiddenMarkovModel,
-	          refCorpus: Corpus[Sequence with Annotation],
-	          hypCorpus: Corpus[Sequence with Annotation],
+	          refCorpus: Corpus,
+	          hypCorpus: Corpus,
 	          tagSet: TagSet,
 	          checkFile: File): Results = {
 
@@ -27,8 +28,8 @@ object Checking {
 	}
 
 	def check(hmm: HiddenMarkovModel,
-	          refCorpus: Corpus[Sequence with Annotation],
-	          hypCorpus: Corpus[Sequence with Annotation],
+	          refCorpus: Corpus,
+	          hypCorpus: Corpus,
 	          tagSet: TagSet,
 	          writer: Option[PrintWriter]): Results = {
 
@@ -48,47 +49,52 @@ object Checking {
 		refCorpus.sequences.zip(hypCorpus.sequences).foreach {
 			case (refSeq, hypSeq) =>
 
-				if (refSeq.observablesAndStates.length != hypSeq.observablesAndStates.length) {
+				if (refSeq.length != hypSeq.length) {
 					throw new IllegalStateException("Observable length mismatch!")
 				}
 
-				refSeq.observablesAndStates.zip(hypSeq.observablesAndStates).foreach {
-					case ((oRef, sRef), (oHyp, sHyp)) =>
-						if (oRef != oHyp) {
-							throw new IllegalStateException("Observable mismatch!")
-						}
-						val error = sRef != sHyp
+				val iterator = refSeq.zippedHistoryIterator(hypSeq)
+				while (iterator.hasNext) {
+					val (refHistory, hypHistory) = iterator.next()
 
-						globalCounts.total += 1
-						perCategoryCounts(sRef).total += 1
-						perWordErrorCounts(oRef.code).total += 1
+					val (oRef, sRef) = (refHistory.current.get(Form), refHistory.current.get(CoarsePosTag))
+					val (oHyp, sHyp) = (hypHistory.current.get(Form), hypHistory.current.get(CoarsePosTag))
+
+					if (oRef != oHyp) {
+						throw new IllegalStateException("Observable mismatch!")
+					}
+					val error = sRef != sHyp
+
+					globalCounts.total += 1
+					perCategoryCounts(sRef).total += 1
+					perWordErrorCounts(oRef.code).total += 1
+					if (error) {
+						globalCounts.errors += 1
+						perCategoryCounts(sRef).errors += 1
+						confusionMatrix(sRef)(sHyp) += 1
+						perWordErrorCounts(oRef.code).errors += 1
+						perWordConfusionMatrix(oRef.code)(sRef)(sHyp) += 1
+					}
+
+					if (hmm.isUnknown(oRef)) {
+						globalCounts.unknownTotal += 1
+						perCategoryCounts(sRef).unknownTotal += 1
+						perWordErrorCounts(oRef.code).unknownTotal += 1
 						if (error) {
-							globalCounts.errors += 1
-							perCategoryCounts(sRef).errors += 1
-							confusionMatrix(sRef)(sHyp) += 1
-							perWordErrorCounts(oRef.code).errors += 1
-							perWordConfusionMatrix(oRef.code)(sRef)(sHyp) += 1
+							globalCounts.unknownErrors += 1
+							perCategoryCounts(sRef).unknownErrors += 1
+							perWordErrorCounts(oRef.code).unknownErrors += 1
 						}
+					}
 
-						if (hmm.isUnknown(oRef)) {
-							globalCounts.unknownTotal += 1
-							perCategoryCounts(sRef).unknownTotal += 1
-							perWordErrorCounts(oRef.code).unknownTotal += 1
-							if (error) {
-								globalCounts.unknownErrors += 1
-								perCategoryCounts(sRef).unknownErrors += 1
-								perWordErrorCounts(oRef.code).unknownErrors += 1
-							}
-						}
-
-						writer.foreach { out =>
-							out.print(if (error) ">" else " ")
-							out.print(f"${oRef.code}%6d")
-							out.print(if (hmm.isUnknown(oRef)) " U" else "  ")
-							out.print(f"\t$sRef%2d ${tagSet(sRef)}%-5s")
-							out.print(f"\t$sHyp%2d ${tagSet(sHyp)}%-5s\t")
-							out.println(oRef.string)
-						}
+					writer.foreach { out =>
+						out.print(if (error) ">" else " ")
+						out.print(f"${oRef.code}%6d")
+						out.print(if (hmm.isUnknown(oRef)) " U" else "  ")
+						out.print(f"\t$sRef%2d ${tagSet(sRef)}%-5s")
+						out.print(f"\t$sHyp%2d ${tagSet(sHyp)}%-5s\t")
+						out.println(oRef.string)
+					}
 				}
 
 				writer.foreach(out => out.println())

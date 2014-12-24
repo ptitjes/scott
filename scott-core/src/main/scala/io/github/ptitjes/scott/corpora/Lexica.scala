@@ -56,7 +56,10 @@ object Lexica {
 
 		def apply(i: Int) = codeToWord(i)
 
-		def apply(s: String) = stringToWord(s).getOrElse(BasicWord(-1, s))
+		def apply(s: String) = {
+			val string = normalizeWord(s)
+			stringToWord(string).getOrElse(BasicWord(-1, string))
+		}
 
 		def padded(i: Int) = {
 			val element = codeToWord(i).string

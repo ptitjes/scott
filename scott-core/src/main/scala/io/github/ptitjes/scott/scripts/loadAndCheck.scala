@@ -41,7 +41,7 @@ object loadAndCheck extends App {
 
 	def decode(hmm: HiddenMarkovModel,
 	           conf: Configuration, hmmName: String,
-	           refCorpus: Corpus[Sequence with Annotation]) {
+	           refCorpus: Corpus) {
 
 		val decoder = conf(Configuration.DECODER).instantiate(hmm, conf)
 		val hypCorpus = decoder.decode(refCorpus)

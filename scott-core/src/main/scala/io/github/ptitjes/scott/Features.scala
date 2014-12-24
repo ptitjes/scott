@@ -6,7 +6,7 @@ import scala.collection._
 
 object Features {
 
-	sealed trait Extractor[T] extends (History => T)
+	sealed trait Extractor[T] extends ((History, IndexedSeq[Int]) => T)
 
 	sealed trait Predicate extends Extractor[Boolean]
 
@@ -14,8 +14,8 @@ object Features {
 
 		def from: Extractor[String]
 
-		def apply(h: History): Boolean = {
-			val word = from(h)
+		def apply(h: History, previousTags: IndexedSeq[Int]): Boolean = {
+			val word = from(h, previousTags)
 
 			if (word == null) false
 			else this match {
@@ -37,49 +37,45 @@ object Features {
 
 	case class PTagEqual(from: Extractor[Int], value: Int) extends Predicate {
 
-		def apply(h: History): Boolean = from(h) == value
+		def apply(h: History, previousTags: IndexedSeq[Int]): Boolean = from(h, previousTags) == value
 	}
 
 	case class PNot(from: Extractor[Boolean]) extends Predicate {
 
-		def apply(h: History): Boolean = !from(h)
+		def apply(h: History, previousTags: IndexedSeq[Int]): Boolean = !from(h, previousTags)
 	}
 
 	case class EPrefixChar(index: Int) extends Extractor[Char] {
 
-		def apply(h: History): Char = {
-			val word = h.wordAt(0).string
+		def apply(h: History, previousTags: IndexedSeq[Int]): Char = {
+			val word = h.word.string
 			if (word.length > index) word.charAt(index) else 0.toChar
 		}
 	}
 
 	case class ESuffixChar(index: Int) extends Extractor[Char] {
 
-		def apply(h: History): Char = {
-			val word = h.wordAt(0).string
+		def apply(h: History, previousTags: IndexedSeq[Int]): Char = {
+			val word = h.word.string
 			if (word.length > index) word.charAt(word.length - index - 1) else 0.toChar
 		}
 	}
 
 	case class EWordString(index: Int) extends Extractor[String] {
 
-		def apply(h: History): String = {
-			val word = h.wordAt(index)
-			if (word != null) word.string else null
-		}
+		def apply(h: History, previousTags: IndexedSeq[Int]): String =
+			h.wordAt(index).map(_.string).getOrElse(null)
 	}
 
 	case class EWordCode(index: Int) extends Extractor[Int] {
 
-		def apply(h: History): Int = {
-			val word = h.wordAt(index)
-			if (word == null) -1 else word.code
-		}
+		def apply(h: History, previousTags: IndexedSeq[Int]): Int =
+			h.wordAt(index).map(_.code).getOrElse(-1)
 	}
 
 	case class EPreviousTag(index: Int) extends Extractor[Int] {
 
-		def apply(h: History): Int = h.previousTag(index)
+		def apply(h: History, previousTags: IndexedSeq[Int]): Int = previousTags(-index - 1)
 	}
 
 	case class Weights(tags: BitSet, values: Array[Double]) {
@@ -100,20 +96,31 @@ object Features {
 
 	sealed trait FeatureTree[T] {
 
-		def foreachMatching(h: History, tags: BitSet)(f: T => Unit): Unit = this match {
-			case FTConjunction(children) => children.foreach(c => c.foreachMatching(h, tags)(f))
+		def size: Int = this match {
+			case FTConjunction(children) => children.map(_.size).reduce(_ + _)
+			case FTDispatchInt(extract, children, filter) => children.values.map(_.size).reduce(_ + _)
+			case FTDispatchChar(extract, children, filter) => children.values.map(_.size).reduce(_ + _)
+			case FTGuard(predicate, child) => child.size
+			case FTLeaf(weights, filter) => filter.size
+		}
+
+		def foreachMatching(h: History, previousTags: IndexedSeq[Int], tags: BitSet)(f: T => Unit): Unit = this match {
+			case FTConjunction(children) =>
+				children.foreach(c => c.foreachMatching(h, previousTags, tags)(f))
 			case FTDispatchInt(extract, children, filter) =>
 				if (tags exists filter) {
-					val key = extract(h)
-					if (children.contains(key)) children(key).foreachMatching(h, tags)(f)
+					val key = extract(h, previousTags)
+					if (children.contains(key)) children(key).foreachMatching(h, previousTags, tags)(f)
 				}
 			case FTDispatchChar(extract, children, filter) =>
 				if (tags exists filter) {
-					val key = extract(h)
-					if (children.contains(key)) children(key).foreachMatching(h, tags)(f)
+					val key = extract(h, previousTags)
+					if (children.contains(key)) children(key).foreachMatching(h, previousTags, tags)(f)
 				}
-			case FTGuard(predicate, child) => if (predicate(h)) child.foreachMatching(h, tags)(f)
-			case FTLeaf(weights, filter) => if (tags exists filter) f(weights)
+			case FTGuard(predicate, child) =>
+				if (predicate(h, previousTags)) child.foreachMatching(h, previousTags, tags)(f)
+			case FTLeaf(weights, filter) =>
+				if (tags exists filter) f(weights)
 		}
 
 		def foreach(f: T => Unit): Unit = this match {

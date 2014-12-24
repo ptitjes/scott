@@ -3,277 +3,180 @@ package io.github.ptitjes.scott.corpora
 import java.io.File
 
 import io.github.ptitjes.scott.Utils._
+import io.github.ptitjes.scott.corpora.Annotation.All
+import io.github.ptitjes.scott.utils.States
 
 import scala.collection._
 import scala.io.Source
 
-trait Corpus[+T <: Sequence] {
+trait Annotation[T]
+
+object Annotation {
+
+	object Form extends Annotation[Word]
+
+	object CoarsePosTag extends Annotation[Int]
+
+	object PosTag extends Annotation[Int]
+
+	type All = Form.type with CoarsePosTag.type
+}
+
+trait Corpus {
 
 	def tagSet: TagSet
 
 	def size: Int
 
-	def sequences: Seq[T]
+	def sequences: Seq[Sentence]
 
-	def slice(from: Int, until: Int): Corpus[T]
+	def slice(from: Int, until: Int): Corpus
 
-	def splitBy(ratio: Double): (Corpus[T], Corpus[T])
+	def splitBy(ratio: Double): (Corpus, Corpus)
 
-	def foreach[U](f: T => U): Unit
+	def foreach[U](f: Sentence => U): Unit
 
-	def map[U <: Sequence](f: T => U): Corpus[U]
+	def map(f: Sentence => Sentence): Corpus
 }
 
-trait Sequence {
+trait Sentence {
 
-	def observables: IndexedSeq[Word]
+	def length: Int = tokens.length
 
-	def iterator(breadth: Int, depth: Int) = new HistoryIteratorImpl(this, breadth, depth)
+	def tokens: IndexedSeq[Token[Annotation.All]]
+
+	def historyIterator: Iterator[History]
+
+	def zippedHistoryIterator(s: Sentence): Iterator[(History, History)]
 }
 
-trait Annotation {
-	self: Sequence =>
-
-	def observablesAndStates: IndexedSeq[(Word, Int)]
-
-	def annotatedIterator(breadth: Int, depth: Int) = new AnnotatedHistoryIteratorImpl(this, breadth, depth)
+object Sentence {
+	def apply(data: IndexedSeq[Token[Annotation.All]]) = BaseSequence(data)
 }
 
-trait HistoryIterator {
+trait Token[+A] {
 
-	def hasNext: Boolean
+	def get[AT >: A, T](annotation: AT)(implicit evidence: AT <:< Annotation[T]): T
 
-	def next(): Word
-
-	def currentDepth: Int
-
-	def currentObservable: Word
-
-	def history(sourceState: Int): History
-}
-
-trait AnnotatedHistoryIterator {
-
-	def hasNext: Boolean
-
-	def next(): (Word, Int)
-
-	def currentDepth: Int
-
-	def currentObservable: Word
-
-	def currentTag: Int
-
-	def sourceState: Int
-
-	def history: History
+	def overlay[AT <: Annotation[T], T](annotation: AT, value: T): Token[Annotation.All]
 }
 
 trait History {
 
-	def wordAt(index: Int): Word
+	def word: Word = current.get(Annotation.Form)
 
-	def previousTag(index: Int): Int
+	def wordAt(index: Int): Option[Word] = at(index).map(_.get(Annotation.Form))
+
+	def current: Token[Annotation.All] = at(0).get
+
+	def at(position: Int): Option[Token[Annotation.All]]
 }
 
 object Corpora {
 
-	def annotatedFrom(source: Source, lexicon: Lexicon, tagSet: TagSet): Corpus[Sequence with Annotation] = {
-		val sequences = mutable.ListBuffer[Sequence with Annotation]()
+	def annotatedFrom(source: Source, lexicon: Lexicon, tagSet: TagSet): Corpus = {
+		val sequences = mutable.ListBuffer[Sentence]()
 
-		val elements = mutable.ArrayBuffer[(Word, Int)]()
+		val elements = mutable.ArrayBuffer[MapToken]()
 		source.getLines().foreach { s =>
 			if (s.isEmpty) {
-				sequences += AnnotatedSequence(elements.toIndexedSeq)
+				sequences += BaseSequence(elements.toIndexedSeq)
 				elements.clear()
 			}
 			else {
 				val split = s.split(' ')
-				val observable = split(0).toInt
+				val word = lexicon(split(0).toInt)
 				val tag = split(1).toInt
-				val word = lexicon(observable)
-				elements += ((word, tag))
+				elements += MapToken(Map(Annotation.Form -> word, Annotation.CoarsePosTag -> tag))
 			}
 		}
 
 		BasicCorpus(sequences, tagSet)
 	}
 
-	def annotatedFrom(file: File, lexicon: Lexicon, tagSet: TagSet): Corpus[Sequence with Annotation] =
+	def annotatedFrom(file: File, lexicon: Lexicon, tagSet: TagSet): Corpus =
 		annotatedFrom(Source.fromFile(file), lexicon, tagSet)
 
-	def annotatedFrom(url: java.net.URL, lexicon: Lexicon, tagSet: TagSet): Corpus[Sequence with Annotation] =
+	def annotatedFrom(url: java.net.URL, lexicon: Lexicon, tagSet: TagSet): Corpus =
 		annotatedFrom(Source.fromURL(url), lexicon, tagSet)
 }
 
 
-case class BasicCorpus[+T <: Sequence](sequences: Seq[T], tagSet: TagSet) extends Corpus[T] {
+case class BasicCorpus(sequences: Seq[Sentence], tagSet: TagSet) extends Corpus {
 
 	override def size: Int = sequences.size
 
-	override def slice(from: Int, until: Int): Corpus[T] =
+	override def slice(from: Int, until: Int): Corpus =
 		BasicCorpus(sequences.slice(from, until), tagSet)
 
-	override def splitBy(ratio: Double): (Corpus[T], Corpus[T]) = {
+	override def splitBy(ratio: Double): (Corpus, Corpus) = {
 		val splitIndex = (size * ratio).toInt
 		(slice(0, splitIndex), slice(splitIndex + 1, size))
 	}
 
-	override def foreach[U](f: (T) => U): Unit = sequences.foreach(f)
+	override def foreach[U](f: Sentence => U): Unit = sequences.foreach(f)
 
-	override def map[U <: Sequence](f: T => U): Corpus[U] =
+	override def map(f: Sentence => Sentence): Corpus =
 		BasicCorpus(sequences.map(f), tagSet)
 }
 
-case class AnnotatedSequence(elements: IndexedSeq[(Word, Int)])
-	extends Sequence with Annotation {
+abstract class AbstractSequence extends Sentence {
 
-	def observables: IndexedSeq[Word] = elements.map(_._1)
+	override def historyIterator: Iterator[History] = new Iterator[History] {
 
-	def observablesAndStates: IndexedSeq[(Word, Int)] = elements
-}
-
-case class NonAnnotatedSequence(observables: IndexedSeq[Word])
-	extends Sequence
-
-case class BasicHistory(word: Word,
-                        previousWords: IndexedSeq[Word],
-                        nextWords: IndexedSeq[Word],
-                        previousTags: IndexedSeq[Int]) extends History {
-
-	def wordAt(index: Int): Word =
-		if (index == 0) word
-		else if (index > 0) nextWords(index - 1)
-		else previousWords(-index - 1)
-
-	def previousTag(index: Int): Int =
-		previousTags(-index - 1)
-}
-
-class HistoryIteratorImpl(val seq: Sequence, val breadth: Int, val depth: Int) extends HistoryIterator {
-	private val observables = seq.observables
-
-	private var _index: Int = -1
-	private var _currentDepth: Int = -1
-
-	def hasNext: Boolean = _index < observables.length - 1
-
-	def checkStarted(): Unit =
-		if (_index == -1)
-			throw new IllegalStateException()
-
-	def next(): Word = {
-		if (!hasNext)
-			throw new IllegalStateException()
-
-		_index += 1
-		if (_currentDepth < depth) {
-			_currentDepth += 1
-		}
-
-		observables(_index)
-	}
-
-	def currentDepth: Int = {
-		checkStarted()
-		_currentDepth
-	}
-
-	def currentObservable: Word = {
-		checkStarted()
-		observables(_index)
-	}
-
-	def history(sourceState: Int): History = {
-		checkStarted()
-
-		def makeWord(i: Int) =
-			if (i < 0 || i >= observables.length) null
-			else observables(i)
-
-		def makeHistoryTag(i: Int) =
-			if (_currentDepth < i) -1
-			else if (sourceState == -1) -1
-			else {
-				var t = sourceState
-				for (j <- 1 until i) t /= breadth
-				t % breadth
+		val _length = AbstractSequence.this.length
+		var index = -1
+		val history = new History {
+			override def at(position: Int): Option[Token[All]] = {
+				val i = index + position
+				if (i < 0 || i >= _length) None
+				else Some(tokens(i))
 			}
+		}
 
-		BasicHistory(makeWord(_index),
-			(1 to depth).map(i => makeWord(_index - i)),
-			(1 to depth).map(i => makeWord(_index + i)),
-			(1 to depth).map(i => makeHistoryTag(i))
-		)
+		override def next(): History = {
+			index += 1
+			history
+		}
+
+		override def hasNext: Boolean = index < _length - 1
+	}
+
+	override def zippedHistoryIterator(s: Sentence): Iterator[(History, History)] = new Iterator[(History, History)] {
+
+		val _length = AbstractSequence.this.length
+		var index = -1
+		val leftHistory = new History {
+			override def at(position: Int): Option[Token[All]] = {
+				val i = index + position
+				if (i < 0 || i >= _length) None
+				else Some(tokens(i))
+			}
+		}
+		val rightHistory = new History {
+			override def at(position: Int): Option[Token[All]] = {
+				val i = index + position
+				if (i < 0 || i >= _length) None
+				else Some(s.tokens(i))
+			}
+		}
+
+		override def next(): (History, History) = {
+			index += 1
+			(leftHistory, rightHistory)
+		}
+
+		override def hasNext: Boolean = index < _length - 1
 	}
 }
 
-class AnnotatedHistoryIteratorImpl(val seq: Sequence with Annotation, val breadth: Int, val depth: Int) extends AnnotatedHistoryIterator {
-	private val size = pow(breadth, depth)
-	private val observablesAndStates = seq.observablesAndStates
+case class BaseSequence(tokens: IndexedSeq[Token[Annotation.All]]) extends AbstractSequence
 
-	private var _index: Int = -1
-	private var _currentDepth: Int = -1
-	private var _sourceState = -1
+case class MapToken(data: Map[Annotation[_], Any]) extends Token[Annotation.All] {
 
-	def hasNext: Boolean = _index < observablesAndStates.length - 1
+	override def get[AT >: All, T](annotation: AT)(implicit evidence: <:<[AT, Annotation[T]]): T =
+		data(annotation).asInstanceOf[T]
 
-	def checkStarted(): Unit =
-		if (_index == -1)
-			throw new IllegalStateException()
-
-	def next(): (Word, Int) = {
-		if (!hasNext)
-			throw new IllegalStateException()
-
-		if (_index == 0)
-			_sourceState = currentTag
-		else if (_index > 0)
-			_sourceState = (_sourceState * breadth + currentTag) % size
-
-		_index += 1
-		if (_currentDepth < depth) {
-			_currentDepth += 1
-		}
-
-		observablesAndStates(_index)
-	}
-
-	def currentDepth: Int = {
-		checkStarted()
-		_currentDepth
-	}
-
-	def currentObservable: Word = {
-		checkStarted()
-		observablesAndStates(_index)._1
-	}
-
-	def currentTag: Int = {
-		checkStarted()
-		observablesAndStates(_index)._2
-	}
-
-	def sourceState: Int = {
-		checkStarted()
-		_sourceState
-	}
-
-	def history: History = {
-		checkStarted()
-
-		def makeWord(i: Int) =
-			if (i < 0 || i >= observablesAndStates.length) null
-			else observablesAndStates(i)._1
-
-		def makeHistoryTag(i: Int) =
-			if (i < 0 || i >= observablesAndStates.length) -1
-			else observablesAndStates(i)._2
-
-		BasicHistory(makeWord(_index),
-			(1 to depth).map(i => makeWord(_index - i)),
-			(1 to depth).map(i => makeWord(_index + i)),
-			(1 to depth).map(i => makeHistoryTag(_index - i))
-		)
-	}
+	def overlay[AT <: Annotation[T], T](annotation: AT, value: T): Token[Annotation.All] =
+		MapToken(data + (annotation -> value))
 }

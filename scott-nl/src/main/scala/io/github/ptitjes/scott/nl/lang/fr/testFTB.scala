@@ -22,9 +22,7 @@ object testFTB extends App {
 	val testCorpusPath = PATH_TO_FTB + "/corpus-conll/" + CONLL_CORPUS + "_3.dep_conll"
 
 	val parser = new CoNLLXParser
-	val profile = FTB.BasicCoNLLProfile
-	println(profile.tagSet.tags.size + " categories")
-	println(profile.tagSet.tags.mkString("\n"))
+	val profile = FTB.CoNLLProfile
 	val trainCorpus = parser.parse(profile, Source.fromFile(trainCorpusPath), Lexica.WORDS)
 	val devCorpus = parser.parse(profile, Source.fromFile(devCorpusPath), Lexica.WORDS)
 	val testCorpus = parser.parse(profile, Source.fromFile(testCorpusPath), Lexica.WORDS)
@@ -33,7 +31,7 @@ object testFTB extends App {
 		.set(Configuration.TRAINER, DiscriminantTrainer)
 		.set(Trainer.ORDER, 2)
 		.set(DiscriminantTrainer.DECODER, FullDecoder)
-		.set(DiscriminantTrainer.ITERATION_COUNT, 30)
+		.set(DiscriminantTrainer.ITERATION_COUNT, 10)
 		.set(DiscriminantTrainer.AVERAGING, DiscriminantTrainer.COMPLETE_AVERAGING)
 		.set(Configuration.DECODER, BeamDecoder)
 

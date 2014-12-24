@@ -5,6 +5,7 @@ import java.io._
 import io.github.ptitjes.scott.HiddenMarkovModel._
 import io.github.ptitjes.scott.Trainer._
 import io.github.ptitjes.scott._
+import io.github.ptitjes.scott.corpora.Annotation.CoarsePosTag
 import io.github.ptitjes.scott.corpora._
 
 import scala.collection.mutable
@@ -39,7 +40,7 @@ object RelFreqDiscountingTrainer extends Trainer.Factory {
 		val SENTENCE_START = -1
 		val SENTENCE_STOP = -2
 
-		def train(corpus: Corpus[Sequence with Annotation]): HiddenMarkovModel = {
+		def train(corpus: Corpus): HiddenMarkovModel = {
 			val breadth = corpus.tagSet.size
 			val depth = configuration(ORDER)
 
@@ -91,7 +92,7 @@ object RelFreqDiscountingTrainer extends Trainer.Factory {
 			HMMGenerative(breadth, depth, T, e, ue, dict)
 		}
 
-		def runNgramCount(order: Int, corpus: Corpus[Sequence with Annotation]): mutable.Map[Seq[Int], NGramData] = {
+		def runNgramCount(order: Int, corpus: Corpus): mutable.Map[Seq[Int], NGramData] = {
 
 			val workDirectory = new File(WORK_DIRECTORY)
 			if (!workDirectory.exists()) workDirectory.mkdirs()
@@ -107,7 +108,7 @@ object RelFreqDiscountingTrainer extends Trainer.Factory {
 					out =>
 						for (i <- 1 to configuration(MULTIPLIER)) {
 							corpus.foreach {
-								s => out.println(s.observablesAndStates.map { case (o, t) => t}.mkString(" "))
+								s => out.println(s.tokens.map(_.get(CoarsePosTag)).mkString(" "))
 							}
 						}
 				}

@@ -1,5 +1,6 @@
 package io.github.ptitjes.scott.trainers
 
+import io.github.ptitjes.scott.corpora.Annotation.{Form, CoarsePosTag}
 import io.github.ptitjes.scott.corpora._
 import io.github.ptitjes.scott.Features._
 import io.github.ptitjes.scott.Trainer._
@@ -7,6 +8,8 @@ import io.github.ptitjes.scott.Utils._
 import io.github.ptitjes.scott._
 import io.github.ptitjes.scott.decoders.FullDecoder
 import io.github.ptitjes.scott.trainers.features.BaseFeatures
+import io.github.ptitjes.scott.utils.DepthCounter
+import io.github.ptitjes.scott.utils.States.SourceTracker
 
 import scala.collection._
 
@@ -52,7 +55,7 @@ object DiscriminantTrainer extends Trainer.Factory {
 		val useAveraging = configuration(AVERAGING)
 		val decoderFactory = configuration(DECODER)
 
-		def train(corpus: Corpus[Sequence with Annotation], callback: IterationCallback): Unit = {
+		def train(corpus: Corpus, callback: IterationCallback): Unit = {
 			val breadth = corpus.tagSet.size
 
 			var allWeightPairs = mutable.ArrayBuffer[(Weights, Weights)]()
@@ -68,6 +71,8 @@ object DiscriminantTrainer extends Trainer.Factory {
 			val (wordOnlyFeatures, otherFeatures, dictionary) =
 				features.buildFeatures(breadth, order, corpus, weightFactory)
 
+			println((wordOnlyFeatures.size + otherFeatures.size) + " feature parameters")
+
 			val extractWeights: ((Weights, Weights)) => Weights = {
 				case (weights, averagedWeights) => weights
 			}
@@ -82,45 +87,52 @@ object DiscriminantTrainer extends Trainer.Factory {
 					val progress = new ProgressBar(f"Iteration $i%2d/$iterationCount%2d", corpus.size)
 					progress.set(0)
 
-					corpus.foreach { refSeq: Sequence with Annotation =>
+					val refSource = new SourceTracker(breadth, order)
+					val hypSource = new SourceTracker(breadth, order)
+
+					corpus.foreach { refSeq: Sentence =>
 
 						val hypSeq = decoder.decode(refSeq)
 
-						if (refSeq.observablesAndStates.length != hypSeq.observablesAndStates.length) {
+						if (refSeq.length != hypSeq.length) {
 							throw new IllegalStateException("Observable length mismatch!")
 						}
 
-						val refIterator = refSeq.annotatedIterator(breadth, order)
-						val hypIterator = hypSeq.annotatedIterator(breadth, order)
-						while (refIterator.hasNext) {
-							val (oRef, sRef) = refIterator.next()
-							val (oHyp, sHyp) = hypIterator.next()
+						val iterator = refSeq.zippedHistoryIterator(hypSeq)
+						while (iterator.hasNext) {
+							val (refHistory, hypHistory) = iterator.next()
+
+							val (oRef, sRef) = (refHistory.current.get(Form), refHistory.current.get(CoarsePosTag))
+							val (oHyp, sHyp) = (hypHistory.current.get(Form), hypHistory.current.get(CoarsePosTag))
 
 							if (oRef != oHyp) {
 								throw new IllegalStateException("Observable mismatch!")
 							}
 
-							if (sRef != sHyp || refIterator.sourceState != hypIterator.sourceState) {
-								val h_ref = refIterator.history
-								val h_hyp = hypIterator.history
+							if (sRef != sHyp || refSource.state != hypSource.state) {
 
 								val refTagFilter = BitSet(sRef)
 								val hypTagFilter = BitSet(sHyp)
+								val refPreviousTags = refSource.tags
+								val hypPreviousTags = hypSource.tags
 
-								wordOnlyFeatures.foreachMatching(h_ref, refTagFilter) {
+								wordOnlyFeatures.foreachMatching(refHistory, refPreviousTags, refTagFilter) {
 									case (weights, _) => weights(sRef) += 1.0
 								}
-								wordOnlyFeatures.foreachMatching(h_hyp, hypTagFilter) {
+								wordOnlyFeatures.foreachMatching(hypHistory, hypPreviousTags, hypTagFilter) {
 									case (weights, _) => weights(sHyp) -= 1.0
 								}
 
-								otherFeatures.foreachMatching(h_ref, refTagFilter) {
+								otherFeatures.foreachMatching(refHistory, refPreviousTags, refTagFilter) {
 									case (weights, _) => weights(sRef) += 1.0
 								}
-								otherFeatures.foreachMatching(h_hyp, hypTagFilter) {
+								otherFeatures.foreachMatching(hypHistory, hypPreviousTags, hypTagFilter) {
 									case (weights, _) => weights(sHyp) -= 1.0
 								}
 							}
+
+							refSource.append(sRef)
+							hypSource.append(sHyp)
 						}
 
 						if (useAveraging == COMPLETE_AVERAGING) {
@@ -130,6 +142,8 @@ object DiscriminantTrainer extends Trainer.Factory {
 							}
 						}
 
+						refSource.reset()
+						hypSource.reset()
 						progress.increment()
 					}
 

@@ -1,7 +1,9 @@
 package io.github.ptitjes.scott.trainers
 
+import io.github.ptitjes.scott.corpora.Annotation.{CoarsePosTag, Form}
 import io.github.ptitjes.scott.corpora._
 import io.github.ptitjes.scott.Features._
+import io.github.ptitjes.scott.utils.States.SourceTracker
 
 import scala.annotation.tailrec
 import scala.collection._
@@ -50,7 +52,7 @@ trait FeatureSetTemplate {
 	}
 
 	def buildFeatures[T](breadth: Int, order: Int,
-	                     corpus: Corpus[Sequence with Annotation],
+	                     corpus: Corpus,
 	                     f: BitSet => T): (FeatureTree[T], FeatureTree[T], Map[Int, BitSet]) = {
 
 		val templates = features(order)
@@ -60,11 +62,16 @@ trait FeatureSetTemplate {
 		}.toMap
 		val dictionary = mutable.Map[Int, BitSet]()
 
-		corpus.foreach { s: Sequence with Annotation =>
-			val iterator = s.annotatedIterator(breadth, order)
+		val source = new SourceTracker(breadth, order)
+
+		corpus.foreach { sequence =>
+
+			val iterator = sequence.historyIterator
 			while (iterator.hasNext) {
-				val (word, tag) = iterator.next()
-				val history = iterator.history
+				val history = iterator.next()
+
+				val (word, tag) = (history.current.get(Form), history.current.get(CoarsePosTag))
+				val previousTags = source.tags
 
 				val code = word.code
 				if (!dictionary.contains(code))
@@ -73,7 +80,7 @@ trait FeatureSetTemplate {
 					dictionary(code) += tag
 
 				templates.foreach { template =>
-					val combination = template.items.map(item => item(history))
+					val combination = template.items.map(_(history, previousTags))
 					if (!combination.contains(null) &&
 						!combination.contains(false) &&
 						!combination.contains(0.toChar)) {
@@ -84,7 +91,11 @@ trait FeatureSetTemplate {
 							data(combination) += tag
 					}
 				}
+
+				source.append(tag)
 			}
+
+			source.reset()
 		}
 
 		val allTags = BitSet() ++ (0 until breadth)

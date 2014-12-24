@@ -8,9 +8,7 @@ import io.github.ptitjes.scott.nl.conll.CoNLLXParser
  */
 object FTB {
 
-	object BasicCoNLLProfile extends CoNLLXParser.Profile(1, 2, 3, CoarsePosTags)
-
-	object ExtendedCoNLLProfile extends CoNLLXParser.Profile(1, 2, 4, PosTags)
+	object CoNLLProfile extends CoNLLXParser.Profile(CoarsePosTags, PosTags)
 
 	object CoarsePosTags extends TagSet(
 		IndexedSeq(

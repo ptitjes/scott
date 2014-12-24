@@ -2,6 +2,7 @@ package io.github.ptitjes.scott.trainers
 
 import io.github.ptitjes.scott.IntParameter
 import io.github.ptitjes.scott.Utils._
+import io.github.ptitjes.scott.corpora.Annotation.{Form, CoarsePosTag}
 import io.github.ptitjes.scott.corpora._
 
 import scala.collection.{mutable, _}
@@ -10,7 +11,7 @@ object EmittingTraining {
 
 	object UNKNOWN_THRESHOLD extends IntParameter("Unknown Word Threshold", 18)
 
-	def train(breadth: Int, corpus: Corpus[Sequence with Annotation], threshold: Int)
+	def train(breadth: Int, corpus: Corpus, threshold: Int)
 	: (mutable.Map[Int, Array[Double]], Array[Double], Map[Int, BitSet]) = {
 
 		val dictionary: mutable.Map[Word, Set[Int]] = mutable.Map()
@@ -19,8 +20,11 @@ object EmittingTraining {
 		val perWordCounts: mutable.Map[Int, Int] = mutable.Map()
 		val unknownWordCategoryCounts: Array[Int] = Array.ofDim(breadth)
 
-		corpus.sequences.foreach { s: Sequence with Annotation =>
-			s.observablesAndStates.foreach { case (word, tag) =>
+		corpus.sequences.foreach { s: Sentence =>
+			s.tokens.foreach { token =>
+				val word = token.get(Form)
+				val tag = token.get(CoarsePosTag)
+
 				if (!dictionary.contains(word))
 					dictionary(word) = Set(tag)
 				else
