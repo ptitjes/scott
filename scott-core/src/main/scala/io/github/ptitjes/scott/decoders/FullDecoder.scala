@@ -10,171 +10,153 @@ import io.github.ptitjes.scott.utils.{States, DepthCounter}
 import scala.annotation.tailrec
 import scala.collection._
 
-object FullDecoder extends Decoder.Factory {
+class FullDecoder[X, Y](hmm: HiddenMarkovModel[X, Y]) extends Decoder[X, Y] {
 
-	def name: String = "Full"
+	val breadth = hmm.breadth
+	val order = hmm.depth
+	val maxStateCount = pow(breadth, order)
 
-	override def parameters: Set[Parameter[_]] = Set(MULTI_THREADED)
+	val deltas = new SwappableArray[Double](maxStateCount)
+	val psis = new PsiArray(maxStateCount, 300)
 
-	object MULTI_THREADED extends BooleanParameter("MultiThreaded", c => c(Trainer.ORDER) >= 3)
+	val scores = Array.ofDim[Double](breadth, maxStateCount)
+	val wordOnlyScores = Array.ofDim[Double](breadth)
 
-	def instantiate(hmm: HiddenMarkovModel, configuration: Configuration): Decoder = new Instance(hmm, configuration)
+	val allTags = BitSet() ++ (0 until breadth)
 
-	private class Instance(hmm: HiddenMarkovModel, configuration: Configuration) extends Decoder {
+	val depth = new DepthCounter(order)
 
-		val multiThreaded = configuration(MULTI_THREADED)
+	def decode(sequence: Sentence[X]): Sentence[Y] = {
+		deltas(0) = 0
+		psis(0) = -1
+		deltas.swap()
+		psis.forward()
 
-		val breadth = hmm.breadth
-		val order = hmm.depth
-		val maxStateCount = pow(breadth, order)
+		var sourceTagsCount = 1
+		var sourceTagsFanning = 0
 
-		val deltas = new SwappableArray[Double](maxStateCount)
-		val psis = new PsiArray(maxStateCount, 300)
+		var sharedTagsCount = 1
+		val sharedTagsFanning = breadth
+		var sharedTags = 0 until sharedTagsCount
 
-		val scores = Array.ofDim[Double](breadth, maxStateCount)
-		val wordOnlyScores = Array.ofDim[Double](breadth)
+		var allStatesCount = sourceTagsCount * sharedTagsCount
+		var allStates = 0 until allStatesCount
 
-		val allTags = BitSet() ++ (0 until breadth)
+		val targetTagsCount = breadth
+		val targetTags = 0 until targetTagsCount
 
-		val depth = new DepthCounter(order)
+		val iterator = sequence.historyIterator
+		while (iterator.hasNext) {
+			val history = iterator.next()
+			val observable = hmm.observableExtract(history.current)
 
-		def decode(sequence: Sentence): Sentence = {
-			deltas(0) = 0
-			psis(0) = -1
+			val d = depth.current
+
+			hmm match {
+				case HMMGenerative(_, _, t, e, ue, _, _, _) =>
+					val Td = t(d)
+					val E = if (!hmm.isUnknown(observable)) e(observable) else ue
+
+					targetTags.foreach { targetTag =>
+						val targetScores = scores(targetTag)
+						val Tj = Td(targetTag)
+						val Ej = E(targetTag)
+
+						allStates.foreach { sourceState =>
+							targetScores(sourceState) = Tj(sourceState) + Ej
+						}
+					}
+
+				case HMMDiscriminant(_, _, wordOnlyFeatures, otherFeatures, _, _, _) =>
+					targetTags.foreach { targetTag =>
+						wordOnlyScores(targetTag) = 0
+					}
+					wordOnlyFeatures.foreachMatching(history, IndexedSeq.empty, allTags)(weights =>
+						weights.foreach { case (tag, weight) => wordOnlyScores(tag) += weight}
+					)
+
+					allStates.foreach { sourceState =>
+						targetTags.foreach { targetTag =>
+							scores(targetTag)(sourceState) = wordOnlyScores(targetTag)
+						}
+
+						val previousTags = States.stateToTagSeq(breadth, order, d, sourceState)
+						otherFeatures.foreachMatching(history, previousTags, allTags)(weights =>
+							weights.foreach { case (tag, weight) => scores(tag)(sourceState) += weight}
+						)
+					}
+			}
+
+			sharedTags.foreach { sharedTag =>
+				targetTags.foreach { targetTag =>
+					val targetScores = scores(targetTag)
+
+					val (max, argMax) = maxArgMax(sourceTagsCount,
+						sourceTag => sourceTag * sourceTagsFanning + sharedTag,
+						sourceState => deltas(sourceState) + targetScores(sourceState)
+					)
+
+					val targetState = sharedTag * sharedTagsFanning + targetTag
+					deltas(targetState) = max
+					psis(targetState) = argMax
+				}
+			}
+
+			if (d < order) {
+				if (d + 1 < order) {
+					sharedTagsCount = pow(breadth, d + 1)
+				} else {
+					sourceTagsCount = breadth
+					sourceTagsFanning = pow(breadth, d)
+
+					sharedTagsCount = pow(breadth, d)
+				}
+				sharedTags = 0 until sharedTagsCount
+
+				allStatesCount = sourceTagsCount * sharedTagsCount
+				allStates = 0 until allStatesCount
+			}
+
 			deltas.swap()
 			psis.forward()
 
-			var sourceTagsCount = 1
-			var sourceTagsFanning = 0
-
-			var sharedTagsCount = 1
-			val sharedTagsFanning = breadth
-			var sharedTags = makeRange(sharedTagsCount)
-
-			var allStatesCount = sourceTagsCount * sharedTagsCount
-			var allStates = makeRange(allStatesCount)
-
-			val targetTagsCount = breadth
-			val targetTags = makeRange(targetTagsCount)
-
-			val iterator = sequence.historyIterator
-			while (iterator.hasNext) {
-				val history = iterator.next()
-				val word = history.current.get(Form)
-
-				val d = depth.current
-
-				hmm match {
-					case HMMGenerative(_, _, t, e, ue, _) =>
-						val Td = t(d)
-						val E = if (!hmm.isUnknown(word)) e(word.code) else ue
-
-						targetTags.foreach { targetTag =>
-							val targetScores = scores(targetTag)
-							val Tj = Td(targetTag)
-							val Ej = E(targetTag)
-
-							allStates.foreach { sourceState =>
-								targetScores(sourceState) = Tj(sourceState) + Ej
-							}
-						}
-
-					case HMMDiscriminant(_, _, wordOnlyFeatures, otherFeatures, _) =>
-						targetTags.foreach { targetTag =>
-							wordOnlyScores(targetTag) = 0
-						}
-						wordOnlyFeatures.foreachMatching(history, IndexedSeq.empty, allTags)(weights =>
-							weights.foreach { case (tag, weight) => wordOnlyScores(tag) += weight}
-						)
-
-						allStates.foreach { sourceState =>
-							targetTags.foreach { targetTag =>
-								scores(targetTag)(sourceState) = wordOnlyScores(targetTag)
-							}
-
-							val previousTags = States.stateToTagSeq(breadth, order, d, sourceState)
-							otherFeatures.foreachMatching(history, previousTags, allTags)(weights =>
-								weights.foreach { case (tag, weight) => scores(tag)(sourceState) += weight}
-							)
-						}
-				}
-
-				sharedTags.foreach { sharedTag =>
-					targetTags.foreach { targetTag =>
-						val targetScores = scores(targetTag)
-
-						val (max, argMax) = maxArgMax(sourceTagsCount,
-							sourceTag => sourceTag * sourceTagsFanning + sharedTag,
-							sourceState => deltas(sourceState) + targetScores(sourceState)
-						)
-
-						val targetState = sharedTag * sharedTagsFanning + targetTag
-						deltas(targetState) = max
-						psis(targetState) = argMax
-					}
-				}
-
-				if (d < order) {
-					if (d + 1 < order) {
-						sharedTagsCount = pow(breadth, d + 1)
-					} else {
-						sourceTagsCount = breadth
-						sourceTagsFanning = pow(breadth, d)
-
-						sharedTagsCount = pow(breadth, d)
-					}
-					sharedTags = makeRange(sharedTagsCount)
-
-					allStatesCount = sourceTagsCount * sharedTagsCount
-					allStates = makeRange(allStatesCount)
-				}
-
-				deltas.swap()
-				psis.forward()
-
-				depth.next()
-			}
-
-			@tailrec def reachBack(state: Int, tail: List[Int]): List[Int] = {
-				val previous = psis(state)
-				psis.backward()
-
-				if (psis.isRewound) tail
-				else reachBack(previous, (state % breadth) :: tail)
-			}
-
-			val (_, argMax) = maxArgMax(sharedTagsCount * targetTagsCount, t => t, state => deltas(state))
-			val states = reachBack(argMax, Nil)
-
-			psis.rewind()
-
-			depth.reset()
-
-			Sentence(sequence.tokens.zip(states).map { case ((token, tag)) => token.overlay(CoarsePosTag, tag)})
+			depth.next()
 		}
 
-		def makeRange(count: Int): GenSeq[Int] = {
-			if (multiThreaded) (0 until count).par else 0 until count
+		@tailrec def reachBack(state: Int, tail: List[Int]): List[Int] = {
+			val previous = psis(state)
+			psis.backward()
+
+			if (psis.isRewound) tail
+			else reachBack(previous, (state % breadth) :: tail)
 		}
 
-		@inline def maxArgMax(count: Int, arg: Int => Int, f: Int => Double): (Double, Int) = {
-			var max = Double.NegativeInfinity
-			var argMax: Int = -1
+		val (_, argMax) = maxArgMax(sharedTagsCount * targetTagsCount, t => t, state => deltas(state))
+		val states = reachBack(argMax, Nil)
 
-			var i = 0
-			while (i < count) {
-				val a = arg(i)
-				val delta = f(a)
+		psis.rewind()
 
-				if (delta > max) {
-					max = delta
-					argMax = a
-				}
-				i += 1
-			}
+		depth.reset()
 
-			(max, argMax)
-		}
+		Sentence(sequence.tokens.zip(states).map { case ((token, tag)) => hmm.builder(token, tag)})
 	}
 
+	@inline def maxArgMax(count: Int, arg: Int => Int, f: Int => Double): (Double, Int) = {
+		var max = Double.NegativeInfinity
+		var argMax: Int = -1
+
+		var i = 0
+		while (i < count) {
+			val a = arg(i)
+			val delta = f(a)
+
+			if (delta > max) {
+				max = delta
+				argMax = a
+			}
+			i += 1
+		}
+
+		(max, argMax)
+	}
 }

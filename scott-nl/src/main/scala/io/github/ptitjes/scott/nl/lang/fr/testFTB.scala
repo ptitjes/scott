@@ -2,13 +2,13 @@ package io.github.ptitjes.scott.nl.lang.fr
 
 import java.io.File
 
-import io.github.ptitjes.scott.Utils._
 import io.github.ptitjes.scott._
 import io.github.ptitjes.scott.analysis.Checking
-import io.github.ptitjes.scott.corpora.Lexica
-import io.github.ptitjes.scott.decoders.{BeamDecoder, FullDecoder}
-import io.github.ptitjes.scott.nl.conll.CoNLLXParser
+import io.github.ptitjes.scott.corpora.{NLPosTag, NLToken, Lexica}
+import io.github.ptitjes.scott.decoders.BeamDecoder
+import io.github.ptitjes.scott.nl.conll.{CoNLLToken, CoNLLXParser}
 import io.github.ptitjes.scott.trainers.DiscriminantTrainer
+import io.github.ptitjes.scott.trainers.features.BaseFeatures
 
 import scala.io.Source
 
@@ -23,40 +23,30 @@ object testFTB extends App {
 
 	val parser = new CoNLLXParser
 	val profile = FTB.CoNLLProfile
+	val tagSet = profile.tagSet
 	val trainCorpus = parser.parse(profile, Source.fromFile(trainCorpusPath), Lexica.WORDS)
 	val devCorpus = parser.parse(profile, Source.fromFile(devCorpusPath), Lexica.WORDS)
 	val testCorpus = parser.parse(profile, Source.fromFile(testCorpusPath), Lexica.WORDS)
 
-	val conf = Configuration()
-		.set(Configuration.TRAINER, DiscriminantTrainer)
-		.set(Trainer.ORDER, 2)
-		.set(DiscriminantTrainer.DECODER, FullDecoder)
-		.set(DiscriminantTrainer.ITERATION_COUNT, 10)
-		.set(DiscriminantTrainer.AVERAGING, DiscriminantTrainer.COMPLETE_AVERAGING)
-		.set(Configuration.DECODER, BeamDecoder)
+	val trainer = new DiscriminantTrainer[NLToken, NLToken with NLPosTag](
+		order = 2,
+		iterationCount = 10,
+		useAveraging = DiscriminantTrainer.COMPLETE_AVERAGING,
+		features = BaseFeatures,
+		_.word.code,
+		_.tag,
+		(token, tag) => CoNLLToken(token.word, FTB.tagToCoarseTag(tag), tag)
+	)
 
-	val trainingConf = conf.completeForTraining
-	val decodingConf = conf.completeForDecoding
+	trainer.train(trainCorpus, new IterationCallback[NLToken, NLToken with NLPosTag] {
+		override def iterationDone(iteration: Int, hmm: HiddenMarkovModel[NLToken, NLToken with NLPosTag], elapsedTime: Long): Unit = {
+			val decoder = new BeamDecoder(hmm)
+			val hypCorpus = decoder.decode(devCorpus)
 
-	println("Training with " + trainingConf)
+			val results = Checking.check(hmm, devCorpus, hypCorpus, tagSet,
+				new File("temp/Decode-on-Iteration-" + iteration + ".check"))
 
-	val trainer = trainingConf(Configuration.TRAINER).instantiate(trainingConf).asInstanceOf[IterativeTrainer]
-	val (hmm, trainingElapsedTime) = timed {
-		trainer.train(trainCorpus, new IterationCallback {
-			override def iterationDone(configuration: Configuration, hmm: HiddenMarkovModel, elapsedTime: Long): Unit = {
-				println("Decoding with " + decodingConf + " on " + configuration)
-				decode(hmm, decodingConf, configuration)
-			}
-		})
-	}
-
-	def decode(hmm: HiddenMarkovModel, decodingConf: Configuration, trainingConf: Configuration) {
-		val decoder = decodingConf(Configuration.DECODER).instantiate(hmm, decodingConf)
-		val hypCorpus = decoder.decode(devCorpus)
-
-		val results = Checking.check(decodingConf, hmm, devCorpus, hypCorpus, profile.tagSet,
-			new File("temp/" + decodingConf.toFilename + "-on-" + trainingConf.toFilename + ".check"))
-
-		results.display()
-	}
+			results.display()
+		}
+	})
 }

@@ -1,6 +1,6 @@
 package io.github.ptitjes.scott.trainers
 
-import io.github.ptitjes.scott.IntParameter
+/*
 import io.github.ptitjes.scott.Utils._
 import io.github.ptitjes.scott.corpora.Annotation.{Form, CoarsePosTag}
 import io.github.ptitjes.scott.corpora._
@@ -77,3 +77,4 @@ object EmittingTraining {
 		(E, UE, dictionary.map { case (word, tags) => (word.code, BitSet() ++ tags)})
 	}
 }
+*/

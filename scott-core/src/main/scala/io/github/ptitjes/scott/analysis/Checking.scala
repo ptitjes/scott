@@ -9,27 +9,22 @@ import io.github.ptitjes.scott._
 
 object Checking {
 
-	def check(conf: Configuration,
-	          hmm: HiddenMarkovModel,
-	          refCorpus: Corpus,
-	          hypCorpus: Corpus,
+	def check(hmm: HiddenMarkovModel[_, _],
+	          refCorpus: Corpus[NLToken with NLPosTag],
+	          hypCorpus: Corpus[NLToken with NLPosTag],
 	          tagSet: TagSet,
 	          checkFile: File): Results = {
 
 		using(new FileWriter(checkFile)) {
 			fileOutput => using(new PrintWriter(fileOutput)) {
-				out =>
-					out.println(conf)
-					out.println()
-
-					check(hmm, refCorpus, hypCorpus, tagSet, Some(out))
+				out => check(hmm, refCorpus, hypCorpus, tagSet, Some(out))
 			}
 		}
 	}
 
-	def check(hmm: HiddenMarkovModel,
-	          refCorpus: Corpus,
-	          hypCorpus: Corpus,
+	def check(hmm: HiddenMarkovModel[_, _],
+	          refCorpus: Corpus[NLToken with NLPosTag],
+	          hypCorpus: Corpus[NLToken with NLPosTag],
 	          tagSet: TagSet,
 	          writer: Option[PrintWriter]): Results = {
 
@@ -57,8 +52,8 @@ object Checking {
 				while (iterator.hasNext) {
 					val (refHistory, hypHistory) = iterator.next()
 
-					val (oRef, sRef) = (refHistory.current.get(Form), refHistory.current.get(CoarsePosTag))
-					val (oHyp, sHyp) = (hypHistory.current.get(Form), hypHistory.current.get(CoarsePosTag))
+					val (oRef, sRef) = (refHistory.current.word, refHistory.current.tag)
+					val (oHyp, sHyp) = (hypHistory.current.word, hypHistory.current.tag)
 
 					if (oRef != oHyp) {
 						throw new IllegalStateException("Observable mismatch!")
@@ -76,7 +71,7 @@ object Checking {
 						perWordConfusionMatrix(oRef.code)(sRef)(sHyp) += 1
 					}
 
-					if (hmm.isUnknown(oRef)) {
+					if (hmm.isUnknown(oRef.code)) {
 						globalCounts.unknownTotal += 1
 						perCategoryCounts(sRef).unknownTotal += 1
 						perWordErrorCounts(oRef.code).unknownTotal += 1
@@ -90,7 +85,7 @@ object Checking {
 					writer.foreach { out =>
 						out.print(if (error) ">" else " ")
 						out.print(f"${oRef.code}%6d")
-						out.print(if (hmm.isUnknown(oRef)) " U" else "  ")
+						out.print(if (hmm.isUnknown(oRef.code)) " U" else "  ")
 						out.print(f"\t$sRef%2d ${tagSet(sRef)}%-5s")
 						out.print(f"\t$sHyp%2d ${tagSet(sHyp)}%-5s\t")
 						out.println(oRef.string)

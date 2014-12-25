@@ -6,15 +6,15 @@ import scala.collection._
 
 object Features {
 
-	sealed trait Extractor[T] extends ((History, IndexedSeq[Int]) => T)
+	sealed trait Extractor[X, T] extends ((History[X], IndexedSeq[Int]) => T)
 
-	sealed trait Predicate extends Extractor[Boolean]
+	sealed trait Predicate[X] extends Extractor[X, Boolean]
 
-	sealed trait WordPredicate extends Predicate {
+	sealed trait WordPredicate[X] extends Predicate[X] {
 
-		def from: Extractor[String]
+		def from: Extractor[X, String]
 
-		def apply(h: History, previousTags: IndexedSeq[Int]): Boolean = {
+		def apply(h: History[X], previousTags: IndexedSeq[Int]): Boolean = {
 			val word = from(h, previousTags)
 
 			if (word == null) false
@@ -27,55 +27,65 @@ object Features {
 		}
 	}
 
-	case class PContainsUppercase(from: Extractor[String]) extends WordPredicate
+	case class PContainsUppercase[X](from: Extractor[X, String]) extends WordPredicate[X]
 
-	case class PUppercaseOnly(from: Extractor[String]) extends WordPredicate
+	case class PUppercaseOnly[X](from: Extractor[X, String]) extends WordPredicate[X]
 
-	case class PContainsNumber(from: Extractor[String]) extends WordPredicate
+	case class PContainsNumber[X](from: Extractor[X, String]) extends WordPredicate[X]
 
-	case class PContains(from: Extractor[String], value: Char) extends WordPredicate
+	case class PContains[X](from: Extractor[X, String], value: Char) extends WordPredicate[X]
 
-	case class PTagEqual(from: Extractor[Int], value: Int) extends Predicate {
+	case class PTagEqual[X](from: Extractor[X, Int], value: Int) extends Predicate[X] {
 
-		def apply(h: History, previousTags: IndexedSeq[Int]): Boolean = from(h, previousTags) == value
+		def apply(h: History[X], previousTags: IndexedSeq[Int]): Boolean = from(h, previousTags) == value
 	}
 
-	case class PNot(from: Extractor[Boolean]) extends Predicate {
+	case class PNot[X](from: Extractor[X, Boolean]) extends Predicate[X] {
 
-		def apply(h: History, previousTags: IndexedSeq[Int]): Boolean = !from(h, previousTags)
+		def apply(h: History[X], previousTags: IndexedSeq[Int]): Boolean = !from(h, previousTags)
 	}
 
-	case class EPrefixChar(index: Int) extends Extractor[Char] {
+	case class EPrefixChar[X](from: Extractor[X, String], index: Int) extends Extractor[X, Char] {
 
-		def apply(h: History, previousTags: IndexedSeq[Int]): Char = {
-			val word = h.word.string
+		def apply(h: History[X], previousTags: IndexedSeq[Int]): Char = {
+			val word = from(h, previousTags)
 			if (word.length > index) word.charAt(index) else 0.toChar
 		}
 	}
 
-	case class ESuffixChar(index: Int) extends Extractor[Char] {
+	case class ESuffixChar[X](from: Extractor[X, String], index: Int) extends Extractor[X, Char] {
 
-		def apply(h: History, previousTags: IndexedSeq[Int]): Char = {
-			val word = h.word.string
+		def apply(h: History[X], previousTags: IndexedSeq[Int]): Char = {
+			val word = from(h, previousTags)
 			if (word.length > index) word.charAt(word.length - index - 1) else 0.toChar
 		}
 	}
 
-	case class EWordString(index: Int) extends Extractor[String] {
+	case class EWordString[X](from: Extractor[X, Option[Word]]) extends Extractor[X, String] {
 
-		def apply(h: History, previousTags: IndexedSeq[Int]): String =
-			h.wordAt(index).map(_.string).getOrElse(null)
+		def apply(h: History[X], previousTags: IndexedSeq[Int]): String =
+			from(h, previousTags).map(_.string).orNull
 	}
 
-	case class EWordCode(index: Int) extends Extractor[Int] {
+	case class EWordCode[X](from: Extractor[X, Option[Word]]) extends Extractor[X, Int] {
 
-		def apply(h: History, previousTags: IndexedSeq[Int]): Int =
-			h.wordAt(index).map(_.code).getOrElse(-1)
+		def apply(h: History[X], previousTags: IndexedSeq[Int]): Int =
+			from(h, previousTags).map(_.code).getOrElse(-1)
 	}
 
-	case class EPreviousTag(index: Int) extends Extractor[Int] {
+	case class ENLTokenWord[X <: NLToken](from: Extractor[X, Option[X]]) extends Extractor[X, Option[Word]] {
 
-		def apply(h: History, previousTags: IndexedSeq[Int]): Int = previousTags(-index - 1)
+		def apply(h: History[X], previousTags: IndexedSeq[Int]): Option[Word] = from(h, previousTags).map(_.word)
+	}
+
+	case class EToken[X](index: Int) extends Extractor[X, Option[X]] {
+
+		def apply(h: History[X], previousTags: IndexedSeq[Int]): Option[X] = h.at(index)
+	}
+
+	case class EPreviousTag[X](index: Int) extends Extractor[X, Int] {
+
+		def apply(h: History[X], previousTags: IndexedSeq[Int]): Int = previousTags(-index - 1)
 	}
 
 	case class Weights(tags: BitSet, values: Array[Double]) {
@@ -94,7 +104,7 @@ object Features {
 			new Weights(tags, values.map(f))
 	}
 
-	sealed trait FeatureTree[T] {
+	sealed trait FeatureTree[X, T] {
 
 		def size: Int = this match {
 			case FTConjunction(children) => children.map(_.size).reduce(_ + _)
@@ -104,7 +114,7 @@ object Features {
 			case FTLeaf(weights, filter) => filter.size
 		}
 
-		def foreachMatching(h: History, previousTags: IndexedSeq[Int], tags: BitSet)(f: T => Unit): Unit = this match {
+		def foreachMatching(h: History[X], previousTags: IndexedSeq[Int], tags: BitSet)(f: T => Unit): Unit = this match {
 			case FTConjunction(children) =>
 				children.foreach(c => c.foreachMatching(h, previousTags, tags)(f))
 			case FTDispatchInt(extract, children, filter) =>
@@ -133,7 +143,7 @@ object Features {
 			case FTLeaf(weights, filter) => f(weights)
 		}
 
-		def map[U](f: T => U): FeatureTree[U] = this match {
+		def map[U](f: T => U): FeatureTree[X, U] = this match {
 			case FTConjunction(children) => FTConjunction(children.map(c => c.map(f)))
 			case FTDispatchInt(extract, children, tags) =>
 				FTDispatchInt(extract, children.map { case (k, c) => (k, c.map(f))}, tags)
@@ -144,18 +154,18 @@ object Features {
 		}
 	}
 
-	case class FTConjunction[T](children: Seq[FeatureTree[T]]) extends FeatureTree[T]
+	case class FTConjunction[X, T](children: Seq[FeatureTree[X, T]]) extends FeatureTree[X, T]
 
-	case class FTDispatchInt[T](extract: Extractor[Int],
-	                            children: Map[Int, FeatureTree[T]],
-	                            tags: BitSet) extends FeatureTree[T]
+	case class FTDispatchInt[X, T](extract: Extractor[X, Int],
+	                               children: Map[Int, FeatureTree[X, T]],
+	                               tags: BitSet) extends FeatureTree[X, T]
 
-	case class FTDispatchChar[T](extract: Extractor[Char],
-	                             children: Map[Char, FeatureTree[T]],
-	                             tags: BitSet) extends FeatureTree[T]
+	case class FTDispatchChar[X, T](extract: Extractor[X, Char],
+	                                children: Map[Char, FeatureTree[X, T]],
+	                                tags: BitSet) extends FeatureTree[X, T]
 
-	case class FTGuard[T](predicate: Extractor[Boolean], child: FeatureTree[T]) extends FeatureTree[T]
+	case class FTGuard[X, T](predicate: Extractor[X, Boolean], child: FeatureTree[X, T]) extends FeatureTree[X, T]
 
-	case class FTLeaf[T](weights: T, tags: BitSet) extends FeatureTree[T]
+	case class FTLeaf[X, T](weights: T, tags: BitSet) extends FeatureTree[X, T]
 
 }

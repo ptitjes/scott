@@ -9,52 +9,32 @@ import io.github.ptitjes.scott.analysis.Checking
 import io.github.ptitjes.scott.corpora._
 import io.github.ptitjes.scott.decoders.{BeamDecoder, FullDecoder}
 import io.github.ptitjes.scott.trainers.DiscriminantTrainer
+import io.github.ptitjes.scott.trainers.features.BaseFeatures
 
 object trainCheckSaveLoadCheck extends App {
 
 	val trainCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.train.encode"), Lexica.WORDS, Lexica.CATEGORIES)
 	val devCorpus = Corpora.annotatedFrom(getClass.getResource("/data/ftb.dev.encode"), Lexica.WORDS, Lexica.CATEGORIES)
 
-	val conf = Configuration()
-		.set(Configuration.TRAINER, DiscriminantTrainer)
-		.set(Trainer.ORDER, 2)
-		.set(DiscriminantTrainer.DECODER, FullDecoder)
-		.set(DiscriminantTrainer.ITERATION_COUNT, 10)
-		.set(DiscriminantTrainer.AVERAGING, DiscriminantTrainer.COMPLETE_AVERAGING)
-		.set(Configuration.DECODER, BeamDecoder)
+	val trainer = new DiscriminantTrainer[NLToken, NLToken with NLPosTag](
+		order = 2,
+		iterationCount = 10,
+		useAveraging = DiscriminantTrainer.COMPLETE_AVERAGING,
+		features = BaseFeatures,
+		_.word.code,
+		_.tag,
+		(token, tag) => AnnotatedNLToken(token.word, tag)
+	)
 
-	val trainingConf = conf.completeForTraining
-	val decodingConf = conf.completeForDecoding
+	trainer.train(trainCorpus, new IterationCallback[NLToken, NLToken with NLPosTag] {
+		override def iterationDone(iteration: Int, hmm: HiddenMarkovModel[NLToken, NLToken with NLPosTag], elapsedTime: Long): Unit = {
+			val decoder = new BeamDecoder[NLToken, NLToken with NLPosTag](hmm)
+			val hypCorpus = decoder.decode(devCorpus)
 
-	println("Training with " + trainingConf)
+			val results = Checking.check(hmm, devCorpus, hypCorpus, Lexica.CATEGORIES,
+				new File("temp/Decode-on-Iteration-" + iteration + ".check"))
 
-	val trainer = trainingConf(Configuration.TRAINER).instantiate(trainingConf)
-	val (hmm, trainingElapsedTime) = timed {
-		trainer.train(trainCorpus)
-	}
-
-	private val hmmFilename = "temp/" + trainingConf.toFilename + ".json"
-	timed(s"Saving '$hmmFilename'") {
-		toFile(hmm, new File(hmmFilename))
-	}
-
-	println("Decoding with " + decodingConf + " on " + trainingConf)
-	decode(hmm, decodingConf, trainingConf)
-
-	val (hmm2, loadTime) = timed(s"Loading '$hmmFilename'") {
-		fromFile(new File(hmmFilename))
-	}
-
-	println("Decoding with " + decodingConf + " on " + trainingConf)
-	decode(hmm2, decodingConf, trainingConf)
-
-	def decode(hmm: HiddenMarkovModel, decodingConf: Configuration, trainingConf: Configuration) {
-		val decoder = decodingConf(Configuration.DECODER).instantiate(hmm, decodingConf)
-		val hypCorpus = decoder.decode(devCorpus)
-
-		val results = Checking.check(decodingConf, hmm, devCorpus, hypCorpus, Lexica.CATEGORIES,
-			new File("temp/" + decodingConf.toFilename + "-on-" + trainingConf.toFilename + ".check"))
-
-		results.display()
-	}
+			results.display()
+		}
+	})
 }

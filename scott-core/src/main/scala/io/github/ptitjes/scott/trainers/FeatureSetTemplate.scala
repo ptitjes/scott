@@ -1,6 +1,5 @@
 package io.github.ptitjes.scott.trainers
 
-import io.github.ptitjes.scott.corpora.Annotation.{CoarsePosTag, Form}
 import io.github.ptitjes.scott.corpora._
 import io.github.ptitjes.scott.Features._
 import io.github.ptitjes.scott.utils.States.SourceTracker
@@ -8,52 +7,37 @@ import io.github.ptitjes.scott.utils.States.SourceTracker
 import scala.annotation.tailrec
 import scala.collection._
 
-case class FeatureTemplate(items: List[Extractor[_]], isUnleashed: Boolean = false) {
-	def unleash = FeatureTemplate(items, isUnleashed = true)
-}
+case class FeatureTemplate[X](items: List[Extractor[X, _]])
 
 object FeatureTemplate {
 
-	def apply(items: Extractor[_]*): FeatureTemplate = FeatureTemplate(items.toList)
+	def apply[X](items: Extractor[X, _]*): FeatureTemplate[X] = FeatureTemplate(items.toList)
 
-	def apply(items: IndexedSeq[Extractor[_]]): FeatureTemplate = FeatureTemplate(items.toList)
+	def apply[X](items: IndexedSeq[Extractor[X, _]]): FeatureTemplate[X] = FeatureTemplate(items.toList)
 }
 
-trait FeatureSetTemplate {
+trait FeatureSetTemplate[X, Y <: X] {
 
 	def name: String
 
-	def features(order: Int): List[FeatureTemplate]
+	def features(order: Int): List[FeatureTemplate[X]]
 
-	def w(i: Int) = EWordCode(i)
+	def token(i: Int) = EToken[X](i)
 
-	def t(i: Int) = EPreviousTag(i)
+	def t(i: Int) = EPreviousTag[X](i)
 
-	def p(i: Int) = EPrefixChar(i)
+	def not(predicate: Predicate[X]) = PNot[X](predicate)
 
-	def s(i: Int) = ESuffixChar(i)
+	implicit class RichTagFeatureItem(e: EPreviousTag[X]) {
 
-	def not(predicate: Predicate) = PNot(predicate)
-
-	implicit class WordFeatureItem(wordItem: EWordCode) {
-
-		def contains(char: Char) = PContains(EWordString(wordItem.index), char)
-
-		def containsUppercase = PContainsUppercase(EWordString(wordItem.index))
-
-		def containsOnlyUppercase = PUppercaseOnly(EWordString(wordItem.index))
-
-		def containsNumber = PContainsNumber(EWordString(wordItem.index))
-	}
-
-	implicit class RichTagFeatureItem(tagItem: EPreviousTag) {
-
-		def ===(tag: Int) = PTagEqual(tagItem, tag)
+		def equalTo(tag: Int) = PTagEqual[X](e, tag)
 	}
 
 	def buildFeatures[T](breadth: Int, order: Int,
-	                     corpus: Corpus,
-	                     f: BitSet => T): (FeatureTree[T], FeatureTree[T], Map[Int, BitSet]) = {
+	                     corpus: Corpus[Y],
+	                     f: BitSet => T,
+	                     observableExtract: X => Int,
+	                     tagExtract: Y => Int): (FeatureTree[X, T], FeatureTree[X, T], Map[Int, BitSet]) = {
 
 		val templates = features(order)
 
@@ -70,14 +54,13 @@ trait FeatureSetTemplate {
 			while (iterator.hasNext) {
 				val history = iterator.next()
 
-				val (word, tag) = (history.current.get(Form), history.current.get(CoarsePosTag))
+				val (observable, tag) = (observableExtract(history.current), tagExtract(history.current))
 				val previousTags = source.tags
 
-				val code = word.code
-				if (!dictionary.contains(code))
-					dictionary(code) = BitSet(tag)
+				if (!dictionary.contains(observable))
+					dictionary(observable) = BitSet(tag)
 				else
-					dictionary(code) += tag
+					dictionary(observable) += tag
 
 				templates.foreach { template =>
 					val combination = template.items.map(_(history, previousTags))
@@ -100,11 +83,11 @@ trait FeatureSetTemplate {
 
 		val allTags = BitSet() ++ (0 until breadth)
 
-		def generateAll(filter: FeatureTemplate => Boolean): FeatureTree[T] =
+		def generateAll(filter: FeatureTemplate[X] => Boolean): FeatureTree[X, T] =
 			FTConjunction(
 				templates.filter(filter)
 					.map(template => generateFrom(template, allData(template), allTags, f))
-					.foldLeft(List[FeatureTree[T]]())(merge)
+					.foldLeft(List[FeatureTree[X, T]]())(merge)
 			)
 
 		val wordOnlyFeatures = generateAll(isWordOnly)
@@ -112,23 +95,20 @@ trait FeatureSetTemplate {
 		(wordOnlyFeatures, otherFeatures, dictionary)
 	}
 
-	private def isWordOnly(template: FeatureTemplate) =
+	private def isWordOnly(template: FeatureTemplate[X]) =
 		template.items.forall {
 			case EPreviousTag(_) => false
 			case _ => true
 		}
 
-	private def generateFrom[T](template: FeatureTemplate,
+	private def generateFrom[T](template: FeatureTemplate[X],
 	                            data: Map[List[_], BitSet],
 	                            allTags: BitSet,
-	                            f: (BitSet) => T): FeatureTree[T] = {
-		val unleashed = template.isUnleashed
+	                            f: (BitSet) => T): FeatureTree[X, T] = {
 
-		def aux(items: List[Extractor[_]], data: Map[List[_], BitSet]): (FeatureTree[T], BitSet) = {
+		def aux(items: List[Extractor[X, _]], data: Map[List[_], BitSet]): (FeatureTree[X, T], BitSet) = {
 			if (items.isEmpty) {
-				val filterTags =
-					if (unleashed) allTags
-					else data.foldLeft(BitSet()) { case (collected, (_, tags)) => collected ++ tags}
+				val filterTags = data.foldLeft(BitSet()) { case (collected, (_, tags)) => collected ++ tags}
 
 				(FTLeaf(f(filterTags), filterTags), filterTags)
 			} else {
@@ -137,28 +117,26 @@ trait FeatureSetTemplate {
 				)
 				val valueToTreeTags = perPrevious.map { case (tag, inner) => (tag, aux(items.tail, inner))}
 				val valueToTree = valueToTreeTags.map { case (value, (tree, tags)) => value -> tree}
-				val filterTags =
-					if (unleashed) allTags
-					else valueToTreeTags.foldLeft(BitSet()) { case (collected, (_, (_, tags))) => collected ++ tags}
+				val filterTags = valueToTreeTags.foldLeft(BitSet()) { case (collected, (_, (_, tags))) => collected ++ tags}
 
 				val extractor = items.head
 				extractor match {
 					case PContainsUppercase(_) | PUppercaseOnly(_) | PContainsNumber(_) | PContains(_, _) |
 					     PTagEqual(_, _) | PNot(_) =>
 						(FTGuard(
-							extractor.asInstanceOf[Extractor[Boolean]],
+							extractor.asInstanceOf[Extractor[X, Boolean]],
 							valueToTree(true)
 						), filterTags)
-					case EPrefixChar(_) | ESuffixChar(_) =>
+					case EPrefixChar(_, _) | ESuffixChar(_, _) =>
 						(FTDispatchChar(
-							extractor.asInstanceOf[Extractor[Char]],
-							valueToTree.asInstanceOf[Map[Char, FeatureTree[T]]],
+							extractor.asInstanceOf[Extractor[X, Char]],
+							valueToTree.asInstanceOf[Map[Char, FeatureTree[X, T]]],
 							filterTags
 						), filterTags)
 					case EPreviousTag(_) | EWordCode(_) =>
 						(FTDispatchInt(
-							extractor.asInstanceOf[Extractor[Int]],
-							valueToTree.asInstanceOf[Map[Int, FeatureTree[T]]],
+							extractor.asInstanceOf[Extractor[X, Int]],
+							valueToTree.asInstanceOf[Map[Int, FeatureTree[X, T]]],
 							filterTags
 						), filterTags)
 					case _ => throw new UnsupportedOperationException
@@ -170,10 +148,10 @@ trait FeatureSetTemplate {
 		resultTree
 	}
 
-	private def merge[T](trees: List[FeatureTree[T]],
-	                     toMerge: FeatureTree[T]): List[FeatureTree[T]] = {
+	private def merge[T](trees: List[FeatureTree[X, T]],
+	                     toMerge: FeatureTree[X, T]): List[FeatureTree[X, T]] = {
 
-		def tryToMergeTrees(left: FeatureTree[T], right: FeatureTree[T]): Option[FeatureTree[T]] =
+		def tryToMergeTrees(left: FeatureTree[X, T], right: FeatureTree[X, T]): Option[FeatureTree[X, T]] =
 			(left, right) match {
 				case (FTDispatchChar(lExtractor, lChildren, lFilter), FTDispatchChar(rExtractor, rChildren, rFilter))
 					if lExtractor == rExtractor =>
@@ -187,7 +165,7 @@ trait FeatureSetTemplate {
 				case _ => None
 			}
 
-		def mergeFeatureMaps[K](left: Map[K, FeatureTree[T]], right: Map[K, FeatureTree[T]]): Map[K, FeatureTree[T]] =
+		def mergeFeatureMaps[K](left: Map[K, FeatureTree[X, T]], right: Map[K, FeatureTree[X, T]]): Map[K, FeatureTree[X, T]] =
 			right.foldLeft(left) {
 				case (result, (key, tree)) =>
 					result + (key ->
@@ -195,7 +173,7 @@ trait FeatureSetTemplate {
 						else tree))
 			}
 
-		def mergeTrees(tree: FeatureTree[T], toMerge: FeatureTree[T]): FeatureTree[T] =
+		def mergeTrees(tree: FeatureTree[X, T], toMerge: FeatureTree[X, T]): FeatureTree[X, T] =
 			tree match {
 				case FTConjunction(lChildren) => FTConjunction(merge(lChildren.toList, toMerge))
 				case _ =>
@@ -204,8 +182,8 @@ trait FeatureSetTemplate {
 					else FTConjunction(merged)
 			}
 
-		@tailrec def aux(yetToTry: List[FeatureTree[T]],
-		                 tried: List[FeatureTree[T]]): List[FeatureTree[T]] =
+		@tailrec def aux(yetToTry: List[FeatureTree[X, T]],
+		                 tried: List[FeatureTree[X, T]]): List[FeatureTree[X, T]] =
 			yetToTry match {
 				case Nil => toMerge :: tried
 				case toTry :: tail => tryToMergeTrees(toTry, toMerge) match {

@@ -1,5 +1,6 @@
 package io.github.ptitjes.scott.trainers
 
+/*
 import io.github.ptitjes.scott.HiddenMarkovModel._
 import io.github.ptitjes.scott.Trainer._
 import io.github.ptitjes.scott._
@@ -66,3 +67,4 @@ object RelFreqTrainer extends Trainer.Factory {
 	}
 
 }
+*/

@@ -1,5 +1,6 @@
 package io.github.ptitjes.scott.trainers
 
+/*
 import java.io._
 
 import io.github.ptitjes.scott.HiddenMarkovModel._
@@ -10,6 +11,7 @@ import io.github.ptitjes.scott.corpora._
 
 import scala.collection.mutable
 import scala.io.Source
+
 
 object RelFreqDiscountingTrainer extends Trainer.Factory {
 
@@ -168,3 +170,4 @@ object RelFreqDiscountingTrainer extends Trainer.Factory {
 	}
 
 }
+*/

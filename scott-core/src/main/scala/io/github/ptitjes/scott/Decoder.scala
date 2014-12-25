@@ -1,14 +1,11 @@
 package io.github.ptitjes.scott
 
 import io.github.ptitjes.scott.Utils.ProgressBar
-import io.github.ptitjes.scott.corpora.Annotation._
 import io.github.ptitjes.scott.corpora._
 
-import scala.collection._
+trait Decoder[X, Y] {
 
-trait Decoder {
-
-	def decode(corpus: Corpus): Corpus = {
+	def decode(corpus: Corpus[X]): Corpus[Y] = {
 		val progress = new ProgressBar(f"Decoding", corpus.size)
 		progress.set(0)
 
@@ -19,19 +16,6 @@ trait Decoder {
 		}
 	}
 
-	def decode(sequence: Sentence): Sentence
-
-}
-
-object Decoder {
-
-	trait Factory {
-
-		def name: String
-
-		def parameters: Set[Parameter[_]] = Set()
-
-		def instantiate(hmm: HiddenMarkovModel, configuration: Configuration): Decoder
-	}
+	def decode(sequence: Sentence[X]): Sentence[Y]
 
 }

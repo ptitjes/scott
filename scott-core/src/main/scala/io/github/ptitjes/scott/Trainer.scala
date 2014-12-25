@@ -2,48 +2,27 @@ package io.github.ptitjes.scott
 
 import io.github.ptitjes.scott.corpora._
 
-import scala.collection._
+trait Trainer[X, Y <: X] {
 
-trait Trainer {
-
-	def train(corpus: Corpus): HiddenMarkovModel
+	def train(corpus: Corpus[Y]): HiddenMarkovModel[X, Y]
 }
 
-trait IterativeTrainer extends Trainer {
+trait IterativeTrainer[X, Y <: X] extends Trainer[X, Y] {
 
-	def train(corpus: Corpus): HiddenMarkovModel = {
-		var resultHmm: HiddenMarkovModel = null
-		train(corpus, new IterationCallback {
-			override def iterationDone(configuration: Configuration, hmm: HiddenMarkovModel, elapsedTime: Long): Unit = {
+	def train(corpus: Corpus[Y]): HiddenMarkovModel[X, Y] = {
+		var resultHmm: HiddenMarkovModel[X, Y] = null
+		train(corpus, new IterationCallback[X, Y] {
+			override def iterationDone(iteration: Int, hmm: HiddenMarkovModel[X, Y], elapsedTime: Long): Unit = {
 				resultHmm = hmm
 			}
 		})
 		resultHmm
 	}
 
-	def train(corpus: Corpus, callback: IterationCallback): Unit
+	def train(corpus: Corpus[Y], callback: IterationCallback[X, Y]): Unit
 }
 
-trait IterationCallback {
+trait IterationCallback[X, Y <: X] {
 
-	def iterationDone(configuration: Configuration, hmm: HiddenMarkovModel, elapsedTime: Long): Unit
-}
-
-object Trainer {
-
-	object ORDER extends IntParameter("Order", 2)
-
-	object ITERATION_COUNT extends IntParameter("Iterations", 1)
-
-	trait Factory {
-
-		def name: String
-
-		def parameters: Set[Parameter[_]] = Set()
-
-		def isIterative: Boolean
-
-		def instantiate(configuration: Configuration): Trainer
-	}
-
+	def iterationDone(iteration: Int, hmm: HiddenMarkovModel[X, Y], elapsedTime: Long): Unit
 }
