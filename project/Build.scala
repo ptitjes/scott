@@ -15,7 +15,7 @@ object Build extends Build {
 		description := "A part-of-speech tagger",
 		startYear := Some(2014),
 		licenses := Seq("LGPL 3" -> new URL("http://www.gnu.org/licenses/lgpl.txt")),
-		scalaVersion := "2.11.3",
+		scalaVersion := "2.11.4",
 		scalacOptions := Seq(
 			"-feature",
 			"-language:implicitConversions",
@@ -24,9 +24,11 @@ object Build extends Build {
 			"-unchecked",
 			"-deprecation",
 			"-encoding", "utf8",
-			"-Ywarn-adapted-args"/*,
-			"-Xmax-classfile-name", "100"*/
-		)
+			"-Ywarn-adapted-args",
+			"-Xlog-implicits",
+			"-Xmax-classfile-name", "100"
+		),
+		resolvers += Resolver.sonatypeRepo("snapshots")
 	)
 
 	lazy val root = Project(id = "scott",
@@ -36,7 +38,8 @@ object Build extends Build {
 		.settings(basicSettings: _*)
 		.settings(
 	    libraryDependencies ++=
-		    compile(json4s)
+		    compile(json4s) ++
+			    compile(scalaPickling)
 		)
 
 	lazy val scottNl = Project(id = "scott-nl", base = file("scott-nl"))
@@ -44,6 +47,7 @@ object Build extends Build {
 		.settings(basicSettings: _*)
 		.settings(
 	    libraryDependencies ++=
-		    compile(json4s)
+		    compile(json4s) ++
+			    compile(scalaPickling)
 		)
 }

@@ -1,12 +1,14 @@
 package io.github.ptitjes.scott
 
+import java.io.Serializable
+
 import io.github.ptitjes.scott.corpora._
 
 import scala.collection._
 
 object Features {
 
-	sealed trait Extractor[X, T] extends ((History[X], IndexedSeq[Int]) => T)
+	sealed trait Extractor[X, T] extends ((History[X], IndexedSeq[Int]) => T) with Serializable
 
 	sealed trait Predicate[X] extends Extractor[X, Boolean]
 
@@ -22,6 +24,7 @@ object Features {
 				case PContainsUppercase(_) => word.exists(_.isUpper)
 				case PUppercaseOnly(_) => word.forall(_.isUpper)
 				case PContainsNumber(_) => word.exists(_.isDigit)
+				case PNumberOnly(_) => word.forall(c => c.isDigit || c == '.' || c == ',')
 				case PContains(_, v) => word.indexOf(v) != -1
 			}
 		}
@@ -32,6 +35,8 @@ object Features {
 	case class PUppercaseOnly[X](from: Extractor[X, String]) extends WordPredicate[X]
 
 	case class PContainsNumber[X](from: Extractor[X, String]) extends WordPredicate[X]
+
+	case class PNumberOnly[X](from: Extractor[X, String]) extends WordPredicate[X]
 
 	case class PContains[X](from: Extractor[X, String], value: Char) extends WordPredicate[X]
 
@@ -104,7 +109,7 @@ object Features {
 			new Weights(tags, values.map(f))
 	}
 
-	sealed trait FeatureTree[X, T] {
+	sealed trait FeatureTree[X, T] extends Serializable {
 
 		def size: Int = this match {
 			case FTConjunction(children) => children.map(_.size).reduce(_ + _)

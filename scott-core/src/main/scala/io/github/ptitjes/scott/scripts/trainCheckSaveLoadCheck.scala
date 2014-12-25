@@ -18,8 +18,8 @@ object trainCheckSaveLoadCheck extends App {
 
 	val trainer = new DiscriminantTrainer[NLToken, NLToken with NLPosTag](
 		order = 2,
-		iterationCount = 10,
-		useAveraging = DiscriminantTrainer.COMPLETE_AVERAGING,
+		iterationCount = 1,
+		useAveraging = DiscriminantTrainer.NO_AVERAGING,
 		features = BaseFeatures,
 		_.word.code,
 		_.tag,
@@ -30,6 +30,10 @@ object trainCheckSaveLoadCheck extends App {
 		override def iterationDone(iteration: Int, hmm: HiddenMarkovModel[NLToken, NLToken with NLPosTag], elapsedTime: Long): Unit = {
 			val decoder = new BeamDecoder[NLToken, NLToken with NLPosTag](hmm)
 			val hypCorpus = decoder.decode(devCorpus)
+
+			timed("Saving hmm") {
+				writeTo(hmm, new File("temp/HMM-" + iteration + ".ser"))
+			}
 
 			val results = Checking.check(hmm, devCorpus, hypCorpus, Lexica.CATEGORIES,
 				new File("temp/Decode-on-Iteration-" + iteration + ".check"))

@@ -3,8 +3,8 @@ import sbt._
 object Dependencies {
 
 	val json4s = "org.json4s" %% "json4s-native" % "3.2.11"
-
-
+	val scalaPickling = "org.scala-lang" %% "scala-pickling" % "0.9.2-SNAPSHOT"
+	
 	def compile(deps: ModuleID*): Seq[ModuleID] = deps map (_ % "compile")
 
 	def provided(deps: ModuleID*): Seq[ModuleID] = deps map (_ % "provided")

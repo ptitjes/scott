@@ -2,17 +2,16 @@ package io.github.ptitjes.scott
 
 import java.io._
 
-import io.github.ptitjes.scott.Utils._
 import io.github.ptitjes.scott.Features._
-import io.github.ptitjes.scott.corpora.Word
-import org.json4s._
-import org.json4s.native.Serialization
-import org.json4s.native.Serialization._
+import io.github.ptitjes.scott.Utils._
 
 import scala.collection._
 import scala.reflect.ClassTag
 
-sealed trait HiddenMarkovModel[X, Y] {
+//import scala.pickling._
+//import scala.pickling.json._
+
+sealed trait HiddenMarkovModel[X, Y] extends Serializable {
 
 	def breadth: Int
 
@@ -59,95 +58,27 @@ object HiddenMarkovModel {
 		array
 	}
 
-	/*
-		implicit val formats = Serialization.formats(
-			ShortTypeHints(List(
-				classOf[HMMGenerative], classOf[HMMDiscriminant],
-
-				classOf[PContainsUppercase], classOf[PUppercaseOnly],
-				classOf[PContainsNumber], classOf[PContains],
-				classOf[PTagEqual], classOf[PNot],
-
-				classOf[EPrefixChar], classOf[ESuffixChar],
-				classOf[EWordCode], classOf[EWordString], classOf[EPreviousTag],
-
-				classOf[FTConjunction[Array[Double]]], classOf[FTGuard[Array[Double]]],
-				classOf[FTDispatchInt[Array[Double]]], classOf[FTDispatchChar[Array[Double]]],
-				classOf[FTLeaf[Array[Double]]]
-			))) +
-			new CharKeySerializer + new CharacterKeySerializer +
-			new CharSerializer + new CharacterSerializer + new BitSetSerializer + new WeightsSerializer
-	*/
-
-	def fromFile[X, Y](file: File): HiddenMarkovModel[X, Y] = {
-//		using(new FileReader(file)) {
-//			fileInput => using(new BufferedReader(fileInput)) {
-//				in => read[HiddenMarkovModel[X, Y]](in)
-//			}
-//		}
-		return null
+	def readFrom[X, Y](file: File): HiddenMarkovModel[X, Y] = {
+		using(new FileInputStream(file)) {
+			fIn => using(new ObjectInputStream(fIn)) {
+				in => in.readObject().asInstanceOf[HiddenMarkovModel[X, Y]]
+			}
+		}
+		//		using(new FileInputStream(file)) {
+		//			in => new BinaryPickleStream(in).unpickle[HiddenMarkovModel[X, Y]]
+		//		}
 	}
 
-	def toFile(hmm: HiddenMarkovModel[_, _], file: File): Unit = {
-//		if (!file.getParentFile.exists()) file.getParentFile.mkdirs()
-//
-//		using(new FileWriter(file)) {
-//			fileOutput => using(new PrintWriter(fileOutput)) {
-//				out => write(hmm, out)
-//			}
-//		}
+	def writeTo[X, Y](hmm: HiddenMarkovModel[X, Y], file: File): Unit = {
+		if (!file.getParentFile.exists()) file.getParentFile.mkdirs()
+
+		using(new FileOutputStream(file)) {
+			fOut => using(new ObjectOutputStream(fOut)) {
+				out => out.writeObject(hmm)
+			}
+		}
+		//		using(new FileOutputStream(file)) {
+		//			out => hmm.pickleTo(new OutputStreamOutput(out))
+		//		}
 	}
-
-	/*
-			class CharKeySerializer extends CustomKeySerializer[Char](format => ( {
-				case key => key.charAt(0)
-			}, {
-				case key: Char => key.toString
-			}
-				))
-
-			class CharacterKeySerializer extends CustomKeySerializer[Object](format => ( {
-				case key => new Character(key.charAt(0))
-			}, {
-				case key: Character => key.toString
-			}
-				))
-
-			class CharSerializer extends CustomSerializer[Char](format => ( {
-				case JString(v) => v.charAt(0)
-			}, {
-				case v: Char => JString(v.toString)
-			}
-				))
-
-			class CharacterSerializer extends CustomSerializer[Object](format => ( {
-				case JString(v) => new Character(v.charAt(0))
-			}, {
-				case v: Character => JString(v.toString)
-			}
-				))
-
-			class BitSetSerializer extends CustomSerializer[BitSet](format => ( {
-				case a: JArray => immutable.BitSet.fromBitMask(Extraction.extract[Array[Long]](a))
-			}, {
-				case v: BitSet => Extraction.decompose(v.toBitMask)
-			}
-				))
-
-			class WeightsSerializer extends CustomSerializer[Weights](format => ( {
-				case v: JValue =>
-					val map = Extraction.extract[Map[Int, Double]](v)
-					val maxIndex = map.foldLeft(0) { case (m, (i, _)) => if (i > m) i else m}
-					Weights(BitSet() ++ map.keySet, map.foldLeft(Array.ofDim[Double](maxIndex + 1)) {
-						case (weights, (tag, weight)) =>
-							weights(tag) = weight
-							weights
-					})
-			}, {
-				case Weights(tags, weights) => Extraction.decompose(
-					tags.map(tag => (tag, weights(tag))).toMap
-				)
-			}
-				))
-		*/
 }

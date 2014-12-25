@@ -20,6 +20,7 @@ object features {
 				FeatureTemplate(w(0) code),
 				FeatureTemplate(w(0) contains '-'),
 				FeatureTemplate(w(0) containsNumber),
+				FeatureTemplate(w(0) containsOnlyNumber),
 				FeatureTemplate(w(0) containsUppercase),
 				FeatureTemplate(w(0) containsOnlyUppercase),
 				FeatureTemplate(w(0) containsUppercase, not(t(-1) equalTo -1), t(-1))) ++
@@ -27,6 +28,7 @@ object features {
 				(for (l <- 0 until 4) yield FeatureTemplate(for (i <- 0 to l) yield w(0).suffix(i))) ++
 				// Contextual features
 				(for (o <- 1 to order) yield FeatureTemplate(for (i <- 1 to o) yield t(-i))) ++
+				//				(for (o <- 1 to order) yield FeatureTemplate(for (i <- 1 to o) yield t(-i))) ++
 				(for (i <- 1 to order) yield FeatureTemplate(w(-i) code)) ++
 				(for (i <- 1 to order) yield FeatureTemplate(w(i) code))
 	}
@@ -59,6 +61,8 @@ trait NLFeatureSetTemplate extends FeatureSetTemplate[NLToken, NLToken with NLPo
 		def containsOnlyUppercase = PUppercaseOnly(string)
 
 		def containsNumber = PContainsNumber(string)
+
+		def containsOnlyNumber = PNumberOnly(string)
 	}
 
 }

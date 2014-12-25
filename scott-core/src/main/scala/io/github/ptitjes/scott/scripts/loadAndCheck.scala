@@ -19,13 +19,13 @@ object loadAndCheck extends App {
 		("temp/", "Perceptron-Full-Averaging=Complete-Corpus-Ratio=100-Features=Base-Iterations=10-Order=2")
 	}
 
-	val hmmFilename = hmmDirname + hmmName + ".json"
+	val hmmFilename = "temp/HMM-1.ser"
 
 	val (hmm, loadTime) = timed(s"Loading '$hmmFilename'") {
-		fromFile[NLToken, NLToken with NLPosTag](new File(hmmFilename))
+		readFrom[NLToken, NLToken with NLPosTag](new File(hmmFilename))
 	}
 
-	val decoder = new BeamDecoder(hmm, 3)
+	val decoder = new BeamDecoder(hmm, 5)
 
 	for (i <- 1 to 50) {
 		val hypCorpus = decoder.decode(testCorpus)

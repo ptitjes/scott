@@ -121,7 +121,7 @@ trait FeatureSetTemplate[X, Y <: X] {
 
 				val extractor = items.head
 				extractor match {
-					case PContainsUppercase(_) | PUppercaseOnly(_) | PContainsNumber(_) | PContains(_, _) |
+					case PContainsUppercase(_) | PUppercaseOnly(_) | PContainsNumber(_) | PNumberOnly(_) | PContains(_, _) |
 					     PTagEqual(_, _) | PNot(_) =>
 						(FTGuard(
 							extractor.asInstanceOf[Extractor[X, Boolean]],
@@ -139,7 +139,7 @@ trait FeatureSetTemplate[X, Y <: X] {
 							valueToTree.asInstanceOf[Map[Int, FeatureTree[X, T]]],
 							filterTags
 						), filterTags)
-					case _ => throw new UnsupportedOperationException
+					case _ => throw new UnsupportedOperationException("Unknown extractor: " + extractor.getClass)
 				}
 			}
 		}
