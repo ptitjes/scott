@@ -24,13 +24,22 @@ trait FeatureSetTemplate[X, Y <: X] {
 
 	def token(i: Int) = EToken[X](i)
 
-	def t(i: Int) = EPreviousTag[X](i)
+	def tag(i: Int) = EPreviousTag[X](i)
 
 	def not(predicate: Predicate[X]) = PNot[X](predicate)
 
-	implicit class RichTagFeatureItem(e: EPreviousTag[X]) {
+	implicit class RichTagSelector[X](e: EPreviousTag[X]) {
 
-		def equalTo(tag: Int) = PTagEqual[X](e, tag)
+		def equalTo(tag: Int) = e.test(_ == tag)
+	}
+
+	implicit class RichSelector[X, T](e: Selector[X, T]) {
+
+		def optionSelect[U](selector: T => Option[U]) = PFreeSelector(e, selector)
+
+		def select[U](selector: T => U) = PFreeSelector[X, T, U](e, v => Some(selector(v)))
+
+		def test(predicate: T => Boolean) = PFreePredicate(e, predicate)
 	}
 
 	def buildFeatures[T](breadth: Int, order: Int,
@@ -63,10 +72,11 @@ trait FeatureSetTemplate[X, Y <: X] {
 					dictionary(observable) += tag
 
 				templates.foreach { template =>
-					val combination = template.items.map(_(history, previousTags))
-					if (!combination.contains(null) &&
-						!combination.contains(false) &&
-						!combination.contains(0.toChar)) {
+					val optionalCombination = template.items.map(_(history, previousTags))
+					if (!optionalCombination.exists(_.isEmpty) &&
+						!optionalCombination.contains(Some(false))) {
+
+						val combination = optionalCombination.flatten
 						val data = allData(template)
 						if (!data.contains(combination))
 							data(combination) = BitSet(tag)
@@ -107,6 +117,7 @@ trait FeatureSetTemplate[X, Y <: X] {
 	                            f: (BitSet) => T): FeatureTree[X, T] = {
 
 		def aux(items: List[Extractor[X, _]], data: Map[List[_], BitSet]): (FeatureTree[X, T], BitSet) = {
+
 			if (items.isEmpty) {
 				val filterTags = data.foldLeft(BitSet()) { case (collected, (_, tags)) => collected ++ tags}
 
@@ -119,27 +130,10 @@ trait FeatureSetTemplate[X, Y <: X] {
 				val valueToTree = valueToTreeTags.map { case (value, (tree, tags)) => value -> tree}
 				val filterTags = valueToTreeTags.foldLeft(BitSet()) { case (collected, (_, (_, tags))) => collected ++ tags}
 
-				val extractor = items.head
-				extractor match {
-					case PContainsUppercase(_) | PUppercaseOnly(_) | PContainsNumber(_) | PNumberOnly(_) | PContains(_, _) | PEqualTo(_, _) |
-					     PTagEqual(_, _) | PNot(_) =>
-						(FTGuard(
-							extractor.asInstanceOf[Extractor[X, Boolean]],
-							valueToTree(true)
-						), filterTags)
-					case EPrefixChar(_, _) | ESuffixChar(_, _) =>
-						(FTDispatchChar(
-							extractor.asInstanceOf[Extractor[X, Char]],
-							valueToTree.asInstanceOf[Map[Char, FeatureTree[X, T]]],
-							filterTags
-						), filterTags)
-					case EPreviousTag(_) | EWordCode(_) =>
-						(FTDispatchInt(
-							extractor.asInstanceOf[Extractor[X, Int]],
-							valueToTree.asInstanceOf[Map[Int, FeatureTree[X, T]]],
-							filterTags
-						), filterTags)
-					case _ => throw new UnsupportedOperationException("Unknown extractor: " + extractor.getClass)
+				items.head match {
+					case p: Predicate[X] => (p.makeGuard(valueToTree(true), filterTags), filterTags)
+					case s: Selector[X, _] => (s.makeDispatch(valueToTree, filterTags), filterTags)
+					case _ => throw new UnsupportedOperationException("Unknown extractor: " + items.head.getClass)
 				}
 			}
 		}
@@ -153,12 +147,9 @@ trait FeatureSetTemplate[X, Y <: X] {
 
 		def tryToMergeTrees(left: FeatureTree[X, T], right: FeatureTree[X, T]): Option[FeatureTree[X, T]] =
 			(left, right) match {
-				case (FTDispatchChar(lExtractor, lChildren, lFilter), FTDispatchChar(rExtractor, rChildren, rFilter))
+				case (FTDispatch(lExtractor, lChildren, lFilter), FTDispatch(rExtractor, rChildren, rFilter))
 					if lExtractor == rExtractor =>
-					Some(FTDispatchChar(lExtractor, mergeFeatureMaps(lChildren, rChildren), lFilter ++ rFilter))
-				case (FTDispatchInt(lExtractor, lChildren, lFilter), FTDispatchInt(rExtractor, rChildren, rFilter))
-					if lExtractor == rExtractor =>
-					Some(FTDispatchInt(lExtractor, mergeFeatureMaps(lChildren, rChildren), lFilter ++ rFilter))
+					Some(FTDispatch(lExtractor, mergeFeatureMaps(lChildren, rChildren), lFilter ++ rFilter))
 				case (FTGuard(lPredicate, lChild), FTGuard(rPredicate, rChild))
 					if lPredicate == rPredicate =>
 					Some(FTGuard(lPredicate, mergeTrees(lChild, rChild)))

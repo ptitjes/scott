@@ -3,6 +3,8 @@ package io.github.ptitjes.scott.trainers
 import io.github.ptitjes.scott.Features._
 import io.github.ptitjes.scott.corpora._
 
+import scala.collection.IndexedSeq
+
 /**
  * @author Didier Villevalois
  */
@@ -17,55 +19,73 @@ object features {
 		def features(order: Int) =
 			List(
 				// Lexical features
-				FeatureTemplate(w(0) code),
-				FeatureTemplate(w(0) contains '-'),
-				FeatureTemplate(w(0) containsNumber),
-				FeatureTemplate(w(0) containsOnlyNumber),
-				FeatureTemplate(w(0) containsOnlyNumber, t(-1)),
-				FeatureTemplate(w(0) containsOnlyNumber, w(1) equalTo "%"),
-				FeatureTemplate(w(0) containsUppercase),
-				FeatureTemplate(w(0) containsOnlyUppercase),
-				FeatureTemplate(w(0) containsUppercase, not(t(-1) equalTo -1), t(-1))) ++
-				(for (l <- 0 until 4) yield FeatureTemplate(for (i <- 0 to l) yield w(0).prefix(i))) ++
-				(for (l <- 0 until 4) yield FeatureTemplate(for (i <- 0 to l) yield w(0).suffix(i))) ++
+				FeatureTemplate(word(0) code),
+				FeatureTemplate(word(0) contains '-'),
+				FeatureTemplate(word(0) containsNumber),
+				FeatureTemplate(word(0) containsOnlyNumber),
+				FeatureTemplate(word(0) containsOnlyNumber, tag(-1)),
+				FeatureTemplate(word(0) containsUppercase),
+				FeatureTemplate(word(0) containsOnlyUppercase),
+				FeatureTemplate(word(0) containsUppercase, not(tag(-1) equalTo -1), tag(-1))) ++
+				(for (l <- 0 until 4) yield FeatureTemplate(for (i <- 0 to l) yield word(0).prefix(i))) ++
+				(for (l <- 0 until 4) yield FeatureTemplate(for (i <- 0 to l) yield word(0).suffix(i))) ++
 				// Contextual features
-				(for (o <- 1 to order) yield FeatureTemplate(for (i <- 1 to o) yield t(-i))) ++
-				(for (i <- 1 to order) yield FeatureTemplate(w(-i) code)) ++
-				(for (i <- 1 to order) yield FeatureTemplate(w(i) code))
+				(for (o <- 1 to order) yield FeatureTemplate(for (i <- 1 to o) yield tag(-i))) ++
+				(for (i <- 1 to order) yield FeatureTemplate(word(-i) code)) ++
+				(for (i <- 1 to order) yield FeatureTemplate(word(i) code))
 	}
 
 }
 
 trait NLFeatureSetTemplate extends FeatureSetTemplate[NLToken, NLToken with NLPosTag] {
 
-	def w(i: Int) = token(i).word
+	def word(i: Int) = token(i).word
 
-	implicit class RichNLTokenExtractor(e: Extractor[NLToken, Option[NLToken]]) {
+	implicit class RichNLTokenExtractor(e: Selector[NLToken, NLToken]) {
 
-		def word = ENLTokenWord(e)
+		def word = e.select(_.word)
 	}
 
-	implicit class RichNLWordExtractor[X](e: Extractor[X, Option[Word]]) {
+	implicit class RichNLWordExtractor[X](e: Selector[X, Word]) {
 
-		def code = EWordCode(e)
+		def code = e.select(_.code)
 
-		def string = EWordString(e)
+		def string = e.select(_.string)
 
-		def prefix(i: Int) = EPrefixChar(string, i)
+		def prefix(i: Int) = string.prefix(i)
 
-		def suffix(i: Int) = ESuffixChar(string, i)
+		def suffix(i: Int) = string.suffix(i)
 
-		def contains(char: Char) = PContains(string, char)
+		def contains(char: Char) = string.contains(char)
 
-		def containsUppercase = PContainsUppercase(string)
+		def containsUppercase = string.containsUppercase
 
-		def containsOnlyUppercase = PUppercaseOnly(string)
+		def containsOnlyUppercase = string.containsOnlyUppercase
 
-		def containsNumber = PContainsNumber(string)
+		def containsNumber = string.containsNumber
 
-		def containsOnlyNumber = PNumberOnly(string)
+		def containsOnlyNumber = string.containsOnlyNumber
 
-		def equalTo(value: String) = PEqualTo(string, value)
+		def equalTo(value: String) = string.equalTo(value)
+	}
+
+	implicit class RichStringExtractor[X](e: Selector[X, String]) {
+
+		def prefix(i: Int) = e.optionSelect(s => if (s.length > i) Some(s.charAt(i)) else None)
+
+		def suffix(i: Int) = e.optionSelect(s => if (s.length > i) Some(s.charAt(s.length - i - 1)) else None)
+
+		def contains(char: Char) = e.test(_.indexOf(char) != -1)
+
+		def containsUppercase = e.test(_.exists(_.isUpper))
+
+		def containsOnlyUppercase = e.test(_.forall(_.isUpper))
+
+		def containsNumber = e.test(_.exists(_.isDigit))
+
+		def containsOnlyNumber = e.test(_.forall(c => c.isDigit || c == '.' || c == ','))
+
+		def equalTo(value: String) = e.test(_ == value)
 	}
 
 }
