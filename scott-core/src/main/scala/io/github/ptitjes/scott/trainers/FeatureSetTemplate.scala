@@ -121,7 +121,7 @@ trait FeatureSetTemplate[X, Y <: X] {
 
 				val extractor = items.head
 				extractor match {
-					case PContainsUppercase(_) | PUppercaseOnly(_) | PContainsNumber(_) | PNumberOnly(_) | PContains(_, _) |
+					case PContainsUppercase(_) | PUppercaseOnly(_) | PContainsNumber(_) | PNumberOnly(_) | PContains(_, _) | PEqualTo(_, _) |
 					     PTagEqual(_, _) | PNot(_) =>
 						(FTGuard(
 							extractor.asInstanceOf[Extractor[X, Boolean]],

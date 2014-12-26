@@ -18,7 +18,7 @@ class CoNLLXParser {
 		val elements = mutable.ArrayBuffer[CoNLLToken]()
 		source.getLines().foreach { s =>
 			if (s.isEmpty) {
-				sequences += BaseSequence[CoNLLToken](elements.toIndexedSeq)
+				sequences += BaseSequence(elements.toIndexedSeq)
 				elements.clear()
 			} else {
 				val split = s.split('\t')

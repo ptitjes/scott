@@ -26,6 +26,7 @@ object Features {
 				case PContainsNumber(_) => word.exists(_.isDigit)
 				case PNumberOnly(_) => word.forall(c => c.isDigit || c == '.' || c == ',')
 				case PContains(_, v) => word.indexOf(v) != -1
+				case PEqualTo(_, v) => word.equals(v)
 			}
 		}
 	}
@@ -39,6 +40,8 @@ object Features {
 	case class PNumberOnly[X](from: Extractor[X, String]) extends WordPredicate[X]
 
 	case class PContains[X](from: Extractor[X, String], value: Char) extends WordPredicate[X]
+
+	case class PEqualTo[X](from: Extractor[X, String], value: String) extends WordPredicate[X]
 
 	case class PTagEqual[X](from: Extractor[X, Int], value: Int) extends Predicate[X] {
 
