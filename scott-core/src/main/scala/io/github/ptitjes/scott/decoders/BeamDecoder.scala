@@ -1,10 +1,10 @@
 package io.github.ptitjes.scott.decoders
 
-import io.github.ptitjes.scott.corpora._
-import io.github.ptitjes.scott.Utils._
-import io.github.ptitjes.scott._
+import io.github.ptitjes.scott.api.HiddenMarkovModel._
+import io.github.ptitjes.scott.api._
 import io.github.ptitjes.scott.decoders.arrays._
-import io.github.ptitjes.scott.utils.{States, DepthCounter, BoundedPriorityQueue}
+import io.github.ptitjes.scott.utils.Utils._
+import io.github.ptitjes.scott.utils.{BoundedPriorityQueue, DepthCounter, States}
 
 import scala.annotation.tailrec
 import scala.collection.{mutable, _}
@@ -34,7 +34,7 @@ class BeamDecoder[X, Y](hmm: HiddenMarkovModel[X, Y], beamWidth: Int = 5) extend
 
 	val depth = new DepthCounter(order)
 
-	def decode(sequence: Sentence[X]): Sentence[Y] = {
+	def decode(sequence: Sequence[X]): Sequence[Y] = {
 		beam.clear()
 		beam(0) = true
 		deltas(0) = 0
@@ -151,7 +151,7 @@ class BeamDecoder[X, Y](hmm: HiddenMarkovModel[X, Y], beamWidth: Int = 5) extend
 
 		depth.reset()
 
-		Sentence(sequence.tokens.zip(states).map { case ((token, tag)) => hmm.builder(token, tag)})
+		Sequence(sequence.tokens.zip(states).map { case ((token, tag)) => hmm.builder(token, tag)})
 	}
 
 	@inline def maxArgMax(count: Int, beam: mutable.BitSet,

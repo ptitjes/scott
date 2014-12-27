@@ -1,6 +1,6 @@
 package io.github.ptitjes.scott.utils
 
-import io.github.ptitjes.scott.Utils._
+import io.github.ptitjes.scott.utils.Utils._
 
 /**
  * @author Didier Villevalois

@@ -1,7 +1,7 @@
 package io.github.ptitjes.scott.nl.lang.fr
 
-import io.github.ptitjes.scott.corpora.Lexica
 import io.github.ptitjes.scott.nl.conll.CoNLLXParser
+import io.github.ptitjes.scott.nl.corpora.Lexica
 
 import scala.io.Source
 

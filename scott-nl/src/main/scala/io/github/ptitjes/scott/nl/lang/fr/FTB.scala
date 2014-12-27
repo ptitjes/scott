@@ -1,6 +1,6 @@
 package io.github.ptitjes.scott.nl.lang.fr
 
-import io.github.ptitjes.scott.corpora.TagSet
+import io.github.ptitjes.scott.api.TagSet
 import io.github.ptitjes.scott.nl.conll.CoNLLXParser
 
 /**

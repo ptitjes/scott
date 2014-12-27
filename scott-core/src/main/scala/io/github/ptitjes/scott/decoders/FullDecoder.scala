@@ -1,11 +1,10 @@
 package io.github.ptitjes.scott.decoders
 
-import io.github.ptitjes.scott.corpora.Annotation.{CoarsePosTag, Form}
-import io.github.ptitjes.scott.corpora._
-import io.github.ptitjes.scott.Utils._
-import io.github.ptitjes.scott._
+import io.github.ptitjes.scott.api.HiddenMarkovModel._
+import io.github.ptitjes.scott.api._
 import io.github.ptitjes.scott.decoders.arrays._
-import io.github.ptitjes.scott.utils.{States, DepthCounter}
+import io.github.ptitjes.scott.utils.Utils._
+import io.github.ptitjes.scott.utils.{DepthCounter, States}
 
 import scala.annotation.tailrec
 import scala.collection._
@@ -26,7 +25,7 @@ class FullDecoder[X, Y](hmm: HiddenMarkovModel[X, Y]) extends Decoder[X, Y] {
 
 	val depth = new DepthCounter(order)
 
-	def decode(sequence: Sentence[X]): Sentence[Y] = {
+	def decode(sequence: Sequence[X]): Sequence[Y] = {
 		deltas(0) = 0
 		psis(0) = -1
 		deltas.swap()
@@ -138,7 +137,7 @@ class FullDecoder[X, Y](hmm: HiddenMarkovModel[X, Y]) extends Decoder[X, Y] {
 
 		depth.reset()
 
-		Sentence(sequence.tokens.zip(states).map { case ((token, tag)) => hmm.builder(token, tag)})
+		Sequence(sequence.tokens.zip(states).map { case ((token, tag)) => hmm.builder(token, tag)})
 	}
 
 	@inline def maxArgMax(count: Int, arg: Int => Int, f: Int => Double): (Double, Int) = {

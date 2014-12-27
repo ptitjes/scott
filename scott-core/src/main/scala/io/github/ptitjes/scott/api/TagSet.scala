@@ -1,4 +1,4 @@
-package io.github.ptitjes.scott.corpora
+package io.github.ptitjes.scott.api
 
 import io.github.ptitjes.scott.utils.Trie
 

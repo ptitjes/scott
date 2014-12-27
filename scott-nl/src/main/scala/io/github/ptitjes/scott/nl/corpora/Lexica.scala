@@ -1,7 +1,8 @@
-package io.github.ptitjes.scott.corpora
+package io.github.ptitjes.scott.nl.corpora
 
 import java.io.File
 
+import io.github.ptitjes.scott.api.TagSet
 import io.github.ptitjes.scott.utils.Trie
 
 import scala.collection.mutable.ArrayBuffer

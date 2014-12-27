@@ -1,4 +1,4 @@
-package io.github.ptitjes.scott
+package io.github.ptitjes.scott.utils
 
 object Utils {
 

@@ -1,11 +1,11 @@
 package io.github.ptitjes.scott.trainers
 
-import io.github.ptitjes.scott.Features._
-import io.github.ptitjes.scott.Utils._
-import io.github.ptitjes.scott._
-import io.github.ptitjes.scott.corpora._
+import io.github.ptitjes.scott.api.Features._
+import io.github.ptitjes.scott.api.HiddenMarkovModel._
+import io.github.ptitjes.scott.api._
 import io.github.ptitjes.scott.decoders.FullDecoder
 import io.github.ptitjes.scott.utils.States.SourceTracker
+import io.github.ptitjes.scott.utils.Utils._
 
 import scala.collection._
 
@@ -23,9 +23,9 @@ class DiscriminantTrainer[X, Y <: X](order: Int,
                                      tagExtract: Y => Int,
                                      builder: (X, Int) => Y) extends Trainer[X, Y] with IterativeTrainer[X, Y] {
 
-	import DiscriminantTrainer._
+	import io.github.ptitjes.scott.trainers.DiscriminantTrainer._
 
-	def train(corpus: Corpus[Y], callback: IterationCallback[X, Y]): Unit = {
+	def train(corpus: DataSet[Y], callback: IterationCallback[X, Y]): Unit = {
 		val breadth = corpus.tagSet.size
 
 		var allWeightPairs = mutable.ArrayBuffer[(Weights, Weights)]()

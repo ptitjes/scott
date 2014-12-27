@@ -1,7 +1,7 @@
 package io.github.ptitjes.scott.trainers
 
-import io.github.ptitjes.scott.corpora._
-import io.github.ptitjes.scott.Features._
+import io.github.ptitjes.scott.api.Features._
+import io.github.ptitjes.scott.api._
 import io.github.ptitjes.scott.utils.States.SourceTracker
 
 import scala.annotation.tailrec
@@ -43,7 +43,7 @@ trait FeatureSetTemplate[X, Y <: X] {
 	}
 
 	def buildFeatures[T](breadth: Int, order: Int,
-	                     corpus: Corpus[Y],
+	                     corpus: DataSet[Y],
 	                     f: BitSet => T,
 	                     observableExtract: X => Int,
 	                     tagExtract: Y => Int): (FeatureTree[X, T], FeatureTree[X, T], Map[Int, BitSet]) = {

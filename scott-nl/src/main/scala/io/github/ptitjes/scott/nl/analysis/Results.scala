@@ -1,12 +1,9 @@
-package io.github.ptitjes.scott.analysis
+package io.github.ptitjes.scott.nl.analysis
 
-import java.io.{File, FileWriter, PrintWriter}
+import java.io.PrintWriter
 
-import io.github.ptitjes.scott.corpora.{Word, TagSet, Corpora}
-import Corpora._
-import io.github.ptitjes.scott.Utils._
-import io.github.ptitjes.scott._
-import io.github.ptitjes.scott.decoders.BeamDecoder
+import io.github.ptitjes.scott.api.TagSet
+import io.github.ptitjes.scott.nl.corpora.Word
 
 case class Results(globalCounts: ErrorCount,
                    perCategoryCounts: Array[ErrorCount],

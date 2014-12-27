@@ -4,7 +4,7 @@ package io.github.ptitjes.scott.trainers
 import java.io._
 
 import io.github.ptitjes.scott.HiddenMarkovModel._
-import io.github.ptitjes.scott.Trainer._
+import io.github.ptitjes.scott.corpora.Trainer._
 import io.github.ptitjes.scott._
 import io.github.ptitjes.scott.corpora.Annotation.CoarsePosTag
 import io.github.ptitjes.scott.corpora._

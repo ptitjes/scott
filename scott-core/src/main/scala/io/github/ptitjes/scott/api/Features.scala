@@ -1,8 +1,6 @@
-package io.github.ptitjes.scott
+package io.github.ptitjes.scott.api
 
 import java.io.Serializable
-
-import io.github.ptitjes.scott.corpora._
 
 import scala.collection._
 

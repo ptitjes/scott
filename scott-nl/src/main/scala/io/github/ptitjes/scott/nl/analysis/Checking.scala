@@ -1,17 +1,17 @@
-package io.github.ptitjes.scott.analysis
+package io.github.ptitjes.scott.nl.analysis
 
 import java.io.{File, FileWriter, PrintWriter}
 
-import io.github.ptitjes.scott.corpora.Annotation.{CoarsePosTag, Form}
-import io.github.ptitjes.scott.corpora._
-import io.github.ptitjes.scott.Utils._
-import io.github.ptitjes.scott._
+import io.github.ptitjes.scott.api._
+import io.github.ptitjes.scott.nl.corpora.Corpora._
+import io.github.ptitjes.scott.nl.corpora.Lexica
+import io.github.ptitjes.scott.utils.Utils._
 
 object Checking {
 
 	def check(hmm: HiddenMarkovModel[_, _],
-	          refCorpus: Corpus[NLToken with NLPosTag],
-	          hypCorpus: Corpus[NLToken with NLPosTag],
+	          refCorpus: DataSet[NLToken with NLPosTag],
+	          hypCorpus: DataSet[NLToken with NLPosTag],
 	          tagSet: TagSet,
 	          checkFile: File): Results = {
 
@@ -23,8 +23,8 @@ object Checking {
 	}
 
 	def check(hmm: HiddenMarkovModel[_, _],
-	          refCorpus: Corpus[NLToken with NLPosTag],
-	          hypCorpus: Corpus[NLToken with NLPosTag],
+	          refCorpus: DataSet[NLToken with NLPosTag],
+	          hypCorpus: DataSet[NLToken with NLPosTag],
 	          tagSet: TagSet,
 	          writer: Option[PrintWriter]): Results = {
 

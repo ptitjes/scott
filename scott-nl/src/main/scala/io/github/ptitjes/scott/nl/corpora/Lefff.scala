@@ -1,14 +1,4 @@
-package io.github.ptitjes.scott.corpora
-
-import java.io.File
-import java.nio.charset.Charset
-import java.util.Locale
-
-import Corpora._
-import io.github.ptitjes.scott.utils.Trie
-
-import scala.collection._
-import scala.io.Source
+package io.github.ptitjes.scott.nl.corpora
 
 object Lefff extends App {
 
