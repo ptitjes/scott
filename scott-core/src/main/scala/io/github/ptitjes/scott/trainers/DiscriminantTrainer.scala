@@ -28,11 +28,11 @@ class DiscriminantTrainer[X, Y <: X](order: Int,
 	def train(corpus: DataSet[Y], callback: IterationCallback[X, Y]): Unit = {
 		val breadth = corpus.tagSet.size
 
-		var allWeightPairs = mutable.ArrayBuffer[(Weights, Weights)]()
-		val weightFactory: BitSet => (Weights, Weights) = {
+		var allWeightPairs = mutable.ArrayBuffer[(MutableWeights, MutableWeights)]()
+		val weightFactory: BitSet => (MutableWeights, MutableWeights) = {
 			tags =>
-				val weights = new Weights(tags, Array.ofDim[Double](breadth))
-				val averagedWeights = new Weights(tags, Array.ofDim[Double](breadth))
+				val weights = new MutableWeights(tags)
+				val averagedWeights = new MutableWeights(tags)
 				val weightPair = (weights, averagedWeights)
 				allWeightPairs += weightPair
 				weightPair
@@ -43,9 +43,13 @@ class DiscriminantTrainer[X, Y <: X](order: Int,
 
 		println((wordOnlyFeatures.size + otherFeatures.size) + " feature parameters")
 
-		val extractWeights: ((Weights, Weights)) => Weights = {
+		val extractWeights: ((MutableWeights, MutableWeights)) => MutableWeights = {
 			case (weights, averagedWeights) => weights
 		}
+		val extractAverageWeights: ((MutableWeights, MutableWeights)) => MutableWeights = {
+			case (weights, averagedWeights) => averagedWeights
+		}
+
 		val hmm = HMMDiscriminant(breadth, order,
 			wordOnlyFeatures.map(extractWeights), otherFeatures.map(extractWeights), dictionary, observableExtract, builder)
 
@@ -107,11 +111,8 @@ class DiscriminantTrainer[X, Y <: X](order: Int,
 						}
 
 						if (useAveraging == COMPLETE_AVERAGING) {
-							allWeightPairs.par.foreach {
-								case (weights, averagedWeights) =>
-									weights.foreach {
-										case (tag, weight) => averagedWeights(tag) += weight
-									}
+							allWeightPairs.foreach {
+								case (weights, averagedWeights) => averagedWeights += weights
 							}
 						}
 
@@ -121,24 +122,25 @@ class DiscriminantTrainer[X, Y <: X](order: Int,
 				}
 
 				if (useAveraging == PARTIAL_AVERAGING) {
-					allWeightPairs.par.foreach {
-						case (weights, averagedWeights) =>
-							weights.foreach {
-								case (tag, weight) => averagedWeights(tag) += weight
-							}
+					allWeightPairs.foreach {
+						case (weights, averagedWeights) => averagedWeights += weights
 					}
 				}
 			}
 
 			val resultHmm =
-				if (useAveraging == NO_AVERAGING) hmm
-				else {
-					val averagingDivider = i * (if (useAveraging == COMPLETE_AVERAGING) corpus.size else 1)
-					val divideWeights: ((Weights, Weights)) => Weights = {
-						case (weights, averagedWeights) => averagedWeights.map(w => w / averagingDivider)
-					}
+				if (useAveraging == NO_AVERAGING) {
 					HMMDiscriminant(breadth, order,
-						wordOnlyFeatures.map(divideWeights), otherFeatures.map(divideWeights), dictionary, observableExtract, builder
+						wordOnlyFeatures.map(extractWeights andThen (_.immutable)),
+						otherFeatures.map(extractWeights andThen (_.immutable)),
+						dictionary, observableExtract, builder
+					)
+				} else {
+					val averagingDivider = i * (if (useAveraging == COMPLETE_AVERAGING) corpus.size else 1)
+					HMMDiscriminant(breadth, order,
+						wordOnlyFeatures.map(extractAverageWeights andThen (_.immutable) andThen (_.map(_ / averagingDivider))),
+						otherFeatures.map(extractAverageWeights andThen (_.immutable) andThen (_.map(_ / averagingDivider))),
+						dictionary, observableExtract, builder
 					)
 				}
 			callback.iterationDone(i, resultHmm, elapsedTime)

@@ -43,22 +43,6 @@ object Features {
 		def apply(h: History[X], previousTags: IndexedSeq[Int]): Option[Boolean] = from(h, previousTags).map(predicate)
 	}
 
-	case class Weights(tags: BitSet, values: Array[Double]) {
-		val tagsAsArray = tags.toArray
-
-		def apply(key: Int) = values(key)
-
-		def update(key: Int, value: Double) =
-			if (!tags(key)) throw new ArrayIndexOutOfBoundsException(key)
-			else values(key) = value
-
-		def foreach[U](f: (Int, Double) => U): Unit =
-			tagsAsArray.foreach(t => f(t, values(t)))
-
-		def map(f: Double => Double): Weights =
-			new Weights(tags, values.map(f))
-	}
-
 	sealed trait FeatureTree[X, T] extends Serializable {
 
 		def size: Int = this match {
