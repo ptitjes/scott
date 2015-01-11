@@ -12,7 +12,7 @@ import io.github.ptitjes.scott.nl.lefffEnhancedFeatures
 import io.github.ptitjes.scott.trainers.DiscriminantTrainer
 import io.github.ptitjes.scott.utils.Utils._
 
-object trainFTBCoarseLefffEnhanced extends App {
+object trainFTBCoarseLE extends App {
 
 	val ftbPath = args(0)
 	val lefffPath = args(1)
