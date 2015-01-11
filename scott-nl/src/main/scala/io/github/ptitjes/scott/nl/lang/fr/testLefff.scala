@@ -6,6 +6,7 @@ import java.util.Locale
 import io.github.ptitjes.scott.api.Sequence
 import io.github.ptitjes.scott.nl.conll.CoNLLToken
 import io.github.ptitjes.scott.nl.corpora._
+import io.github.ptitjes.scott.nl.lang.fr.Lefff.LefffTags
 import io.github.ptitjes.scott.nl.lang.fr.testFTBCoarse._
 import io.github.ptitjes.scott.utils.Trie
 
@@ -30,33 +31,35 @@ object testLefff extends App {
 		}
 	}
 
-	val p = parse(getClass.getResource("/lefff/lefff-ext-3.2.txt"))
-	val trie = Trie[Set[String]]() ++ p
+	val trie = Lefff.parse(lefffPath, "3.2")
 
-	val allTags = mutable.Set[String]()
+	val allTags = mutable.Set[Int]()
 	Lexica.WORDS.words.foreach {
-		word => if (trie(word.string).isEmpty) println(word.string)
-		//			val lefffWord = toLefffWord(word)
-		//			val lefffTags = trie(lefffWord.toLowerCase(Locale.FRENCH)).getOrElse(Set()) ++
-		//				trie(lefffWord).getOrElse(Set())
-		//			val localTags = if (perWordCats.contains(word)) perWordCats(word) else Set[Int]()
-		//			val convertedLefffTags = lefffTags.map(fromLefffTag)
-		//
-		//			if (!localTags.subsetOf(convertedLefffTags) && trie(lefffWord) != None) {
-		//				println(word.string)
-		//				println(lefffTags.mkString("[", ", ", "]"))
-		//				println(localTags.map(formatCat).mkString("[", ", ", "]"))
-		//				println(convertedLefffTags.map(formatCat).mkString("[", ", ", "]"))
-		//				println()
-		//
-		//				(localTags -- convertedLefffTags).foreach {
-		//					t =>
-		//						val sequence = findSequenceWithWordAs(word, t)
-		//						printAnnotatedSequence(sequence)
-		//						println()
-		//				}
-		//			}
-		//			allTags ++= lefffTags
+		word =>
+
+//			if (trie(word.string).isEmpty) println(word.string)
+
+			val lefffWord = toLefffWord(word)
+			val lefffTags = trie(lefffWord.toLowerCase(Locale.FRENCH)).getOrElse(Set()) ++
+				trie(lefffWord).getOrElse(Set())
+			val localTags = if (perWordCats.contains(word)) perWordCats(word) else Set[Int]()
+			val convertedLefffTags = lefffTags.map(fromLefffTag)
+
+			if (!localTags.subsetOf(convertedLefffTags) && trie(lefffWord) != None) {
+				println(word.string)
+				println(lefffTags.mkString("[", ", ", "]"))
+				println(localTags.map(formatCat).mkString("[", ", ", "]"))
+				println(convertedLefffTags.map(formatCat).mkString("[", ", ", "]"))
+				println()
+
+				(localTags -- convertedLefffTags).foreach {
+					t =>
+						val sequence = findSequenceWithWordAs(word, t)
+						printAnnotatedSequence(sequence)
+						println()
+				}
+			}
+			allTags ++= lefffTags
 	}
 
 	def printAnnotatedSequence(sequence: Sequence[CoNLLToken]) {
@@ -80,7 +83,7 @@ object testLefff extends App {
 	def toLefffWord(s: Word): String =
 		s.string.replace("'_", "'").replace("_-_", "-").replace('_', ' ')
 
-	def fromLefffTag(c: String) = c match {
+	def fromLefffTag(c: Int) = LefffTags(c) match {
 		case "adj" => FTB.PosTags("ADJ")
 		case "adv" | "advm" | "advp" => FTB.PosTags("ADV")
 		case "csu" => FTB.PosTags("CS")
