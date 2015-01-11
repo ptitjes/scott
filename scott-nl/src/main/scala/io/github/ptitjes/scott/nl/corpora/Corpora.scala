@@ -16,5 +16,4 @@ object Corpora {
 	trait NLPosTag {
 		def tag: Int
 	}
-
 }

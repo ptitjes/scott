@@ -10,15 +10,7 @@ import scala.io.Source
  */
 object testDistributions extends App {
 
-	val PATH_TO_FTB = "/home/didier/Documents/Work/Master/DM/InfStat/ftb"
-	val CONLL_CORPUS = "ftb4+mc+undocpd+fct+structmod110908"
-
-	val fullCorpusPath = PATH_TO_FTB + "/corpus-conll/" + CONLL_CORPUS + ".dep_conll"
-
-	val parser = new CoNLLXParser
-	val profile = FTB.CoNLLProfile
-	val tagSet = profile.coarseTagSet
-	val corpus = parser.parse(profile, Source.fromFile(fullCorpusPath), Lexica.WORDS)
+	val corpus = FTB.parseFullFine()
 
 	val word = "en"
 
