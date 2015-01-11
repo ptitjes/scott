@@ -14,7 +14,9 @@ import io.github.ptitjes.scott.utils.Utils._
 
 object trainFTBFine extends App {
 
-	val (trainCorpus, devCorpus, testCorpus) = FTB.parseSplitFine()
+	val ftbPath = args(0)
+
+	val (trainCorpus, devCorpus, testCorpus) = FTB.parseSplitFine(ftbPath)
 
 	val trainer = new DiscriminantTrainer[NLToken, NLToken with NLPosTag](
 		order = 2,

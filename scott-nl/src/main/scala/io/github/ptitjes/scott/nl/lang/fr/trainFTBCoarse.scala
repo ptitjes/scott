@@ -9,12 +9,15 @@ import io.github.ptitjes.scott.nl.analysis.Checking
 import io.github.ptitjes.scott.nl.conll.CoNLLCoarseToken
 import io.github.ptitjes.scott.nl.corpora.Corpora._
 import io.github.ptitjes.scott.nl.features.BaseFeatures
+import io.github.ptitjes.scott.nl.lang.fr.trainFTBFine._
 import io.github.ptitjes.scott.trainers.DiscriminantTrainer
 import io.github.ptitjes.scott.utils.Utils._
 
 object trainFTBCoarse extends App {
 
-	val (trainCorpus, devCorpus, testCorpus) = FTB.parseSplitCoarse()
+	val ftbPath = args(0)
+
+	val (trainCorpus, devCorpus, testCorpus) = FTB.parseSplitCoarse(ftbPath)
 
 	val trainer = new DiscriminantTrainer[NLToken, NLToken with NLPosTag](
 		order = 2,

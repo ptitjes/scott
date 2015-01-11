@@ -6,6 +6,7 @@ import java.util.Locale
 import io.github.ptitjes.scott.api.Sequence
 import io.github.ptitjes.scott.nl.conll.CoNLLToken
 import io.github.ptitjes.scott.nl.corpora._
+import io.github.ptitjes.scott.nl.lang.fr.testFTBCoarse._
 import io.github.ptitjes.scott.utils.Trie
 
 import scala.collection.{mutable, _}
@@ -13,8 +14,10 @@ import scala.io.Source
 
 object testLefff extends App {
 
-	private val PATH_TO_TEST = "/home/didier/Documents/Work/Master/Docs/Inférence Statistique/Alexis Nasr/Code HMM/ftb.test.encode"
-	val corpus = FTB.parseFullFine()
+	val ftbPath = args(0)
+	val lefffPath = args(1)
+
+	val corpus = FTB.parseFullFine(ftbPath)
 
 	val perWordCats = mutable.HashMap[Word, mutable.Set[Int]]()
 	corpus.sequences.foreach { s =>
