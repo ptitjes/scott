@@ -6,10 +6,8 @@ import io.github.ptitjes.scott.api.HiddenMarkovModel._
 import io.github.ptitjes.scott.api._
 import io.github.ptitjes.scott.decoders.BeamDecoder
 import io.github.ptitjes.scott.nl.analysis.Checking
-import io.github.ptitjes.scott.nl.conll.CoNLLCoarseToken
 import io.github.ptitjes.scott.nl.corpora.Corpora._
 import io.github.ptitjes.scott.nl.features.BaseFeatures
-import io.github.ptitjes.scott.nl.lang.fr.trainFTBFine._
 import io.github.ptitjes.scott.trainers.DiscriminantTrainer
 import io.github.ptitjes.scott.utils.Utils._
 
@@ -52,6 +50,6 @@ object trainFTBCoarse extends App {
 	def decode(hmm: HiddenMarkovModel[NLToken, NLToken with NLPosTag], hmmName: String) {
 		val decoder = new BeamDecoder(hmm)
 		val hypCorpus = decoder.decode(devCorpus)
-		Checking.check(hmm, devCorpus, hypCorpus, devCorpus.tagSet, new File("temp/Decode-on-" + hmmName + ".check")).display()
+		Checking.check(hmm, devCorpus, hypCorpus, new File("temp/Decode-on-" + hmmName + ".check")).display()
 	}
 }

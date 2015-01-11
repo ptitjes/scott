@@ -51,6 +51,6 @@ object trainFTBFine extends App {
 	def decode(hmm: HiddenMarkovModel[NLToken, NLToken with NLPosTag], hmmName: String) {
 		val decoder = new BeamDecoder(hmm)
 		val hypCorpus = decoder.decode(devCorpus)
-		Checking.check(hmm, devCorpus, hypCorpus, devCorpus.tagSet, new File("temp/Decode-on-" + hmmName + ".check")).display()
+		Checking.check(hmm, devCorpus, hypCorpus, new File("temp/Decode-on-" + hmmName + ".check")).display()
 	}
 }

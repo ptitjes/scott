@@ -12,12 +12,11 @@ object Checking {
 	def check(hmm: HiddenMarkovModel[_, _],
 	          refCorpus: DataSet[NLToken with NLPosTag],
 	          hypCorpus: DataSet[NLToken with NLPosTag],
-	          tagSet: TagSet,
 	          checkFile: File): Results = {
 
 		using(new FileWriter(checkFile)) {
 			fileOutput => using(new PrintWriter(fileOutput)) {
-				out => check(hmm, refCorpus, hypCorpus, tagSet, Some(out))
+				out => check(hmm, refCorpus, hypCorpus, Some(out))
 			}
 		}
 	}
@@ -25,8 +24,9 @@ object Checking {
 	def check(hmm: HiddenMarkovModel[_, _],
 	          refCorpus: DataSet[NLToken with NLPosTag],
 	          hypCorpus: DataSet[NLToken with NLPosTag],
-	          tagSet: TagSet,
-	          writer: Option[PrintWriter]): Results = {
+	          writer: Option[PrintWriter] = None): Results = {
+
+		val tagSet: TagSet = refCorpus.tagSet
 
 		val globalCounts = new ErrorCount
 		val perCategoryCounts = Array.fill(tagSet.tags.size)(new ErrorCount)

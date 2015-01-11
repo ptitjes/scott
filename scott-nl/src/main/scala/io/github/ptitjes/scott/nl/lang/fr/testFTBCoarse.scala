@@ -19,18 +19,20 @@ object testFTBCoarse extends App {
 	val hmmName = "FTB-Coarse-" + 9
 	val hmmFile = new File("temp/" + hmmName + ".hmm")
 
-	val (loadedHmm, _) = timed("Loading model") {
+	val (hmm, _) = timed("Loading model") {
 		readFrom[NLToken, NLToken with NLPosTag](hmmFile)
 	}
 
-	decode(loadedHmm, "Loaded-" + hmmName, devCorpus)
-	decode(loadedHmm, "Loaded-" + hmmName, testCorpus)
+	val decoder = new BeamDecoder(hmm, 5)
+
+	for (i <- 0 until 10) {
+		decode(devCorpus)
+		decode(testCorpus)
+	}
 
 	println()
 
-	def decode(hmm: HiddenMarkovModel[NLToken, NLToken with NLPosTag], hmmName: String, corpus: DataSet[CoNLLCoarseToken]) {
-		val decoder = new BeamDecoder(hmm)
-		val hypCorpus = decoder.decode(devCorpus)
-		Checking.check(hmm, devCorpus, hypCorpus, devCorpus.tagSet, new File("temp/Decode-on-" + hmmName + ".check")).display()
+	def decode(corpus: DataSet[CoNLLCoarseToken]) {
+		Checking.check(hmm, corpus, decoder.decode(corpus)).display()
 	}
 }

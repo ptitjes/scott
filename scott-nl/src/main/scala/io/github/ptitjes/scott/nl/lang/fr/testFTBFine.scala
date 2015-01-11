@@ -6,7 +6,7 @@ import io.github.ptitjes.scott.api.HiddenMarkovModel._
 import io.github.ptitjes.scott.api._
 import io.github.ptitjes.scott.decoders.BeamDecoder
 import io.github.ptitjes.scott.nl.analysis.Checking
-import io.github.ptitjes.scott.nl.conll.CoNLLToken
+import io.github.ptitjes.scott.nl.conll.{CoNLLCoarseToken, CoNLLToken}
 import io.github.ptitjes.scott.nl.corpora.Corpora._
 import io.github.ptitjes.scott.utils.Utils._
 
@@ -19,18 +19,20 @@ object testFTBFine extends App {
 	val hmmName = "FTB-Fine-" + 10
 	val hmmFile = new File("temp/" + hmmName + ".hmm")
 
-	val (loadedHmm, _) = timed("Loading model") {
+	val (hmm, _) = timed("Loading model") {
 		readFrom[NLToken, NLToken with NLPosTag](hmmFile)
 	}
 
-	decode(loadedHmm, "Loaded-" + hmmName, devCorpus)
-	decode(loadedHmm, "Loaded-" + hmmName, testCorpus)
+	val decoder = new BeamDecoder(hmm, 5)
+
+	for (i <- 0 until 10) {
+		decode(devCorpus)
+		decode(testCorpus)
+	}
 
 	println()
 
-	def decode(hmm: HiddenMarkovModel[NLToken, NLToken with NLPosTag], hmmName: String, corpus: DataSet[CoNLLToken]) {
-		val decoder = new BeamDecoder(hmm)
-		val hypCorpus = decoder.decode(devCorpus)
-		Checking.check(hmm, devCorpus, hypCorpus, devCorpus.tagSet, new File("temp/Decode-on-" + hmmName + ".check")).display()
+	def decode(corpus: DataSet[CoNLLToken]) {
+		Checking.check(hmm, corpus, decoder.decode(corpus)).display()
 	}
 }
