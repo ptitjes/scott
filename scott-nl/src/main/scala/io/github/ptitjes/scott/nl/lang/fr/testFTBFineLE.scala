@@ -16,7 +16,7 @@ object testFTBFineLE extends App {
 
 	val (trainCorpus, devCorpus, testCorpus) = FTB.parseSplitFine(ftbPath)
 
-	val hmmName = "FTB-Fine-LE-" + 10
+	val hmmName = "FTB-Fine-LE-" + 9
 	val hmmFile = new File("temp/" + hmmName + ".hmm")
 
 	val (hmm, _) = timed("Loading model") {
@@ -28,6 +28,7 @@ object testFTBFineLE extends App {
 	for (i <- 0 until 10) {
 		decode(devCorpus)
 		decode(testCorpus)
+		println()
 	}
 
 	println()

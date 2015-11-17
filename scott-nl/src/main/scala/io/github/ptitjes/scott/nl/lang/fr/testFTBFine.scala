@@ -28,6 +28,7 @@ object testFTBFine extends App {
 	for (i <- 0 until 10) {
 		decode(devCorpus)
 		decode(testCorpus)
+		println()
 	}
 
 	println()
